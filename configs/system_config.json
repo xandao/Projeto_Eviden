@@ -1,0 +1,5 @@
+{
+	"predictors_path": "../predictors",
+	"templates_path": "../templates",
+	"dataset_path": "../data"
+}

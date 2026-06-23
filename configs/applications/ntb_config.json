@@ -1,0 +1,216 @@
+{
+	"suggestions_parameters": [
+		"NNodes",
+		"Processo p/ no",
+		"Thread p/ proc."
+	],
+	"application_parameters": [
+		"Zone X",
+		"Zone Y",
+		"Itera\u00e7\u00f5es",
+		"Grid X",
+		"Grid Y",
+		"Grid Z"
+	],
+	"name": "ntb",
+	"estimated_parameter": "EDP",
+	"training": {
+		"group_parameters": [
+			"Benchmark",
+			"Classe"
+		],
+		"filter_parameters": [
+			"ElapsedRaw",
+			"Consumo de Energia Total (J)",
+			"EDP"
+		],
+		"dataset_files": [
+			"ntb_1.csv",
+			"ntb_2.csv",
+			"ntb_3.csv",
+			"ntb_4.csv",
+			"ntb_5.csv",
+			"ntb_6.csv"
+		]
+	},
+	"user": {
+		"executable_names": [
+			"ntb.sh"
+		],
+		"script_template_name": "ntb_template.sh",
+		"predictor_name": "ntb",
+		"suggestions_map": {
+			"nodes": "NNodes",
+			"process": "Processo p/ no",
+			"threads": "Thread p/ proc."
+		},
+		"user_options": {
+			"Benchmark": {
+				"param": [
+					"-b"
+				],
+				"type": "string",
+				"help": "Benchmark name."
+			},
+			"Classe": {
+				"param": [
+					"-c"
+				],
+				"type": "string",
+				"help": "Class name."
+			}
+		},
+		"conversions": {
+			"ZoneX": [
+				"Benchmark",
+				"Classe",
+				"map",
+				{
+					"bt_mz": {
+						"A": 4,
+						"B": 8,
+						"C": 16,
+						"D": 32
+					},
+					"lu_mz": {
+						"A": 4,
+						"B": 4,
+						"C": 4,
+						"D": 4
+					},
+					"sp_mz": {
+						"A": 4,
+						"B": 8,
+						"C": 16,
+						"D": 32
+					}
+				}
+			],
+			"ZoneY": [
+				"Benchmark",
+				"Classe",
+				"map",
+				{
+					"bt_mz": {
+						"A": 4,
+						"B": 8,
+						"C": 16,
+						"D": 32
+					},
+					"lu_mz": {
+						"A": 4,
+						"B": 4,
+						"C": 4,
+						"D": 4
+					},
+					"sp_mz": {
+						"A": 4,
+						"B": 8,
+						"C": 16,
+						"D": 32
+					}
+				}
+			],
+			"Itera\u00e7\u00f5es": [
+				"Benchmark",
+				"Classe",
+				"map",
+				{
+					"bt_mz": {
+						"A": 200,
+						"B": 200,
+						"C": 200,
+						"D": 500
+					},
+					"lu_mz": {
+						"A": 250,
+						"B": 250,
+						"C": 250,
+						"D": 300
+					},
+					"sp_mz": {
+						"A": 400,
+						"B": 400,
+						"C": 400,
+						"D": 500
+					}
+				}
+			],
+			"GridX": [
+				"Benchmark",
+				"Classe",
+				"map",
+				{
+					"bt_mz": {
+						"A": 128,
+						"B": 304,
+						"C": 480,
+						"D": 1632
+					},
+					"lu_mz": {
+						"A": 128,
+						"B": 304,
+						"C": 480,
+						"D": 1632
+					},
+					"sp_mz": {
+						"A": 128,
+						"B": 304,
+						"C": 480,
+						"D": 1632
+					}
+				}
+			],
+			"GridY": [
+				"Benchmark",
+				"Classe",
+				"map",
+				{
+					"bt_mz": {
+						"A": 128,
+						"B": 208,
+						"C": 320,
+						"D": 1216
+					},
+					"lu_mz": {
+						"A": 128,
+						"B": 208,
+						"C": 320,
+						"D": 1216
+					},
+					"sp_mz": {
+						"A": 128,
+						"B": 208,
+						"C": 320,
+						"D": 1216
+					}
+				}
+			],
+			"GridZ": [
+				"Benchmark",
+				"Classe",
+				"map",
+				{
+					"bt_mz": {
+						"A": 16,
+						"B": 17,
+						"C": 28,
+						"D": 34
+					},
+					"lu_mz": {
+						"A": 16,
+						"B": 17,
+						"C": 28,
+						"D": 34
+					},
+					"sp_mz": {
+						"A": 16,
+						"B": 17,
+						"C": 28,
+						"D": 34
+					}
+				}
+			]
+		}
+	}
+}

@@ -1,0 +1,392 @@
+import pandas as pd
+import scipy.stats as st
+from scipy.stats import gmean
+import numpy as np
+
+import sklearn.model_selection as skms
+import sklearn.ensemble as sken
+import sklearn.tree as sktree
+import sklearn.preprocessing as skpp
+import pickle
+import itertools
+
+# Item 1: Diferença entre o EDP esperado da configuração sugerida e o EDP esperado da configuração do oráculo dividida pela EDP esperado da configuração do oráculo.
+def min_edp_config_diff(y_true, y_pred):
+	y_true_min = y_true.min()
+	y_pred_min_pos = y_pred.argmin()
+	y_expected_min = y_true[y_pred_min_pos]
+
+	return (y_expected_min - y_true_min) / y_true_min
+
+def train_min_edp_config_diff(trained_estimator, X_test, y_test):
+	df_test_mean_EDP = pd.concat((X_test, y_test), axis=1).groupby(list(X_test.columns))[y_test.name].median().reset_index()
+	X_test = df_test_mean_EDP[X_test.columns]
+	y_test = df_test_mean_EDP[y_test.name]
+	y_pred = trained_estimator.predict(X_test)
+
+	return min_edp_config_diff(y_test, y_pred)
+
+def neg_train_min_edp_config_diff(trained_estimator, X_test, y_test):
+	return -train_min_edp_config_diff(trained_estimator, X_test, y_test)
+
+# Item 5: Frequência em que a configuração sugerida e a configuração do oráculo coincidem: os tais 80%.
+def min_edp_config_accuracy(X, y_true, y_pred):
+	y_pred_argmin = y_pred.argmin()
+	y_true_argmin = y_true.argmin()
+
+	return float((X.iloc[y_pred_argmin] == X.iloc[y_true_argmin]).all())
+
+def train_min_edp_config_accuracy(trained_estimator, X_test, y_test):
+	df_test_mean_EDP = pd.concat((X_test, y_test), axis=1).groupby(list(X_test.columns))[y_test.name].median().reset_index()
+	X_test = df_test_mean_EDP[X_test.columns]
+	y_test = df_test_mean_EDP[y_test.name]
+	y_pred = trained_estimator.predict(X_test)
+
+	return min_edp_config_accuracy(X_test, y_test, y_pred)
+
+class FilterOutliers:
+	def __init__(self):
+		pass
+
+	def make_outliers_filter(self, outliers_limit, variables):
+		def outliers_filter(df):
+			make_range = lambda a, b: (a-b, a+b)
+			masks = []
+			for v in variables:
+				masks.append(~df[v].between(*make_range(df[v].median(), outliers_limit * st.median_abs_deviation(df[v]))))
+			return pd.DataFrame(masks).T
+		return outliers_filter
+
+	def Filter(self, dados, input_variables, output_variables, outliers_limit):
+		outlier_masks = dados.groupby(input_variables).apply(self.make_outliers_filter(outliers_limit, output_variables))
+
+		non_outliers_mask = ~outlier_masks.any(axis=1)
+
+		return dados[non_outliers_mask.reset_index(list(range(len(input_variables))), drop=True)].copy().reset_index()
+		
+class BestHiperparams:
+	def __init__(self):
+		self.X = None
+		self.y = None
+		self.grid_search_model = None
+		self.groups = None
+		self.group_names = None
+	
+	def optimize(self, data, suggestion_names, application_names, user_names, 
+							 predicted_name, model, hiperparams_grid, n_jobs=-1, verbose=0, 
+							 scoring=train_min_edp_config_accuracy):
+		if not isinstance(data, pd.DataFrame):	
+			raise ValueError("Invalid input data provided, data is not a Dataframe.")
+
+		if not pd.Index(suggestion_names).isin(data.columns).all():
+			raise KeyError(f"Invalid input suggestion_names provided, not all {suggestion_names} suggestions params exists in {data.columns}.")
+		if not pd.Index(application_names).isin(data.columns).all():
+			raise KeyError(f"Invalid input application_names provided, not all {application_names} applications params exists in {data.columns}.")
+		if not pd.Index([predicted_name]).isin(data.columns).all():
+			raise KeyError(f"Invalid input predicted_name provided, predicted param {predicted_name} doesn't exists in {data.columns}.")
+
+        # Define X e y
+		self.X = data[suggestion_names+application_names]
+		self.y = data[predicted_name]
+
+        # Cria os grupos
+		lab_encoder = skpp.LabelEncoder()
+		self.groups = lab_encoder.fit_transform(list(map(str, data[user_names].values)))
+		self.groups_names = lab_encoder.classes_
+
+        # Cria o objeto de grid para otimizar os hiperparâmetros.
+		grid_search_model = skms.GridSearchCV(
+			model,
+			cv=skms.LeaveOneGroupOut(),
+			param_grid=hiperparams_grid,
+			scoring=scoring,
+			refit=True,
+			n_jobs=n_jobs,
+			return_train_score=True,
+			verbose=verbose,
+		)
+
+    # Otimiza os hiperparâmetros.
+		self.grid_search_model = grid_search_model.fit(self.X, self.y, groups=self.groups)
+		
+		# Retorna os resultados da otimização.
+		return (self.grid_search_model.best_params_, self.grid_search_model.best_score_)
+		
+class DiscoverBestModel:
+	def __init__(self):
+		self.results_df	= None
+		self.X = None
+		self.y = None
+		self.cv_results = None
+		self.groups = None
+		self.group_names = None
+		self.mean_scores_models_df = None
+		self.best_model_name = None
+		self.best_model_score = None
+		
+	def best_model(self, data, suggestion_names, application_names, user_names, predicted_name, models, 
+	               scores_functions={'accuracy': train_min_edp_config_accuracy, 'difference': neg_train_min_edp_config_diff}, 
+	               n_jobs=-1, verbose=0):
+	
+		if not isinstance(data, pd.DataFrame):	
+			raise ValueError("Invalid input data provided, data is not a Dataframe.")
+
+		if not pd.Index(suggestion_names).isin(data.columns).all():
+			raise KeyError(f"Invalid input suggestion_names provided, not all {suggestion_names} suggestions params exists in {data.columns}.")
+		if not pd.Index(application_names).isin(data.columns).all():
+			raise KeyError(f"Invalid input application_names provided, not all {application_names} applications params exists in {data.columns}.")
+		if not pd.Index([predicted_name]).isin(data.columns).all():
+			raise KeyError(f"Invalid input predicted_name provided, predicted param {predicted_name} doesn't exists in {data.columns}.")
+
+        # Define X e y
+		self.X = data[suggestion_names+application_names]
+		self.y = data[predicted_name]
+
+        # Cria os grupos
+		lab_encoder = skpp.LabelEncoder()
+		self.groups = lab_encoder.fit_transform(list(map(str, data[user_names].values)))
+		self.groups_names = lab_encoder.classes_
+
+		# Cria um dataframe vazio
+		self.results_df = pd.DataFrame()
+		
+		self.cv_results = {}
+
+		# Avalia os modelos
+		for name, model in models.items():
+			cv_results = skms.cross_validate(
+				model,
+				data[suggestion_names+application_names],
+				data[predicted_name],
+				scoring=scores_functions,
+				groups=self.groups,
+				cv=skms.LeaveOneGroupOut(),
+				n_jobs=n_jobs,
+        return_indices=True,
+				error_score='raise',
+				return_estimator=True,
+				#verbose=verbose
+			)
+			cv_results_df = pd.DataFrame({k.replace("test_", ""): cv_results[k] for k in cv_results if k not in ['indices','estimator']})
+			cv_results_df['Model'] = name
+			self.cv_results[name] = { 'cv_results': cv_results, 'results_dataframe': cv_results_df}
+
+			if verbose:
+				print(f"\n\nModel {name} table:\n")
+				print(cv_results_df.to_markdown(tablefmt="grid"))
+				print(f"\n\nModel {name} statistics:\n")
+				print(cv_results_df.describe())
+
+			self.results_df = pd.concat([self.results_df, cv_results_df])
+
+		# Torna os índices consecutivos.
+		self.results_df = self.results_df.reset_index(drop=True)		
+		
+		# Cria um dataframe com a média para os modelos.
+		scores_functions_names = list(scores_functions.keys())
+		self.mean_scores_models_df = self.results_df.groupby(by=['Model'])[scores_functions_names].mean()
+		
+		# Descobre o(s) melhor(es) modelos, faz isso ordenando o dataframe mean_scores_models_df pelas
+		self.mean_scores_models_df = self.mean_scores_models_df.sort_values(by=scores_functions_names, ascending=False)
+		self.best_model_name = self.mean_scores_models_df.index[0]
+		self.best_model_scores = self.mean_scores_models_df.iloc[0].to_dict()
+		
+		return (self.best_model_name, self.best_model_scores, self.results_df, self.mean_scores_models_df)
+	
+	def get_results_model(self, model_name):
+		if self.cv_results is None:
+			raise ValueError("Cross-validation of the models has not yet been executed!")
+		if not model_name in self.cv_results.keys():
+			raise KeyError(f"Invalid model name {model_name}! Must be any in {self.cv_results.keys()}.")
+			
+		return self.cv_results[model_name]
+			      
+class SuggestionsPredictor:
+	def __init__(self):
+		self.suggestion_names = None
+		self.application_names = None
+		self.user_names = None
+		self.predicted_name = None
+		self.dataset = None
+		self.model = None
+		self.suggestion_params = None
+		self.application_params = None
+		self.user_params = None
+	    	
+	def fit(self, data, suggestion_names, application_names, user_names, predicted_name, model, verbose=False):
+		if not isinstance(data, pd.DataFrame):	
+			raise ValueError("Invalid input data provided, data is not a Dataframe.")
+
+		if not pd.Index(suggestion_names).isin(data.columns).all():
+			raise KeyError(f"Invalid input suggestion_names provided, not all {suggestion_names} suggestions params exists in {data.columns}.")
+		if not pd.Index(application_names).isin(data.columns).all():
+			raise KeyError(f"Invalid input application_names provided, not all {application_names} applications params exists in {data.columns}.")
+		if not pd.Index(user_names).isin(data.columns).all():
+			raise KeyError(f"Invalid input user_names provided, not all {user_names} applications params exists in {data.columns}.")
+		if not pd.Index([predicted_name]).isin(data.columns).all():
+			raise KeyError(f"Invalid input predicted_name provided, predicted param {predicted_name} doesn't exists in {data.columns}.")
+
+		self.suggestion_names = suggestion_names
+		self.application_names = application_names
+		self.user_names = user_names
+		self.predicted_name = predicted_name
+			
+		X = data[suggestion_names+application_names]
+		y = data[predicted_name]
+
+		# Treina o model com os dados
+		self.model = model.fit(X, y)
+
+		# Salva o dataframe usado para treinar o modelo.
+		colunms_names = list(set(suggestion_names+application_names+user_names+[predicted_name]))
+		self.dataset = data[colunms_names].copy()
+
+		# Define os possíveis parâmetros para cada sugestão.
+		self.suggestion_params = {col: list(data[col].unique()) for col in suggestion_names}
+
+		# Define os possíveis parâmetros para cada opção da aplicação do usuário;
+		self.application_params = {col: list(data[col].unique()) for col in application_names}
+
+		# Define os possíveis parâmetros para cada opção da aplicação do usuário;
+		self.user_params = {col: list(data[col].unique()) for col in user_names}
+		
+		if verbose:
+			print(f"Suggestion params used in training: {self.suggestion_params}")
+			print(f"Application params used in training: {self.application_params}")
+			print(f"User params used in training: {self.user_params}")
+			print(f"Model predicted variable: {self.predicted_name}")
+			print("X used in training:")
+			print(X.to_markdown(tablefmt="grid"))
+			print("y used in training:")
+			print(y.to_markdown(tablefmt="grid"))
+			print("dataframe using all application variables:")
+			print(data.to_markdown(tablefmt="grid"))
+			
+		return self 		
+		
+	def get_oracle(self, verbose=False):
+		# Calcula o dataset do oraculo.
+		df_aux = self.dataset.groupby(self.suggestion_names+self.user_names)[self.predicted_name].median().reset_index()
+		if verbose:
+			print(f"Median of variable {self.predicted_name} for all repetitions for each combination of variables {self.suggestion_names+self.user_names}")
+			df_aux.to_markdown(tablefmt="grid")
+		df_oracle = df_aux.groupby(self.user_names).apply(lambda x: x[x[self.predicted_name] == x[self.predicted_name].min()], include_groups=False)
+		if verbose:
+			print("Oracle dataset")
+			df_oracle.to_markdown(tablefmt="grid")
+
+		return df_oracle
+		    	
+	def predict_suggestions_data(self, user_params, custom_suggestions_params=None, verbose=False):
+	    # Verifica se o fit foi feito
+		if self.model is None:
+			raise ValueError("The model hasn't been trained yet!")
+	    	
+		if sorted(user_params.keys()) != sorted(self.user_params.keys()):
+			raise KeyError(f"Invalid application {user_params.keys()} param names! Must be {self.user_params.keys()}")
+	  			
+		if custom_suggestions_params is None:
+		  # Cria um X usando as opções de configuração usadas para treinar o modelo.
+			#suggestions_cobinations = list(itertools.product(*self.suggestion_params.values()))
+			#X = pd.DataFrame(suggestions_cobinations, columns=self.suggestion_params.keys())
+			X = self.dataset.groupby(self.suggestion_names)[self.predicted_name].median().reset_index().copy().drop(columns=[self.predicted_name])
+		else:
+#			# Se uma coluna com as sugesões não existir, usa a suggestão de treinamento.
+#			for suggestion_name in self.suggestion_names:
+#				if suggestion_name not in custom_suggestions_params.keys():
+#					custom_suggestions_params[suggestion_name] = self.suggestion_params[suggestion_name]
+		  # Cria um X usando as opções de configuração passadas como parâmetro
+			suggestions_cobinations = list(itertools.product(*custom_suggestions_params.values()))
+			X = pd.DataFrame(suggestions_cobinations, columns=custom_suggestions_params.keys())
+	
+		for param_name in user_params.keys():
+			X[param_name] = user_params[param_name]
+   	
+		if verbose:
+			print(f"X used when prediting {self.predicted_name} for all possible suggestions.")	
+			print(X.to_markdown(tablefmt="grid"))
+
+		# Faz a predição para o X_aux.
+		y_pred = self.model.predict(X)
+
+		if verbose:
+			print(f"Prediced y when prediting {self.predicted_name} for all possible suggestions:")	
+			print(y_pred)
+
+		return (y_pred, X)
+	
+	def get_suggestion(self, user_params, custom_suggestions_params=None, verbose=False):
+		# Faz a predição dos valores para todas as configurações da base usada para o treinamento e os parâmetros da aplicação passados.
+		y_pred, X = self.predict_suggestions_data(user_params, custom_suggestions_params, verbose)
+        
+     	# Descobre a posicao do menor valor predito e esse valor, que indicará a posição da configuração predita.
+		y_pred_posmin = y_pred.argmin()
+		y_pred_min = y_pred.min()
+		if verbose:
+			#print(f"y_pred para os seguintes parâmetros da aplicação: {user_params}")
+			print(f"mininum y_pred for application params {user_params}: {y_pred_min} in position {y_pred_posmin} of y_preed")
+		# A sugestão será a configuração associada ao menor valor da variável predita.	
+		y_suggestion = X.loc[y_pred_posmin,self.suggestion_names].to_dict()
+		
+        # Retorna a sugestão com o manor valor predito para a variável predita pelo modelo.
+		y_pred_s = pd.Series(y_pred)
+		y_pred_s.name = self.predicted_name		
+		info_suggestion = {"Suggestion": y_suggestion, "Score": y_pred_min, "X": X, "y_pred": y_pred_s, "y_pred_minimum": y_pred_min, "y_pred_minimum_position": y_pred_posmin}
+							 							 
+		return info_suggestion	                     	
+
+	def get_suggestions(self, user_params_df, custom_suggestions_params=None, verbose=False):
+		if not type(user_params_df) is pd.DataFrame:
+			raise ValueError("Invalid input user_params_df provided, not a Pandas DataFrame.")
+		if not pd.Index(self.user_names).isin(user_params_df.columns).all():
+			raise KeyError(f"Invalid input user_params_df provided, not all {self.user_names} user params exists in user_params_df.")
+			
+		info_suggestions = []	
+
+		for idx in user_params_df.index:
+			user_params = user_params_df.loc[idx].to_dict()
+			if verbose:
+				print(f"Definindo a sugestão para os parâmetros {user_params} do usuário")
+			info_suggestion = self.get_suggestion(user_params, custom_suggestions_params, verbose)
+			info_suggestions.append(info_suggestion)
+
+		return info_suggestions		
+		
+	def predict(self, X):
+	    # Verifica se o fit foi feito
+		if self.model is None:
+			raise ValueError("The model hasn't been trained yet!")
+
+		return self.model.predict(X)			
+
+	def score(self, X, y):
+	    # Verifica se o fit foi feito
+		if self.model is None:
+			raise ValueError("The model hasn't been trained yet!")
+
+		return self.model.score(X, y)			
+		
+	def get_params(self, deep=False):
+		return {}	
+
+	def save_predictor(self, file_name):
+		with open(file_name, 'wb') as file:
+			pickle.dump(self, file)		
+
+	@classmethod
+	def print_suggestion(cls, info_suggestion, show_score=False, show_X=False, show_y_pred=False):
+		print(f"Suggestion: {info_suggestion['Suggestion']}")
+		if show_score:
+			print(f"Score: {info_suggestion['Score']}")
+		if show_X:
+			print('X used in predictions when choosing the best suggetstion:')
+			print(info_suggestion['X'].to_markdown(tablefmt="grid", floatfmt=".2f"))
+		if show_y_pred:
+			print(f'Predicetd y used when choosing the best suggetstion, mininum {info_suggestion['y_pred_minimum']} in position {info_suggestion['y_pred_minimum_position']}:')
+			print(info_suggestion['y_pred'].to_markdown(tablefmt="grid", floatfmt=".2f"))
+		
+	@classmethod
+	def load_predictor(cls, file_name):
+		with open(file_name, 'rb') as file:
+			predictor = pickle.load(file)
+		return predictor
