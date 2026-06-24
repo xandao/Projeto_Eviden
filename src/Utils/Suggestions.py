@@ -62,7 +62,7 @@ class FilterOutliers:
 
 		non_outliers_mask = ~outlier_masks.any(axis=1)
 
-		return dados[non_outliers_mask.reset_index(list(range(len(input_variables))), drop=True)].copy().reset_index()
+		return dados[non_outliers_mask.reset_index(list(range(len(input_variables))), drop=True)].reset_index().copy()
 		
 class BestHiperparams:
 	def __init__(self):

@@ -59,7 +59,9 @@ def train_command(applications_name, applications_config, training_config, confi
         print(f"-> Training all models for the application {application_info["name"]}")	
 
       # Variáveis usadas np programa
-      variaveis_de_entrada = list(set(application_info['suggestions_parameters']+application_info['application_parameters']+application_info['training']['group_parameters']))
+      variaveis_de_entrada = list(set(application_info['suggestions_parameters']+
+                                      application_info['application_parameters']+
+                                      application_info['training']['group_parameters']))
       variaveis_do_filtro = application_info['training']['filter_parameters']
       variavel_de_saida = application_info['estimated_parameter']
 
@@ -68,13 +70,17 @@ def train_command(applications_name, applications_config, training_config, confi
 
       for nome_arquivo in application_info['training']['dataset_files']:
         nome_arquivo_completo = Path(system_config['dataset_path']) / nome_arquivo
-        dados_arquivo = pd.read_csv(nome_arquivo_completo, usecols=variaveis_de_entrada+variaveis_do_filtro)
+        dados_arquivo = pd.read_csv(nome_arquivo_completo, usecols=variaveis_de_entrada+
+                                                                   variaveis_do_filtro+
+                                                                   [variavel_de_saida])
         dados = pd.concat([dados, dados_arquivo])
-        dados = dados.reset_index(drop=True)		
+      dados = dados.reset_index(drop=True)		
 
       if verbose:
         print("--> Original application data:\n")
         print(dados.to_markdown(tablefmt="grid"))
+        print("--> Static information of original application data:\n")
+        print(dados.describe().to_markdown(tablefmt="grid", floatfmt=".2f"))
 
       # Filtra os dados.
       data_filter = FilterOutliers()
@@ -83,6 +89,8 @@ def train_command(applications_name, applications_config, training_config, confi
       if verbose:
         print("--> Filtered application data:\n")
         print(dados_limpos.to_markdown(tablefmt="grid"))
+        print("--> Static information of filtered application data:\n")
+        print(dados_limpos.describe().to_markdown(tablefmt="grid", floatfmt=".2f"))
         print(f'--> Predictions for the target {variavel_de_saida}')
 
       predictor_hiperparams = {}
@@ -137,12 +145,12 @@ def train_command(applications_name, applications_config, training_config, confi
       model = getattr(model_module, model_name)
 
       predictor = SuggestionsPredictor()
-      predictor.fit(dados, application_info['suggestions_parameters'], 
-                            application_info['application_parameters'], 
-                            application_info['training']['group_parameters'], 
-                            variavel_de_saida, 
-                            model(**best_params),
-                            verbose=verbose)
+      predictor.fit(dados_limpos, application_info['suggestions_parameters'], 
+                                  application_info['application_parameters'], 
+                                  application_info['training']['group_parameters'], 
+                                  variavel_de_saida, 
+                                  model(**best_params),
+                                  verbose=verbose)
       model_name = training_config['models'][best_model_name]['name']
       preditor_file_name = configs_file_path / f"{application_info["name"]}_{model_name}_{variavel_de_saida}.pickle"
       if verbose:
@@ -159,7 +167,7 @@ def execute_commands(command, applications_configs, training_config, system_conf
                           system_config, verbose=verbose)  
  } 
 
- if command[0] in commands_dict.keys():
+ if len(command) > 0 and command[0] in commands_dict.keys():
    commands_dict[command[0]]()
    return True
  else:  

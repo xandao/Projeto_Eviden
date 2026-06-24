@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from Utils.Suggestions import SuggestionsPredictor
-from Utils.ReadConfigs import ReadSystemConfig, ReadApplicationsConfig, ReadUserConfig
+from Utils.ReadConfigs import ReadSystemConfig, ReadApplicationsConfigs, ReadUserConfig
 from pprint import pprint
 import sys
 import argparse
@@ -19,7 +19,7 @@ def read_configs():
 
   # Lê os parâmetros da aplicação
   application_configs_dir_path = configs_file_path / 'applications'
-  applications_configs = ReadApplicationsConfig().read_applications_config(application_configs_dir_path)
+  applications_configs = ReadApplicationsConfigs().read_applications_config(application_configs_dir_path)
   #pprint(applications_configs)
 
   # Lê as configurações do script do usuário
