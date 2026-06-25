@@ -180,7 +180,7 @@ def generate_submission_script(user_config, user_args, template_file_path, appli
   template_content = template_content.replace("<<total_tasks>>", f"{number_of_nodes * number_of_process}")
 
   # Altera o campo número de threads
-  number_of_threads = suggestion_params.get('process', 1)
+  number_of_threads = suggestion_params.get('threads', 1)
   template_content = template_content.replace("<<threads_per_process>>", f"{number_of_threads}")
 
   # Altera o campo nme_do_job
@@ -284,6 +284,8 @@ def optimize_application(system_config, applications_config, user_config,
     
     # Obtém o caminho do arquivo de template, se as opçoes. 
     if user_args.run or not user_args.suggestion:
+      if user_args.verbose:
+        SuggestionsPredictor.print_suggestion(suggestion, suggestion_map=reversed_suggestions_map)
       template_file_path = Path(system_config['templates_path']) / applications_config[application_id]['user']['script_template_name']
       template_content = generate_submission_script(user_config, user_args, template_file_path, application_name, application_args[1:], 
                                                     suggestion_mapped)

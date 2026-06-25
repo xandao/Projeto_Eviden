@@ -409,11 +409,12 @@ Prediced y when prediting EDP for all possible suggestions:
   11446.52491345  14972.75686479  96819.64562283 157435.62236844
   11532.75636162  11463.8727877   11446.52491345  14972.75686479]
 mininum y_pred for application params {'Bootstrap': 100, 'Tamanho': 231143}: 11446.524913454205 in position 64 of y_preed
+Suggestion: nodes=4, process=2, threads=8
 ../templates/raxml_template.sh
 #SBATCH --nodes=4
 #SBATCH --ntasks-per-node=2
 #SBATCH --ntasks=8
-#SBATCH --cpus-per-task=2
+#SBATCH --cpus-per-task=8
 #SBATCH --partition=sequana_cpu
 #SBATCH --job-name=teste2
 #SBATCH --time=01:00:00
