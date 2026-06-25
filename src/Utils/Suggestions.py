@@ -46,23 +46,34 @@ def train_min_edp_config_accuracy(trained_estimator, X_test, y_test):
 
 class FilterOutliers:
 	def __init__(self):
-		pass
+		self.dados = None
+		self.dados_filtrados = None
+		self.input_variables = None
+		self.output_variables = None
+		self.outliers_limit = None
+		self.make_range = lambda a, b: (a-b, a+b)
 
 	def make_outliers_filter(self, outliers_limit, variables):
 		def outliers_filter(df):
-			make_range = lambda a, b: (a-b, a+b)
 			masks = []
 			for v in variables:
-				masks.append(~df[v].between(*make_range(df[v].median(), outliers_limit * st.median_abs_deviation(df[v]))))
+				masks.append(~df[v].between(*self.make_range(df[v].median(), outliers_limit * st.median_abs_deviation(df[v]))))
 			return pd.DataFrame(masks).T
 		return outliers_filter
 
 	def Filter(self, dados, input_variables, output_variables, outliers_limit):
+		self.dados = dados
+		self.input_variables = input_variables
+		self.output_variables = output_variables
+		self.outliers_limit = outliers_limit
+
 		outlier_masks = dados.groupby(input_variables).apply(self.make_outliers_filter(outliers_limit, output_variables))
 
 		non_outliers_mask = ~outlier_masks.any(axis=1)
 
-		return dados[non_outliers_mask.reset_index(list(range(len(input_variables))), drop=True)].reset_index().copy()
+		self.dados_filtrados = dados[non_outliers_mask.reset_index(list(range(len(input_variables))), drop=True)].reset_index().copy()
+
+		return self.dados_filtrados
 		
 class BestHiperparams:
 	def __init__(self):
@@ -212,6 +223,9 @@ class SuggestionsPredictor:
 		self.suggestion_params = None
 		self.application_params = None
 		self.user_params = None
+		self.X = None
+		self.y = None
+
 	    	
 	def fit(self, data, suggestion_names, application_names, user_names, predicted_name, model, verbose=False):
 		if not isinstance(data, pd.DataFrame):	
@@ -231,11 +245,11 @@ class SuggestionsPredictor:
 		self.user_names = user_names
 		self.predicted_name = predicted_name
 			
-		X = data[suggestion_names+application_names]
-		y = data[predicted_name]
+		self.X = data[suggestion_names+application_names].copy()
+		self.y = data[predicted_name].copy()
 
 		# Treina o model com os dados
-		self.model = model.fit(X, y)
+		self.model = model.fit(self.X, self.y)
 
 		# Salva o dataframe usado para treinar o modelo.
 		colunms_names = list(set(suggestion_names+application_names+user_names+[predicted_name]))
@@ -256,9 +270,9 @@ class SuggestionsPredictor:
 			print(f"User params used in training: {self.user_params}")
 			print(f"Model predicted variable: {self.predicted_name}")
 			print("X used in training:")
-			print(X.to_markdown(tablefmt="grid"))
+			print(self.X.to_markdown(tablefmt="grid"))
 			print("y used in training:")
-			print(y.to_markdown(tablefmt="grid"))
+			print(self.y.to_markdown(tablefmt="grid"))
 			print("dataframe using all application variables:")
 			print(data.to_markdown(tablefmt="grid"))
 			
@@ -301,6 +315,9 @@ class SuggestionsPredictor:
 	
 		for param_name in user_params.keys():
 			X[param_name] = user_params[param_name]
+
+		# Mantém a ordem das colunas do dataframe original,
+		X = X[self.X.columns]	
    	
 		if verbose:
 			print(f"X used when prediting {self.predicted_name} for all possible suggestions.")	
@@ -374,8 +391,12 @@ class SuggestionsPredictor:
 			pickle.dump(self, file)		
 
 	@classmethod
-	def print_suggestion(cls, info_suggestion, show_score=False, show_X=False, show_y_pred=False):
-		print(f"Suggestion: {info_suggestion['Suggestion']}")
+	def print_suggestion(cls, info_suggestion, show_score=False, show_X=False, show_y_pred=False, suggestion_map=None):
+		if suggestion_map is None:
+			formatted_suggestion = ", ".join(f"{k}={v}" for k, v in info_suggestion['Suggestion'].items())
+		else:
+			formatted_suggestion = ", ".join(f"{suggestion_map[k]}={v}" for k, v in info_suggestion['Suggestion'].items())
+		print(f"Suggestion: {formatted_suggestion}")
 		if show_score:
 			print(f"Score: {info_suggestion['Score']}")
 		if show_X:

@@ -50,13 +50,13 @@
 			}
 		},
 		"conversions": {
-			"Tamanho": [
-				"Arquivo",
-				"filesize"
-			],
 			"Bootstrap": [
-				"Bootstrap",
-				"copy"
+				"copy",
+				"Bootstrap"
+			],
+			"Tamanho": [
+				"filesize",
+				"Arquivo"
 			]
 		}
 	}

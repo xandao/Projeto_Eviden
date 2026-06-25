@@ -1,6 +1,6 @@
 import pandas as pd
 from Utils.Suggestions import FilterOutliers, BestHiperparams, DiscoverBestModel, SuggestionsPredictor
-from Utils.ReadConfigs import ReadSystemConfig, ReadApplicationsConfigs, ReadTrainingConfig
+from Utils.ReadConfigs import ReadSystemConfig, ReadApplicationsConfigs, ReadTrainingConfig, PredictorsInfoConfig
 import importlib
 import argparse
 import os
@@ -11,20 +11,19 @@ from functools import partial
 def read_configs():
   # Lê a variável de ambiente com o caminho do diretório com as configurações
   configs_file_path = Path(os.getenv('APPOPTIMIZER_CONFIGS_DIR', '../configs'))
+
   # Lê os as variáveis gerais.
   system_config_file_path = configs_file_path / 'system_config.json'
   system_config = ReadSystemConfig().read_system_config(system_config_file_path)
-  #pprint(system_config)
 
   # Lê os parâmetros da aplicação
   application_configs_dir_path = configs_file_path / 'applications'
   applications_configs = ReadApplicationsConfigs().read_applications_config(application_configs_dir_path)
-  #pprint(applications_configs)
 
   # Lê os parâmetros dos modelos escolhidos para avaliação;
   training_config_file_path = configs_file_path / 'training_config.json'
   training_config = ReadTrainingConfig().read_training_config(training_config_file_path)
-  #pprint(training_config)
+
   return configs_file_path, applications_configs, training_config, system_config
 
 def process_script_args():
@@ -51,7 +50,14 @@ def models_command(training_config):
   for model_name in training_config['models'].keys():
     print(model_name)
 
-def train_command(applications_name, applications_config, training_config, configs_file_path, system_config, verbose=False):
+def train_command(applications_name, applications_config, training_config, system_config, verbose=False):
+  # Define o caminho do diretório com os arquivos dos preditores e do arquivo de configuração.
+  predictors_file_path = Path(system_config['predictors_path'])
+  # Lê as configurações que associam cada preditor a aplicação correspondente,
+  predictors_info_file_parh = predictors_file_path / system_config["predictors_info_config_filename"]
+  predictors_info_config_obj = PredictorsInfoConfig()
+  predictors_info_config = predictors_info_config_obj.read_predictors_info_config(predictors_info_file_parh)
+
   for application_key in applications_name:
     if application_key in applications_config.keys():
       application_info = applications_config[application_key]
@@ -123,7 +129,7 @@ def train_command(applications_name, applications_config, training_config, confi
 
       # Determina o melhor modelo, usando a validacao cruzada.;
       if verbose:	
-        print('--> Discover the best model of {}')
+        print(f"--> Discover the best model of the list {', '.join(predictor_hiperparams.keys())}:")
       cross_validator = DiscoverBestModel()	
       best_model_name, best_model_score, results_df, mean_scores_models_df = cross_validator.best_model(dados_limpos, 
                                                                                   application_info['suggestions_parameters'], 
@@ -152,10 +158,16 @@ def train_command(applications_name, applications_config, training_config, confi
                                   model(**best_params),
                                   verbose=verbose)
       model_name = training_config['models'][best_model_name]['name']
-      preditor_file_name = configs_file_path / f"{application_info["name"]}_{model_name}_{variavel_de_saida}.pickle"
+      preditor_file_name = predictors_file_path / f"{application_info["name"]}_{model_name}_{variavel_de_saida}.pickle"
       if verbose:
         print(f'--> Saving predictor trained with with model {best_model_name} (named {model_name}) in file {preditor_file_name}')
       predictor.save_predictor(preditor_file_name)
+
+      # Salva as informações do arquivo do modelo do preditor.
+      if verbose:
+        print(f'--> Saving predictor info for application {application_key}')
+      predictors_info_config[application_key] = preditor_file_name.name
+      predictors_info_config_obj.save_predictors_info_config(predictors_info_config)
     else:  
         print(f"Warning: Ignoring invalid application {application_key}!")
 
@@ -163,8 +175,7 @@ def execute_commands(command, applications_configs, training_config, system_conf
  commands_dict = {
    'applications': partial(applications_command, applications_configs),
    'models': partial(models_command, training_config),
-   'train': partial(train_command, command[1:], applications_configs, training_config, Path(system_config['predictors_path']), 
-                          system_config, verbose=verbose)  
+   'train': partial(train_command, command[1:], applications_configs, training_config, system_config, verbose=verbose)  
  } 
 
  if len(command) > 0 and command[0] in commands_dict.keys():

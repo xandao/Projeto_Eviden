@@ -6,10 +6,10 @@ class ReadSystemConfig:
     self.system_config_path = None  
     self.system_config = None
 
-  def check_system_json(self, app_json: dict):
+  def check_system_json(self, json_data):
     return True
 
-  def read_system_config(self, system_config_path: Path):
+  def read_system_config(self, system_config_path):
     self.system_config_path = system_config_path
     with open(system_config_path, 'r') as file:
       self.system_config = json.load(file)
@@ -24,7 +24,7 @@ class ReadTrainingConfig:
     self.training_config_path = None  
     self.training_config = None
 
-  def check_training_json(self, app_json):
+  def check_training_json(self, json_data):
     return True
 
   def read_training_config(self, training_config_path):
@@ -42,7 +42,7 @@ class ReadApplicationsConfigs:
     self.applications_config_dir = None  
     self.applications_config = None
 
-  def check_apprincation_json(self, app_json):
+  def check_apprincation_json(self, json_data):
     return True
 
   def read_applications_config(self, applications_config_dir):
@@ -67,7 +67,7 @@ class ReadUserConfig:
     self.user_config_path = None  
     self.user_config = None
 
-  def check_user_json(self, app_json):
+  def check_user_json(self, json_data):
     return True
 
   def read_user_config(self, user_config_path):
@@ -79,3 +79,31 @@ class ReadUserConfig:
     else:
       print(f"Invalid user config file {user_config_path.name}")
       return None
+
+class PredictorsInfoConfig:
+  def __init__(self):
+    self.predictors_info_config_path = None  
+    self.predictors_info_config = None
+
+  def check_predictors_info_json(self, json_data):
+    return True
+
+  def read_predictors_info_config(self, preditors_info_config_path):
+    self.predictors_info_config_path = preditors_info_config_path
+    if preditors_info_config_path.is_file():
+      with open(preditors_info_config_path, 'r') as file:
+        self.predictors_info_config = json.load(file)
+      if self.check_predictors_info_json(self.predictors_info_config):
+        return self.predictors_info_config
+      else:
+        print(f"Invalid user config file {preditors_info_config_path.name}")
+        return None
+    else:  
+      self.predictors_info_config = {}
+      return self.predictors_info_config
+    
+  def save_predictors_info_config(self, predictors_info_config):
+      self.predictors_info_config = predictors_info_config
+      with open(self.predictors_info_config_path, 'w') as file:
+        json.dump(self.predictors_info_config, file, indent="\t")
+    
