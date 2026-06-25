@@ -18,9 +18,7 @@ ulimit -v unlimited
 
 EXEC="/petrobr/app_sequana/raxml/8.2.12/bin/raxmlHPC-HYBRID-AVX"
 
-# Other params: -m GTRGAMMA -p 112233  -b 223344 -c 4 -f d
-
-PARAMS="-T $SLURM_CPUS_PER_TASK <<application_params>>
+PARAMS="-T $SLURM_CPUS_PER_TASK <<application_params>>"
 
 if [ $SLURM_NTASKS_PER_NODE -eq 1 ]; then
   CPU_BIND="none"
