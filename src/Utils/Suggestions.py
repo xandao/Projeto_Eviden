@@ -291,13 +291,13 @@ class SuggestionsPredictor:
 
 		return df_oracle
 		    	
-	def predict_suggestions_data(self, user_params, custom_suggestions_params=None, verbose=False):
+	def predict_suggestions_data(self, user_applicaion_params, custom_suggestions_params=None, verbose=False):
 	    # Verifica se o fit foi feito
 		if self.model is None:
 			raise ValueError("The model hasn't been trained yet!")
 	    	
-		if sorted(user_params.keys()) != sorted(self.user_params.keys()):
-			raise KeyError(f"Invalid application {user_params.keys()} param names! Must be {self.user_params.keys()}")
+		if sorted(user_applicaion_params.keys()) != sorted(self.application_params.keys()):
+			raise KeyError(f"Invalid application {user_applicaion_params.keys()} param names! Must be {self.application_params.keys()}")
 	  			
 		if custom_suggestions_params is None:
 		  # Cria um X usando as opções de configuração usadas para treinar o modelo.
@@ -313,8 +313,8 @@ class SuggestionsPredictor:
 			suggestions_cobinations = list(itertools.product(*custom_suggestions_params.values()))
 			X = pd.DataFrame(suggestions_cobinations, columns=custom_suggestions_params.keys())
 	
-		for param_name in user_params.keys():
-			X[param_name] = user_params[param_name]
+		for param_name in user_applicaion_params.keys():
+			X[param_name] = user_applicaion_params[param_name]
 
 		# Mantém a ordem das colunas do dataframe original,
 		X = X[self.X.columns]	
@@ -332,16 +332,16 @@ class SuggestionsPredictor:
 
 		return (y_pred, X)
 	
-	def get_suggestion(self, user_params, custom_suggestions_params=None, verbose=False):
+	def get_suggestion(self, user_applicaion_params, custom_suggestions_params=None, verbose=False):
 		# Faz a predição dos valores para todas as configurações da base usada para o treinamento e os parâmetros da aplicação passados.
-		y_pred, X = self.predict_suggestions_data(user_params, custom_suggestions_params, verbose)
+		y_pred, X = self.predict_suggestions_data(user_applicaion_params, custom_suggestions_params, verbose)
         
      	# Descobre a posicao do menor valor predito e esse valor, que indicará a posição da configuração predita.
 		y_pred_posmin = y_pred.argmin()
 		y_pred_min = y_pred.min()
 		if verbose:
 			#print(f"y_pred para os seguintes parâmetros da aplicação: {user_params}")
-			print(f"mininum y_pred for application params {user_params}: {y_pred_min} in position {y_pred_posmin} of y_preed")
+			print(f"mininum y_pred for application params {user_applicaion_params}: {y_pred_min} in position {y_pred_posmin} of y_preed")
 		# A sugestão será a configuração associada ao menor valor da variável predita.	
 		y_suggestion = X.loc[y_pred_posmin,self.suggestion_names].to_dict()
 		
@@ -352,16 +352,16 @@ class SuggestionsPredictor:
 							 							 
 		return info_suggestion	                     	
 
-	def get_suggestions(self, user_params_df, custom_suggestions_params=None, verbose=False):
-		if not type(user_params_df) is pd.DataFrame:
+	def get_suggestions(self, user_applications_params_df, custom_suggestions_params=None, verbose=False):
+		if not type(user_applications_params_df) is pd.DataFrame:
 			raise ValueError("Invalid input user_params_df provided, not a Pandas DataFrame.")
-		if not pd.Index(self.user_names).isin(user_params_df.columns).all():
-			raise KeyError(f"Invalid input user_params_df provided, not all {self.user_names} user params exists in user_params_df.")
+		if not pd.Index(self.application_names).isin(user_applications_params_df.columns).all():
+			raise KeyError(f"Invalid input user_params_df provided, not all {self.application_names} user params exists in user predictions dataset.")
 			
 		info_suggestions = []	
 
-		for idx in user_params_df.index:
-			user_params = user_params_df.loc[idx].to_dict()
+		for idx in user_applications_params_df.index:
+			user_params = user_applications_params_df.loc[idx].to_dict()
 			if verbose:
 				print(f"Definindo a sugestão para os parâmetros {user_params} do usuário")
 			info_suggestion = self.get_suggestion(user_params, custom_suggestions_params, verbose)

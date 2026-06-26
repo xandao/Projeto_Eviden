@@ -26,8 +26,11 @@ def read_configs():
   user_config = ReadUserConfig().read_user_config(user_config_file_path)
 
   # Lê as configurações que associam cada preditor a aplicação correspondente,
-  predictors_info_file_parh = Path(system_config["predictors_path"]) / system_config["predictors_info_config_filename"]
-  predictors_info_config = PredictorsInfoConfig().read_predictors_info_config(predictors_info_file_parh)
+  if system_config is None:
+    predictors_info_config = None
+  else:
+    predictors_info_file_parh = Path(system_config["predictors_path"]) / system_config["predictors_info_config_filename"]
+    predictors_info_config = PredictorsInfoConfig().read_predictors_info_config(predictors_info_file_parh)
 
   return configs_file_path, system_config, applications_configs, user_config, predictors_info_config
 
@@ -120,23 +123,56 @@ def get_options_suggestion(suggestion_args):
   options = list(set(options))
   return options
 
-def convert_user_params(required_applicaion_params, conversions):
+def convert_user_params(required_applicaion_params, conversions, application_configs_dir):
+  # Dicionario com os dataframes para os mapeamentos (para evitar ler eles em cada mapeamento, se usados mais de uma vez)
+  dataframe_map_dict = {}
   # Funções de conversão
   def copy_func(*args):
+    #print("Alo 1")
     return getattr(required_applicaion_params, args[0])
 
   def filesize_func(*args):
+    #print("Alo 2")
     return Path(getattr(required_applicaion_params, args[0])).stat().st_size
 
-  def map_func(map_info, *args):
-    aux_info = args[-1]
-    args = args[:-1]
-    while len(args) > 0:
-      aux_info = aux_info[getattr(required_applicaion_params(args[0]))]
-      args = args[1:]
-    return aux_info  
+  def map_func(user_arg_name, *args):
+    #print("Alo 3.1")
+    # O primeiro parâmetro é o nome do arquivo com o datafraame com os mapeamentos.
+    dataframe_map_file_name = args[0]
+    dataframe_map_full_path_name = Path(application_configs_dir) / dataframe_map_file_name
+    if dataframe_map_file_name in dataframe_map_dict.keys():
+      df_map = dataframe_map_dict[dataframe_map_file_name]
+    else:
+      df_map = pd.read_csv(dataframe_map_full_path_name) 
+      print(f"Dataframe de mapeamento {dataframe_map_file_name}: ")
+      print(df_map.to_markdown(tablefmt="grid"))
+      dataframe_map_dict[dataframe_map_file_name] = df_map
 
+    #print("Alo 3.2")
+
+    # Cria a condicional para fazer a procura no dataframe de mapeamento.
+    list_search = []
+    for user_option in args[1:]:
+      list_search.append(f"{user_option}.astype('str') == '{getattr(required_applicaion_params, user_option)}'")  
+
+    #print("Alo 3.3")
+
+    str_search = ' and '.join(list_search)
+    #print(str_search)
+
+    #print("Alo 3.4")
+
+    result_df = df_map.query(str_search)
+    #print("Alo 3.5")
+    #print(result_df.to_markdown(tablefmt="grid"))
+    #print(f"Alo 3.6 - {user_arg_name}")
+    mapped_value = result_df.loc[0, user_arg_name]
+    
+    #print("Alo 3.7")
+
+    return mapped_value
   try:
+    #print("Alo 4")
     converted_user_params = {}
     for variable in conversions:
       conversion_info = conversions[variable]
@@ -145,20 +181,28 @@ def convert_user_params(required_applicaion_params, conversions):
       conversion_types = {
         'copy': partial(copy_func, *conversion_args),
         'filesize': partial(filesize_func, *conversion_args),
-        'map':  partial(map_func, *conversion_args),
+        'map':  partial(map_func, variable, *conversion_args),
       }
+      #print("Alo 5")
 
       converted_user_params[variable] = conversion_types[conversion_type]()
 
+      #print("Alo 6")
+    
+    #print("Alo 7")
+
     return converted_user_params
-  except FileNotFoundError:
-    print(f"File {getattr(required_applicaion_params, conversion_args[0])} not Found!")
+  except FileNotFoundError as e:
+    print(f"File {e.filename} not Found: {e.strerror}")
     return None
-  except PermissionError:
-    print(f"Permission denied when accessing the file {getattr(required_applicaion_params, conversion_args[0])}")
+  except PermissionError as e:
+    print(f"Permission denied when accessing the file {e.filename}: {e.error}")
     return None
-  except Exception:
-    print(f"Error when processing option value!")
+  except KeyError as e:
+    print(f"Key error when processing option value : {', '.join(e.args)}")
+    return None
+  except Exception as e:
+    print(f"Unknown error when processing option value: {', '.join(e.args)}!")
     return None
 
 def generate_submission_script(user_config, user_args, template_file_path, application_name, 
@@ -209,7 +253,7 @@ def generate_submission_script(user_config, user_args, template_file_path, appli
   return template_content
 
 
-def optimize_application(system_config, applications_config, user_config, 
+def optimize_application(configs_file_path, system_config, applications_config, user_config, 
                          application_args, predictors_info_config, user_args):
   # Verifica se o usuário deseja somente listar as aplicações
   if user_args.list:
@@ -222,9 +266,9 @@ def optimize_application(system_config, applications_config, user_config,
       print("An application, with its parameters, was not provided. For each application, some parameters are mandatory. See more details using the help, specifying the application name.")
       return False
     
-    # Processa os parâmetros possíveis nós, processos por nó e threads.
-    custom_configuratios = None  
-    
+    # Diretorio dos arquivos de configuração das aplicações.
+    application_configs_dir_path = configs_file_path / 'applications'
+        
     # Determina nome da aplicação
     application_name = application_args[0]
     application_id = None
@@ -266,7 +310,8 @@ def optimize_application(system_config, applications_config, user_config,
       custom_suggestions = None
 
     # Processa os patâmetros usados pela aplicação para o preditor. 
-    user_application_params = convert_user_params(required_applicaion_params, applications_config[application_id]['user']['conversions'])  
+    user_application_params = convert_user_params(required_applicaion_params, applications_config[application_id]['user']['conversions'], 
+                                                  application_configs_dir_path)  
     if user_application_params is None:
       return False
 
@@ -274,7 +319,7 @@ def optimize_application(system_config, applications_config, user_config,
     #print(custom_suggestions)
     
     # Lê o preditor usado para fazer a melhor sugestão dos parâmetros de execução da aplicação.
-    predictor_path = Path(system_config['predictors_path']) / predictors_info_config[application_name]
+    predictor_path = Path(system_config['predictors_path']) / predictors_info_config[application_id]
     predictor = SuggestionsPredictor.load_predictor(predictor_path)
     suggestion = predictor.get_suggestion(user_application_params, custom_suggestions, verbose=user_args.verbose)
 
@@ -298,13 +343,17 @@ def optimize_application(system_config, applications_config, user_config,
 # Lê os arquivos de confoguraçã.o
 configs_file_path, system_config, applications_configs, user_config, predictors_info_config = read_configs()
 
+if system_config is None or applications_configs is None or user_config is None or predictors_info_config is None:
+  exit(-1)
+
 # Processa a linha de comando.
 user_args, application_args, parser = process_script_args(user_config)
 #print(script_args)
 #print(application_args)
 
 # Processa os parâmetros da linha de comando
-status = optimize_application(system_config, applications_configs, user_config, application_args, predictors_info_config, user_args)
+status = optimize_application(configs_file_path, system_config, applications_configs, user_config, application_args, 
+                              predictors_info_config, user_args)
 if not status:
   parser.print_help()
   exit(-1)

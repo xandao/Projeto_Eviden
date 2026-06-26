@@ -187,6 +187,8 @@ def execute_commands(command, applications_configs, training_config, system_conf
     
 # Lê as configuraçoes;
 configs_file_path, applications_configs, training_config, system_config  = read_configs()
+if applications_configs is None or training_config is None or system_config is None:
+  exit(-1)
 
 # Processa os parâmetros do script.
 command, verbose, parser = process_script_args()
