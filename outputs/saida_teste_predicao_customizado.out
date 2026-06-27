@@ -1,3 +1,10 @@
+✅ Sucess: File system_config.json is a valid system config file!
+✅ Sucess: File raxml-sscad-time_config.json is a valid training config file!
+✅ Sucess: File raxml_config.json is a valid training config file!
+✅ Sucess: File ntb_config.json is a valid training config file!
+✅ Sucess: File raxml-sscad_config.json is a valid training config file!
+✅ Sucess: Files in applications applications config directory are all valid application scripts!
+✅ Sucess: File user_config.json is a valid applications config file!
 X used when prediting EDP for all possible suggestions.
 +-----+----------+------------------+-------------------+-------------+-----------+
 |     |   NNodes |   Processo p/ no |   Thread p/ proc. |   Bootstrap |   Tamanho |
@@ -441,4 +448,6 @@ fi
 
 srun -n $SLURM_NTASKS -c $SLURM_CPUS_PER_TASK --cpu-bind=$CPU_BIND $EXEC $PARAMS
 
+
+Submitted batch job 213684
 
