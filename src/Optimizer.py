@@ -341,7 +341,7 @@ def optimize_application(configs_file_path, system_config, applications_config, 
         script_file.write(template_content)
 
       # Executa o sbatch se a opção -r ou --run foi usada
-      result = subprocess.run([user_config["slurm"]["submission_program"], "user_args.script"], capture_output=True, text=True)   
+      result = subprocess.run([user_config["slurm"]["submission_program"], f"{user_args.script}"], capture_output=True, text=True)   
       print(result.stdout)
 
     else:
