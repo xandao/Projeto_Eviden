@@ -1,3 +1,4 @@
+#!/bin/bash
 #SBATCH --nodes=<<number_of_nodes>>
 #SBATCH --ntasks-per-node=<<number_of_process_per_node>>
 #SBATCH --ntasks=<<total_tasks>>

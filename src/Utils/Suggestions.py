@@ -403,7 +403,7 @@ class SuggestionsPredictor:
 			print('X used in predictions when choosing the best suggetstion:')
 			print(info_suggestion['X'].to_markdown(tablefmt="grid", floatfmt=".2f"))
 		if show_y_pred:
-			print(f'Predicetd y used when choosing the best suggetstion, mininum {info_suggestion['y_pred_minimum']} in position {info_suggestion['y_pred_minimum_position']}:')
+			print(f"Predicetd y used when choosing the best suggetstion, mininum {info_suggestion['y_pred_minimum']} in position {info_suggestion['y_pred_minimum_position']}:")
 			print(info_suggestion['y_pred'].to_markdown(tablefmt="grid", floatfmt=".2f"))
 		
 	@classmethod

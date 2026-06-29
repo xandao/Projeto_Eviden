@@ -69,16 +69,14 @@ def process_script_args(user_config):
   return user_args, application_args, parser
 
 def get_type(type_name):
-  match type_name:
-    case 'integer':
-      return int
-    case 'floating-point':
-      return float
-    case 'string':
-      return str
-    case _:
-      return str
-    
+  types_map = {
+    'integer': int,
+    'floating-point': float,
+    'string': str
+  }
+
+  return types_map.get(type_name, str)    
+
 def get_options_suggestion(suggestion_args):
   options = []
   if suggestion_args is None:
@@ -340,10 +338,15 @@ def optimize_application(configs_file_path, system_config, applications_config, 
       with open(user_args.script, "w", encoding="utf-8") as script_file:
         script_file.write(template_content)
 
-      # Executa o sbatch se a opção -r ou --run foi usada
-      result = subprocess.run([user_config["slurm"]["submission_program"], f"{user_args.script}"], capture_output=True, text=True)   
-      print(result.stdout)
-
+      try:
+        # Executa o sbatch se a opção -r ou --run foi usada
+        result = subprocess.run([user_config["slurm"]["submission_program"], f"{user_args.script}"], capture_output=True, text=True, check=True)   
+        print(result.stdout)
+      except subprocess.CalledProcessError as e:
+          # This will print the actual error from the terminal command
+          print("Command failed!")
+          print("Exit code:", e.returncode)
+          print("Error message:", e.stderr)
     else:
       SuggestionsPredictor.print_suggestion(suggestion, suggestion_map=reversed_suggestions_map)
 

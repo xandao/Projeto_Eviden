@@ -1,3 +1,4 @@
+#!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=2
 #SBATCH --ntasks=2

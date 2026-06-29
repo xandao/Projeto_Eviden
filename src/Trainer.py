@@ -62,7 +62,7 @@ def train_command(applications_name, applications_config, training_config, syste
     if application_key in applications_config.keys():
       application_info = applications_config[application_key]
       if verbose:
-        print(f"-> Training all models for the application {application_info["name"]}")	
+        print(f"-> Training all models for the application {application_info['name']}")	
 
       # Variáveis usadas np programa
       variaveis_de_entrada = list(set(application_info['suggestions_parameters']+
@@ -158,7 +158,7 @@ def train_command(applications_name, applications_config, training_config, syste
                                   model(**best_params),
                                   verbose=verbose)
       model_name = training_config['models'][best_model_name]['name']
-      preditor_file_name = predictors_file_path / f"{application_info["name"]}_{model_name}_{variavel_de_saida}.pickle"
+      preditor_file_name = predictors_file_path / f"{application_info['name']}_{model_name}_{variavel_de_saida}.pickle"
       if verbose:
         print(f'--> Saving predictor trained with with model {best_model_name} (named {model_name}) in file {preditor_file_name}')
       predictor.save_predictor(preditor_file_name)

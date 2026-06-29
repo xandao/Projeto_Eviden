@@ -20,7 +20,7 @@ set basedir "/scratch/cenapadrjsd/alexandre.porto/trainer_and_optmizer"
 prepend-path PATH "$basedir/bin"
 setenv MY_APP_DIR "$basedir"
 # Configs base directory
-setenv APPOPTIMIZER_CONFIGS_DIR=$basedir/configs
+setenv APPOPTIMIZER_CONFIGS_DIR $basedir/configs
 
 # Update environment variables
 prepend-path PATH "$basedir/bin"
@@ -28,10 +28,9 @@ setenv MY_APP_DIR "$basedir"
 
 # Actions when the module is LOADED
 if { [module-info mode load] } {
-  module load 
+  module load python/3.9.12_sequana
 }
 
 # Actions when the module is UNLOADED
 if { [module-info mode remove] } {
-  module unload 
-}
+  module unload python/3.9.12_sequana
