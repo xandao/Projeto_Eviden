@@ -57,6 +57,9 @@ def train_command(applications_name, applications_config, training_config, syste
   predictors_info_file_parh = predictors_file_path / system_config["predictors_info_config_filename"]
   predictors_info_config_obj = PredictorsInfoConfig()
   predictors_info_config = predictors_info_config_obj.read_predictors_info_config(predictors_info_file_parh)
+  if predictors_info_config is None:
+    return False
+  
 
   for application_key in applications_name:
     if application_key in applications_config.keys():
@@ -85,8 +88,9 @@ def train_command(applications_name, applications_config, training_config, syste
       if verbose:
         print("--> Original application data:\n")
         print(dados.to_markdown(tablefmt="grid"))
-        print("--> Static information of original application data:\n")
+        print("\n\n--> Static information of original application data:\n")
         print(dados.describe().to_markdown(tablefmt="grid", floatfmt=".2f"))
+        print("\n\n")
 
       # Filtra os dados.
       data_filter = FilterOutliers()
@@ -94,10 +98,10 @@ def train_command(applications_name, applications_config, training_config, syste
 
       if verbose:
         print("--> Filtered application data:\n")
-        print(dados_limpos.to_markdown(tablefmt="grid"))
-        print("--> Static information of filtered application data:\n")
+        print(dados_limpos.to_markdown(tablefmt="grid", floatfmt=".2f"))
+        print("\n\n--> Static information of filtered application data:\n")
         print(dados_limpos.describe().to_markdown(tablefmt="grid", floatfmt=".2f"))
-        print(f'--> Predictions for the target {variavel_de_saida}')
+        print(f'\n\n--> Predictions for the target {variavel_de_saida}')
 
       predictor_hiperparams = {}
 
@@ -111,14 +115,13 @@ def train_command(applications_name, applications_config, training_config, syste
         model = getattr(model_module, model_name)
 
         # Faz a otimização dos hiperparâmetros.
-        best_hyper = BestHiperparams()
+        best_hyper = BestHiperparams(verbose=verbose)
         best_params, best_score = best_hyper.optimize(dados_limpos, application_info['suggestions_parameters'], 
                                                       application_info['application_parameters'], 
                                                         application_info['training']['group_parameters'], 
                                                         variavel_de_saida, 
                                                         model() if model_info['fixed_params'] is None else model(**model_info['fixed_params']),
-                                                        model_info['grid_search_parms'],
-                                                        verbose=verbose)
+                                                        model_info['grid_search_parms'])
 
         if verbose:
           print(f"---> Model {model_info['name']}: Best hyperparameters -> {best_params}; Best score -> {best_score}")
@@ -130,19 +133,18 @@ def train_command(applications_name, applications_config, training_config, syste
       # Determina o melhor modelo, usando a validacao cruzada.;
       if verbose:	
         print(f"--> Discover the best model of the list {', '.join(predictor_hiperparams.keys())}:")
-      cross_validator = DiscoverBestModel()	
+      cross_validator = DiscoverBestModel(verbose=verbose)	
       best_model_name, best_model_score, results_df, mean_scores_models_df = cross_validator.best_model(dados_limpos, 
                                                                                   application_info['suggestions_parameters'], 
                                                                                   application_info['application_parameters'],  
                                                                                   application_info['training']['group_parameters'], 
-                                                                                  variavel_de_saida, predictor_hiperparams,
-                                                                                  verbose=verbose)
+                                                                                  variavel_de_saida, predictor_hiperparams)
       if verbose:					
-        print(f'--> Dataframe with the results of models evaluation')
-        print(results_df.to_markdown(tablefmt="grid"))
-        print(f'--> Dataframe with the mean results of models evaluation')
-        print(mean_scores_models_df.to_markdown(tablefmt="grid"))
-        print(f'--> Trainining predictor with best model {best_model_name} (score: {best_model_score}), using {best_params} as hiperparameters.')
+        print(f'--> Dataframe with the results of models evaluation:\n')
+        print(results_df.to_markdown(tablefmt="grid", floatfmt=".2f"))
+        print(f'\n\n--> Dataframe with the mean results of models evaluation:\n')
+        print(mean_scores_models_df.to_markdown(tablefmt="grid", floatfmt=".2f"))
+        print(f'\n\n--> Trainining predictor with best model {best_model_name} (score: {best_model_score}), using {best_params} as hiperparameters.')
 
       # Descobre e importa o modelo de modo dinâmico.
       module_path, model_name = training_config["models"][best_model_name]['import_path'].rsplit(".", 1)
@@ -188,6 +190,7 @@ def execute_commands(command, applications_configs, training_config, system_conf
 # Lê as configuraçoes;
 configs_file_path, applications_configs, training_config, system_config  = read_configs()
 if applications_configs is None or training_config is None or system_config is None:
+  print("❌ Error when reading one of the confoigurations!")
   exit(-1)
 
 # Processa os parâmetros do script.

@@ -76,16 +76,17 @@ class FilterOutliers:
 		return self.dados_filtrados
 		
 class BestHiperparams:
-	def __init__(self):
+	def __init__(self, n_jobs=-1, verbose=False):
 		self.X = None
 		self.y = None
 		self.grid_search_model = None
 		self.groups = None
 		self.group_names = None
+		self.n_jobs = n_jobs
+		self.verbose = verbose
 	
 	def optimize(self, data, suggestion_names, application_names, user_names, 
-							 predicted_name, model, hiperparams_grid, n_jobs=-1, verbose=0, 
-							 scoring=train_min_edp_config_accuracy):
+							 predicted_name, model, hiperparams_grid, scoring=train_min_edp_config_accuracy):
 		if not isinstance(data, pd.DataFrame):	
 			raise ValueError("Invalid input data provided, data is not a Dataframe.")
 
@@ -112,9 +113,9 @@ class BestHiperparams:
 			param_grid=hiperparams_grid,
 			scoring=scoring,
 			refit=True,
-			n_jobs=n_jobs,
+			n_jobs=self.n_jobs,
 			return_train_score=True,
-			verbose=verbose,
+			verbose=int(self.verbose),
 		)
 
     # Otimiza os hiperparâmetros.
@@ -124,7 +125,7 @@ class BestHiperparams:
 		return (self.grid_search_model.best_params_, self.grid_search_model.best_score_)
 		
 class DiscoverBestModel:
-	def __init__(self):
+	def __init__(self, n_jobs=-1, verbose=False):
 		self.results_df	= None
 		self.X = None
 		self.y = None
@@ -134,10 +135,11 @@ class DiscoverBestModel:
 		self.mean_scores_models_df = None
 		self.best_model_name = None
 		self.best_model_score = None
+		self.n_jobs = n_jobs
+		self.verbose = verbose
 		
 	def best_model(self, data, suggestion_names, application_names, user_names, predicted_name, models, 
-	               scores_functions={'accuracy': train_min_edp_config_accuracy, 'difference': neg_train_min_edp_config_diff}, 
-	               n_jobs=-1, verbose=0):
+	               scores_functions={'accuracy': train_min_edp_config_accuracy, 'difference': neg_train_min_edp_config_diff}):
 	
 		if not isinstance(data, pd.DataFrame):	
 			raise ValueError("Invalid input data provided, data is not a Dataframe.")
@@ -172,21 +174,22 @@ class DiscoverBestModel:
 				scoring=scores_functions,
 				groups=self.groups,
 				cv=skms.LeaveOneGroupOut(),
-				n_jobs=n_jobs,
+				n_jobs=self.n_jobs,
         return_indices=True,
 				error_score='raise',
 				return_estimator=True,
-				#verbose=verbose
+				#verbose=int(self.verbose)
 			)
 			cv_results_df = pd.DataFrame({k.replace("test_", ""): cv_results[k] for k in cv_results if k not in ['indices','estimator']})
 			cv_results_df['Model'] = name
 			self.cv_results[name] = { 'cv_results': cv_results, 'results_dataframe': cv_results_df}
 
-			if verbose:
+			if self.verbose:
 				print(f"\n\nModel {name} table:\n")
 				print(cv_results_df.to_markdown(tablefmt="grid"))
 				print(f"\n\nModel {name} statistics:\n")
 				print(cv_results_df.describe())
+				print("\n\n")
 
 			self.results_df = pd.concat([self.results_df, cv_results_df])
 
@@ -269,12 +272,13 @@ class SuggestionsPredictor:
 			print(f"Application params used in training: {self.application_params}")
 			print(f"User params used in training: {self.user_params}")
 			print(f"Model predicted variable: {self.predicted_name}")
-			print("X used in training:")
-			print(self.X.to_markdown(tablefmt="grid"))
-			print("y used in training:")
-			print(self.y.to_markdown(tablefmt="grid"))
-			print("dataframe using all application variables:")
-			print(data.to_markdown(tablefmt="grid"))
+			print("X used in training:\n")
+			print(self.X.to_markdown(tablefmt="grid", floatfmt=".2f" ))
+			print("\n\ny used in training:\n")
+			print(self.y.to_markdown(tablefmt="grid", floatfmt=".2f"))
+			print("\n\nDataframe using all application variables:\n")
+			print(data.to_markdown(tablefmt="grid", floatfmt=".2f"))
+			print("\n\n")
 			
 		return self 		
 		
@@ -282,12 +286,13 @@ class SuggestionsPredictor:
 		# Calcula o dataset do oraculo.
 		df_aux = self.dataset.groupby(self.suggestion_names+self.user_names)[self.predicted_name].median().reset_index()
 		if verbose:
-			print(f"Median of variable {self.predicted_name} for all repetitions for each combination of variables {self.suggestion_names+self.user_names}")
-			df_aux.to_markdown(tablefmt="grid")
+			print(f"\n\nMedian of variable {self.predicted_name} for all repetitions for each combination of variables {self.suggestion_names+self.user_names}\n")
+			df_aux.to_markdown(tablefmt="grid", floatfmt=".2f")
+			print("\n\n")
 		df_oracle = df_aux.groupby(self.user_names).apply(lambda x: x[x[self.predicted_name] == x[self.predicted_name].min()], include_groups=False)
 		if verbose:
 			print("Oracle dataset")
-			df_oracle.to_markdown(tablefmt="grid")
+			df_oracle.to_markdown(tablefmt="grid", floatfmt=".2f")
 
 		return df_oracle
 		    	
@@ -320,15 +325,16 @@ class SuggestionsPredictor:
 		X = X[self.X.columns]	
    	
 		if verbose:
-			print(f"X used when prediting {self.predicted_name} for all possible suggestions.")	
-			print(X.to_markdown(tablefmt="grid"))
+			print(f"X used when prediting {self.predicted_name} for all possible suggestions:\n")	
+			print(X.to_markdown(tablefmt="grid", floatfmt=".2f"))
+			print("\n\n")
 
 		# Faz a predição para o X_aux.
 		y_pred = self.model.predict(X)
 
 		if verbose:
-			print(f"Prediced y when prediting {self.predicted_name} for all possible suggestions:")	
-			print(y_pred)
+			print(f"Prediced y when prediting {self.predicted_name} for all possible suggestions:\n")	
+			print(pd.Series(y_pred).to_markdown(tablefmt="grid", floatfmt=".2f"))
 
 		return (y_pred, X)
 	
@@ -400,11 +406,13 @@ class SuggestionsPredictor:
 		if show_score:
 			print(f"Score: {info_suggestion['Score']}")
 		if show_X:
-			print('X used in predictions when choosing the best suggetstion:')
+			print('X used in predictions when choosing the best suggetstion:\n')
 			print(info_suggestion['X'].to_markdown(tablefmt="grid", floatfmt=".2f"))
+			print("\n\n")
 		if show_y_pred:
-			print(f"Predicetd y used when choosing the best suggetstion, mininum {info_suggestion['y_pred_minimum']} in position {info_suggestion['y_pred_minimum_position']}:")
+			print(f"Predicetd y used when choosing the best suggetstion, mininum {info_suggestion['y_pred_minimum']} in position {info_suggestion['y_pred_minimum_position']}:\n")
 			print(info_suggestion['y_pred'].to_markdown(tablefmt="grid", floatfmt=".2f"))
+			print("\n\n")
 		
 	@classmethod
 	def load_predictor(cls, file_name):

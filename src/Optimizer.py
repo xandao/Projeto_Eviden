@@ -135,7 +135,6 @@ def convert_user_params(required_applicaion_params, conversions, application_con
     return Path(getattr(required_applicaion_params, args[0])).stat().st_size
 
   def map_func(user_arg_name, *args):
-    #print("Alo 3.1")
     # O primeiro parâmetro é o nome do arquivo com o datafraame com os mapeamentos.
     dataframe_map_file_name = args[0]
     dataframe_map_full_path_name = Path(application_configs_dir) / dataframe_map_file_name
@@ -143,35 +142,22 @@ def convert_user_params(required_applicaion_params, conversions, application_con
       df_map = dataframe_map_dict[dataframe_map_file_name]
     else:
       df_map = pd.read_csv(dataframe_map_full_path_name) 
-      print(f"Dataframe de mapeamento {dataframe_map_file_name}: ")
-      print(df_map.to_markdown(tablefmt="grid"))
+      #print(f"Dataframe de mapeamento {dataframe_map_file_name}: \n\n")
+      #print(df_map.to_markdown(tablefmt="grid"))
       dataframe_map_dict[dataframe_map_file_name] = df_map
-
-    #print("Alo 3.2")
 
     # Cria a condicional para fazer a procura no dataframe de mapeamento.
     list_search = []
     for user_option in args[1:]:
       list_search.append(f"{user_option}.astype('str') == '{getattr(required_applicaion_params, user_option)}'")  
 
-    #print("Alo 3.3")
-
     str_search = ' and '.join(list_search)
-    #print(str_search)
-
-    #print("Alo 3.4")
 
     result_df = df_map.query(str_search)
-    #print("Alo 3.5")
-    #print(result_df.to_markdown(tablefmt="grid"))
-    #print(f"Alo 3.6 - {user_arg_name}")
     mapped_value = result_df.loc[0, user_arg_name]
     
-    #print("Alo 3.7")
-
     return mapped_value
   try:
-    #print("Alo 4")
     converted_user_params = {}
     for variable in conversions:
       conversion_info = conversions[variable]
@@ -182,13 +168,8 @@ def convert_user_params(required_applicaion_params, conversions, application_con
         'filesize': partial(filesize_func, *conversion_args),
         'map':  partial(map_func, variable, *conversion_args),
       }
-      #print("Alo 5")
 
       converted_user_params[variable] = conversion_types[conversion_type]()
-
-      #print("Alo 6")
-    
-    #print("Alo 7")
 
     return converted_user_params
   except FileNotFoundError as e:
@@ -206,7 +187,9 @@ def convert_user_params(required_applicaion_params, conversions, application_con
 
 def generate_submission_script(user_config, user_args, template_file_path, application_name, 
                                application_params, suggestion_params):
-  print(template_file_path)  
+  # TODO: predicamos decidir como preencher os campos --partition, --time, --mem.
+  # TODO: O --exclusive está fixo, pois não sei se é recomendado treinar um modelo com --exclusive 
+  #       usar o --oversubscribe.
 
   # Salva em uma string o conteúdo do arquivo de template.
   template_content = template_file_path.read_text(encoding="utf-8")
@@ -235,9 +218,6 @@ def generate_submission_script(user_config, user_args, template_file_path, appli
   # Altera o campo dos outros par+ametros.
   template_content = template_content.replace("<<application_params>>", ' '.join(application_params))
   
-  # TODO: Altera os campos que ainda não sei como ontê-los (coloquei temporariamente na 
-  # configuração do script.
-
   # Altera a partição a ser usada
   template_content = template_content.replace("<<partition>>", f"{user_config['slurm']['partition']}")
 
@@ -255,12 +235,13 @@ def optimize_application(configs_file_path, system_config, applications_config, 
   # Verifica se o usuário deseja somente listar as aplicações
   if user_args.list:
       for application_id in sorted(applications_config.keys()):
-        print(f"Apllication identification: {application_id}, possible executable name(s): {', '.join(applications_config[application_id]['user']['executable_names'])}")
+        if user_args.verbose:
+          print(f"⚠️ Apllication identification: {application_id}, possible executable name(s): {', '.join(applications_config[application_id]['user']['executable_names'])}")
       return True
   else:
     # Caso não deseje listar as aplucações, precisamos fornecer uma aplicaçao, pois o usuário deseja otimizar o uso dos reursos.
     if not application_args:
-      print("An application, with its parameters, was not provided. For each application, some parameters are mandatory. See more details using the help, specifying the application name.")
+      print("❌ An application, with its parameters, was not provided. For each application, some parameters are mandatory. See more details using the help, specifying the application name.")
       return False
     
     # Diretorio dos arquivos de configuração das aplicações.
@@ -276,7 +257,7 @@ def optimize_application(configs_file_path, system_config, applications_config, 
 
     # Verifica se a apliucação existe
     if application_id is None:
-      print(f"Sorry, but optimization for application {application_name} is not currently supported.")  
+      print(f"⚠️ Sorry, but optimization for application {application_name} is not currently supported.")  
       return False
 
     # Processa os parâmetros da aplicação.
@@ -298,11 +279,11 @@ def optimize_application(configs_file_path, system_config, applications_config, 
         if suggestion_name in applications_config[application_id]['user']['suggestions_map'].keys():
           custom_params = get_options_suggestion(getattr(user_args, suggestion_name))
           if custom_params is None:
-            print(f"Error processing option --{suggestion_name}!")
+            print(f"❌ Error processing option --{suggestion_name}!")
             return False
           custom_suggestions[applications_config[application_id]['user']['suggestions_map'][suggestion_name]] = custom_params
         else:
-          print(f'Igored --{suggestion_name} no used by application {application_name}!')  
+          print(f'⚠️ Igoring --{suggestion_name} not used by the application {application_name}!')  
     else:
       custom_suggestions = None
 
@@ -331,8 +312,11 @@ def optimize_application(configs_file_path, system_config, applications_config, 
       template_file_path = Path(system_config['templates_path']) / applications_config[application_id]['user']['script_template_name']
       template_content = generate_submission_script(user_config, user_args, template_file_path, application_name, application_args[1:], 
                                                     suggestion_mapped)
-      
-      print(template_content)
+
+      if user_args.verbose:      
+        print("Submission script: \n ")
+        print(template_content)
+        print()
 
       # Salva no arquivo passado como parâmetro ou o nome default definido no arquivo de cofiguração do usuário
       with open(user_args.script, "w", encoding="utf-8") as script_file:
@@ -344,12 +328,11 @@ def optimize_application(configs_file_path, system_config, applications_config, 
         print(result.stdout)
       except subprocess.CalledProcessError as e:
           # This will print the actual error from the terminal command
-          print("Command failed!")
-          print("Exit code:", e.returncode)
-          print("Error message:", e.stderr)
+          print("❌ Command failed!")
+          print("   Exit code:", e.returncode)
+          print("   Error message:", e.stderr)
     else:
       SuggestionsPredictor.print_suggestion(suggestion, suggestion_map=reversed_suggestions_map)
-
 
     return True
 

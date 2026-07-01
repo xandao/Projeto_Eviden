@@ -4,7 +4,7 @@
 #SBATCH --ntasks=8
 #SBATCH --cpus-per-task=8
 #SBATCH --partition=sequana_cpu
-#SBATCH --job-name=teste2
+#SBATCH --job-name=teste-customizado
 #SBATCH --time=01:00:00
 #SBATCH --exclusive
 #SBATCH --mem=350G
