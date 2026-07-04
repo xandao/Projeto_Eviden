@@ -185,8 +185,8 @@ def convert_user_params(required_applicaion_params, conversions, application_con
     print(f"Unknown error when processing option value: {', '.join(e.args)}!")
     return None
 
-def generate_submission_script(user_config, user_args, template_file_path, application_name, 
-                               application_params, suggestion_params):
+
+def generate_submission_script(template_file_path, template_params):
   # TODO: predicamos decidir como preencher os campos --partition, --time, --mem.
   # TODO: O --exclusive está fixo, pois não sei se é recomendado treinar um modelo com --exclusive 
   #       usar o --oversubscribe.
@@ -195,40 +195,36 @@ def generate_submission_script(user_config, user_args, template_file_path, appli
   template_content = template_file_path.read_text(encoding="utf-8")
 
   # Altera o campo número de nós
-  number_of_nodes = suggestion_params.get('nodes', 1)
+  number_of_nodes = template_params['suggestion_params'].get('nodes', 1)
   template_content = template_content.replace("<<number_of_nodes>>", f"{number_of_nodes}")
 
   # Altera o campo =umero de processos
-  number_of_process = suggestion_params.get('process', 1)
+  number_of_process = template_params['suggestion_params'].get('process', 1)
   template_content = template_content.replace("<<number_of_process_per_node>>", f"{number_of_process}")
 
   # Altera o campo ntasks (igual ao produto de número de nós e número de processos por nó)
   template_content = template_content.replace("<<total_tasks>>", f"{number_of_nodes * number_of_process}")
 
   # Altera o campo número de threads
-  number_of_threads = suggestion_params.get('threads', 1)
+  number_of_threads = template_params['suggestion_params'].get('threads', 1)
   template_content = template_content.replace("<<threads_per_process>>", f"{number_of_threads}")
 
   # Altera o campo nme_do_job
-  if user_args.jobname is None:
-    template_content = template_content.replace("<<job_name>>", application_name)
-  else:  
-    template_content = template_content.replace("<<job_name>>", user_args.jobname)
+  template_content = template_content.replace("<<job_name>>", template_params['job_name'])
 
   # Altera o campo dos outros par+ametros.
-  template_content = template_content.replace("<<application_params>>", ' '.join(application_params))
+  template_content = template_content.replace("<<application_params>>", ' '.join(template_params['application_params']))
   
   # Altera a partição a ser usada
-  template_content = template_content.replace("<<partition>>", f"{user_config['slurm']['partition']}")
+  template_content = template_content.replace("<<partition>>", f"{template_params['partition']}")
 
   # Altera o tempo máximo de execução
-  template_content = template_content.replace("<<max_time>>", f"{user_config['slurm']['max_time']}")
+  template_content = template_content.replace("<<max_time>>", f"{template_params['max_time']}")
 
   # Altera o uso máxumo de memória
-  template_content = template_content.replace("<<max_memory>>", f"{user_config['slurm']['max_memory']}")
+  template_content = template_content.replace("<<max_memory>>", f"{template_params['max_memory']}")
 
   return template_content
-
 
 def optimize_application(configs_file_path, system_config, applications_config, user_config, 
                          application_args, predictors_info_config, user_args):
@@ -309,9 +305,21 @@ def optimize_application(configs_file_path, system_config, applications_config, 
     if user_args.run or not user_args.suggestion:
       if user_args.verbose:
         SuggestionsPredictor.print_suggestion(suggestion, suggestion_map=reversed_suggestions_map)
+
+      # Cria o dicionário com as informações para construir o script de submissão (fiz o dicionário para tornar a função
+      # independente de como os parâmetros são gerados).
+      template_params = {
+        'application_name': application_name,
+        'suggestion_params': suggestion_mapped,
+        'job_name':  application_name if  user_args.jobname is None else user_args.jobname,
+        'application_params': application_args[1:],
+        'partition': user_config['slurm']['partition'],
+        'max_time': user_config['slurm']['max_time'],
+        'max_memory': user_config['slurm']['max_memory']
+      }  
+
       template_file_path = Path(system_config['templates_path']) / applications_config[application_id]['user']['script_template_name']
-      template_content = generate_submission_script(user_config, user_args, template_file_path, application_name, application_args[1:], 
-                                                    suggestion_mapped)
+      template_content = generate_submission_script(template_file_path, template_params)
 
       if user_args.verbose:      
         print("Submission script: \n ")

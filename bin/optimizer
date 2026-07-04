@@ -1,0 +1,6 @@
+#/bin/bash
+
+bin_dir=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
+script_dir=$(dirname $bin_dir)/src
+
+python3.9 $script_dir/Optimizer.py "$@"

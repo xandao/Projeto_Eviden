@@ -295,6 +295,28 @@ class SuggestionsPredictor:
 			df_oracle.to_markdown(tablefmt="grid", floatfmt=".2f")
 
 		return df_oracle
+	
+	def get_importances(self):
+		if self.model is None:
+			raise ValueError("The model hasn't been trained yet!")
+		
+		if hasattr(self.model, "feature_importances_"):
+			importances = getattr(self.model, "feature_importances_")
+			if hasattr(self.model, "feature_names_in_"):
+				importances_names = getattr(self.model, "feature_names_in_").tolist()
+			else:
+				importances_names = self.suggestion_names
+
+			importances_dict = {
+				'names': importances_names,
+				'values': importances
+			}		
+
+			importances_df = pd.DataFrame(importances_dict)	
+		else:		
+			importances_df = None
+		
+		return importances_df
 		    	
 	def predict_suggestions_data(self, user_applicaion_params, custom_suggestions_params=None, verbose=False):
 	    # Verifica se o fit foi feito

@@ -3,17 +3,18 @@ from pathlib import Path
 from jsonschema import validate, ValidationError
 class ReadSystemConfig:
   """
-  Classe para ler as configurações do sistema, usada pelos scripts de 
+  Classe para ler as configurações do sistema, comuns aos scripts de 
   treinamento e do usuário.
 
   Atributos:
     system_config_path (Path | None): Caminho completo para o arquivo de
                                       configuração dos scripts de treinamento 
                                       e do usuário.
-    system_config (dict | None): Dicionário com o arquivo de configuração dos
-                                 scripts convertido do formato JSON.
+    system_config (dict | None): Dicionário com o arquivo de configuração comuns 
+                                 dos scripts convertido do formato JSON.
                                                                     
-  """
+    esquema_json (dict): Esquema de validação para o script do sistema.                            
+"""
   
   # ---------------------------------------------------------------------
   # Esquema de validação para o script do sistema, usado pelo script que 
@@ -47,7 +48,7 @@ class ReadSystemConfig:
     self.system_config_path = None  
     self.system_config = None
 
-  def read_system_config(self, system_config_path: Path) -> dict:
+  def read_system_config(self, system_config_path: Path) -> dict | None:
     """
     Função para ler o arquivo de configuração do script do usuário do
     arquivo passado como parâmetro.
@@ -57,9 +58,9 @@ class ReadSystemConfig:
                                  do script do usuário.
 
     Retorna:
-      dict: dicionário com o arquivo JSON da configuração do usuário convertido
-            para o dicionário.
-                                     
+      dict | None: O dicionário com o arquivo JSON da configuração do usuário 
+                   convertido para um dicionário, ou None se algum erro ocorreu
+                   ao ler ou varificar a sintaxe do arquvo.                                     
     """
     self.system_config_path = system_config_path
     try:
@@ -96,13 +97,13 @@ class ReadTrainingConfig:
                                         configuração do script de treinamento.
     training_config (dict | None): Dicionário com o arquivo de configuração de
                                    treinamento convertido do formato JSON.
+    esquema_json (dict): Esquema de validação para o script de treinamento.                            
   """
   
   # ---------------------------------------------------------------------
   # Esquema de validação para o script com as configurações usadas em 
   # cada treinamento.
   # ---------------------------------------------------------------------
-
   esquema_json = {
     "$schema": "https://json-schema.org",
     "type": "object",
@@ -112,7 +113,7 @@ class ReadTrainingConfig:
             "type": "object", 
             "required": ["outlier_limit"],
             "properties": {
-                "outlier_limit": {"type": "number"}  # Adicionado o tipo do campo
+                "outlier_limit": {"type": "number"}  
             }
         },
         "models": {
@@ -121,10 +122,10 @@ class ReadTrainingConfig:
                 "type": "object",
                 "required": ["grid_search_parms", "fixed_params", "name", "import_path"],
                 "properties": {
-                    "grid_search_parms": {"type": "object"},  # Tipo sugerido
-                    "fixed_params": {"type": "object"},       # Tipo sugerido
-                    "name": {"type": "string"},               # Tipo sugerido
-                    "import_path": {"type": "string"}         # Tipo sugerido
+                    "grid_search_parms": {"type": "object"},  
+                    "fixed_params": {"type": "object"},       
+                    "name": {"type": "string"},               
+                    "import_path": {"type": "string"}         
                 }
             }
         }
@@ -132,10 +133,30 @@ class ReadTrainingConfig:
   } 
 
   def __init__(self):
+    """
+    Função de inicialização da classe ReadTrainingConfig.
+
+    Parâmetros:
+
+      Não tem.
+    """
     self.training_config_path = None  
     self.training_config = None
 
-  def read_training_config(self, training_config_path):
+  def read_training_config(self, training_config_path: Path) -> dict | None:
+    """
+    Função para ler o arquivo de configuração com as configurações
+    do treinamento dos modelos, usado pelo script de treinamento.
+
+    Parâmetros:
+      training_config_path (Path): Caminho completo do arquivo de configuração
+                                   do script do usuário.
+
+    Retorna:
+      dict | None: O dicionário com o arquivo JSON da configuração do treinamento convertido
+                   para um dicionário, ou None se algum erro ocorreu ao ler ou varificar a 
+                   sintaxe do arquvo.                                     
+    """
     self.training_config_path = training_config_path
     try:
       with open(training_config_path, 'r') as file:
@@ -159,6 +180,30 @@ class ReadTrainingConfig:
       return None
 
 class ReadApplicationsConfigs:
+  """
+  Classe para ler as configurações ddos aplicativos, usada pelo script de 
+  treinamento para poder treinar os modelos para o aplicativo selecionado,
+  e para o script do uruário poder fazer as sugestões. Existe um arquivo
+  de configuração para cada aplicativo, a classe lê todos os arquivos
+  JSON do diretório passado. Para cada aplicação, existem informações
+  como os nomes das variáveis de sugestão, da aplicação e do grupo
+  usado ao detaerminar os melhores hiperparâmetros para cada modelo, o
+  melhor modelo usando, para cada modelo, os melhores hiperparâmetros.
+  Também tem as informações dos nomes dos parâmetros da aplicação passados
+  pelo usuário que são necessários para fazer as sugestões e outras
+  informações, como por exemplo, um nome para cada aplicação.
+  
+  Atributos:
+    applications_config_dir (Path | None): Caminho completo para o diretório com
+                                           os arquvios de configuração das 
+                                           aplicações.
+    applications_config (dict | None): Dicionário com o arquivo de configuração de
+                                       cada aplicação, usando para cada aplicação
+                                       o seu nome como chave.
+    esquema_json (dict): Esquema de validação para um script de uma das 
+                         aplicações.                            
+  """
+  
   # ---------------------------------------------------------------------
   # Esquema de validação para o script de uma aplicação.
   # ---------------------------------------------------------------------
@@ -196,7 +241,7 @@ class ReadApplicationsConfigs:
                         "required": ["params", "type", "help"],
                         "properties": {
                             "params": {"type": "array", "items": {"type": "string"}},
-                            "type": {"type": "string"},  # Campo literal do seu JSON
+                            "type": {"type": "string"},  
                             "help": {"type": "string"}
                         }
                     }
@@ -208,13 +253,31 @@ class ReadApplicationsConfigs:
   } 
 
   def __init__(self):
+    """
+    Função de inicialização da classe ReadApplicationsConfigs.
+
+    Parâmetros:
+
+      Não tem.
+    """
     self.applications_config_dir = None  
     self.applications_config = None
 
-  def check_apprincation_json(self, json_data):
-    return True
+  def read_applications_config(self, applications_config_dir: Path) -> dict | None:
+    """
+    Função para ler o arquivo de configuração com as configurações
+    do treinamento de cada aplicação para a qual treinamos o melhor 
+    modelo e fazemos as sugestões para o usuãrio.
 
-  def read_applications_config(self, applications_config_dir):
+    Parâmetros:
+      applications_config_dir (Path): Caminho completo do diretório com os arquivos 
+                                      de configurações  de cada aplicação que coletamos
+                                      dados e que podemos fazer sugestões aos usuários.                                    
+    Retorna:
+      dict | None: O dicionário com, para cada aplicação referenciada pelo seu nome, o arquivo 
+                   JSON desta aplicação convertido para um dicionário, ou None se algum erro 
+                   ocorreu ao ler ou varificar a sintaxe do arquvo.                                    
+    """
     self.applications_config_dir = applications_config_dir  
     self.applications_config = {}
     try:
@@ -247,6 +310,18 @@ class ReadApplicationsConfigs:
       return None
   
 class ReadUserConfig:
+  """
+  Classe para ler as configurações usadas pelo script do usuário.
+
+  Atributos:
+    user_config_path (Path | None): Caminho completo para o arquivo de
+                                    configuração do scripts do usuário.
+    user_config (dict | None): Dicionário com o arquivo de configuração do
+                              script do usuário convertido do formato JSON.
+                                                                    
+    esquema_json (dict): Esquema de validação para o script do usuário.                            
+"""
+
   # ---------------------------------------------------------------------
   # Esquema de validação para a configuração do script de otimização usado 
   # pelo usuário do sistema.
@@ -275,11 +350,11 @@ class ReadUserConfig:
         
         "users_activity": {
             "type": "object", 
-            "required": ["enable", "users_executed_apps_file", "users_job_data_file"],
+            "required": ["enable", "users_executed_apps_file", "users_jobs_data_file"],
             "properties": {
                 "enable": {"type": "boolean"},
                 "users_executed_apps_file": {"type": "string"},
-                "users_job_data_file": {"type": "string"}
+                "users_jobs_data_file": {"type": "string"}
             }
         },
         
@@ -289,8 +364,8 @@ class ReadUserConfig:
             "properties": {
                 "submission_program": {"type": "string"},
                 "partition": {"type": "string"},
-                "max_time": {"type": "string"},     # Ex: "02:00:00" ou número de minutos
-                "max_memory": {"type": "string"},   # Ex: "4G" ou número de MB
+                "max_time": {"type": "string"},    
+                "max_memory": {"type": "string"},   
                 "exclusive": {"type": "boolean"}
             }
         }
@@ -298,13 +373,30 @@ class ReadUserConfig:
   }  
   
   def __init__(self):
+    """
+    Função de inicialização da classe ReadUserConfig.
+
+    Parâmetros:
+
+      Não tem.
+    """
     self.user_config_path = None  
     self.user_config = None
 
-  def check_user_json(self, json_data):
-    return True
+  def read_user_config(self, user_config_path: Path) -> dict | None:
+    """
+    Função para ler o arquivo de configuração do script do usuário do
+    arquivo passado como parâmetro.
 
-  def read_user_config(self, user_config_path):
+    Parâmetros:
+      user_config_path (Path): Caminho completo do arquivo de configuração
+                               do script do usuário.
+
+    Retorna:
+      dict | None: O dicionário com o arquivo JSON da configuração do usuário convertido
+                   para um dicionário, ou None se algum erro ocorreu ao ler ou varificar 
+                   a sintaxe do arquvo.                                     
+    """
     self.user_config_path = user_config_path
     try:
       with open(user_config_path, 'r') as file:
@@ -328,9 +420,23 @@ class ReadUserConfig:
       return None
 
 class PredictorsInfoConfig:
+  """
+  Classe para ler as configurações que mapeiam cada apluicação ao seu 
+  preditor.
+
+  Atributos:
+    predictors_info_config_path (Path | None): Caminho completo para o arquivo de
+                                               configuração que associam cada 
+                                               aplicação ao seu preditor.
+    predictors_info_config (dict | None): Dicionário com o arquivo de configuração do
+                                          script com o mapeamento de cada aplicação ao
+                                          seu preditor.
+                                                                    
+    esquema_json (dict): Esquema de validação para o .                            
+  """
   # ---------------------------------------------------------------------
-  # SCHEMA 5: Esquema de validação para as informações sobre os 
-  #           preditores para cada modelo treinado.
+  # Esquema de validação para as informações sobre os  preditores para 
+  # cada modelo treinado.
   # ---------------------------------------------------------------------
   esquema_json = {
       "type": "object",
@@ -343,10 +449,30 @@ class PredictorsInfoConfig:
   }
 
   def __init__(self):
+    """
+    Função de inicialização da classe PredictorsInfoConfig.
+
+    Parâmetros:
+
+      Não tem.
+    """
     self.predictors_info_config_path = None  
     self.predictors_info_config = None
 
-  def read_predictors_info_config(self, predictors_info_config_path):
+  def read_predictors_info_config(self, predictors_info_config_path: Path) -> dict | None:
+    """
+    Função para ler o arquivo de configuração do script que mapeia cada
+    aplicação ao seu preditor.
+
+    Parâmetros:
+      predictors_info_config_path (Path): Caminho completo do arquivo de 
+                                          configuração com os mapeamentos.
+
+    Retorna:
+      dict | None: O dicionário com o arquivo JSON da configuração com os mapeamentos 
+                   convertido para um dicionário, ou None se algum erro ocorreu
+                   ao ler ou varificar a sintaxe do arquvo.                                     
+    """
     self.predictors_info_config_path = predictors_info_config_path
     try:
       if predictors_info_config_path.is_file():
@@ -372,7 +498,17 @@ class PredictorsInfoConfig:
       print(f"❌ Critical error: File {predictors_info_config_path.name} not found!")
       return None
     
-  def save_predictors_info_config(self, predictors_info_config):
+  def save_predictors_info_config(self, predictors_info_config: Path) -> None: 
+      """
+      Função para salvar o arquivo de configuração do mapeamento das aplicações,
+      comvertendo o dicionário com o mapeamento para o arquivo correspondente
+      no formato JSON
+      """
+      
+      # TODO: Será que devemos copiar o arquivo anterior para um arquivo de
+      #       backup altes de atualizar o arquivo (quando o arquivo já existia)
+      #       para uma maior confiabilidade?
+
       self.predictors_info_config = predictors_info_config
       with open(self.predictors_info_config_path, 'w') as file:
         json.dump(self.predictors_info_config, file, indent="\t")

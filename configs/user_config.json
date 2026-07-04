@@ -4,7 +4,7 @@
   "users_activity": {
     "enable": true,
     "users_executed_apps_file": "users_exected_apps.csv",
-    "users_job_data_file": "users_executed_jobs_data.csv"
+    "users_jobs_data_file": "users_executed_jobs_data.csv"
   },
   "application_params_separator": "--",
   "slurm": {

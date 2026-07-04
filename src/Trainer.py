@@ -162,7 +162,15 @@ def train_command(applications_name, applications_config, training_config, syste
       model_name = training_config['models'][best_model_name]['name']
       preditor_file_name = predictors_file_path / f"{application_info['name']}_{model_name}_{variavel_de_saida}.pickle"
       if verbose:
-        print(f'--> Saving predictor trained with with model {best_model_name} (named {model_name}) in file {preditor_file_name}')
+        print(f'--> Oracle dataframe:\n\n')
+        oracle_df = predictor.get_oracle()
+        print(oracle_df.to_markdown(tablefmt="grid", floatfmt=".2f"))
+        importances_df = predictor.get_importances()
+        if not importances_df is None:
+          print(f'\n\n--> Predictor importances dataframe:\n\n')
+          print(importances_df.to_markdown(tablefmt="grid", floatfmt=".2f"))
+        print(f'\n\n--> Saving predictor trained with with model {best_model_name} (named {model_name}) in file {preditor_file_name}')
+
       predictor.save_predictor(preditor_file_name)
 
       # Salva as informações do arquivo do modelo do preditor.
