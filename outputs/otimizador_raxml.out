@@ -596,6 +596,6 @@ srun -n $SLURM_NTASKS -c $SLURM_CPUS_PER_TASK --cpu-bind=$CPU_BIND $EXEC $PARAMS
 
 
 
-Submitted batch job 835166
+Submitted batch job 279699
 Program: ../outputs/raxml.sh
 

@@ -125,6 +125,9 @@ def train_command(applications_name, applications_config, training_config, syste
 
         if verbose:
           print(f"---> Model {model_info['name']}: Best hyperparameters -> {best_params}; Best score -> {best_score}")
+          print("----> Hyperparameters evaluation dataframe:\n\n")         
+          hyperparams_score = best_hyper.get_hrperparams_scores() 
+          print(hyperparams_score.to_markdown(tablefmt="grid", floatfmt=".2f"))
       
         if not model_info['fixed_params'] is None:
             best_params = dict(**best_params, **model_info['fixed_params'])

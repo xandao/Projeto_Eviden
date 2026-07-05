@@ -123,6 +123,12 @@ class BestHiperparams:
 		
 		# Retorna os resultados da otimização.
 		return (self.grid_search_model.best_params_, self.grid_search_model.best_score_)
+	
+	def get_hrperparams_scores(self):
+		if self.grid_search_model is None:
+			raise ValueError("The model's hyperparameters have not yet been optimized.!")
+		hiperparams_df = pd.DataFrame(self.grid_search_model.cv_results_)
+		return hiperparams_df
 		
 class DiscoverBestModel:
 	def __init__(self, n_jobs=-1, verbose=False):
