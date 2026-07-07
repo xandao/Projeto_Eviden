@@ -8,11 +8,7 @@
   },
   "application_params_separator": "--",
   "slurm": {
-    "submission_program": "sbatch",
-    "partition": "sequana_cpu",
-    "max_time": "01:00:00",
-    "max_memory": "350G",
-    "exclusive": true
+    "submission_program": "sbatch"
   },
   "suggestions_names": ["nodes", "process", "threads"]
 }

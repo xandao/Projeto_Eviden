@@ -227,16 +227,21 @@ class SuggestionsPredictor:
 		self.application_names = None
 		self.user_names = None
 		self.predicted_name = None
+		self.predicted_time_name = None
+		self.predicted_memory_name = None
 		self.dataset = None
 		self.model = None
+		self.model_time = None
+		self.model_memory = None
 		self.suggestion_params = None
 		self.application_params = None
 		self.user_params = None
 		self.X = None
 		self.y = None
-
+		self.y_time = None
+		self.y_memory = None
 	    	
-	def fit(self, data, suggestion_names, application_names, user_names, predicted_name, model, verbose=False):
+	def fit(self, data, suggestion_names, application_names, user_names, estimated_parameters, model, model_params, verbose=False):
 		if not isinstance(data, pd.DataFrame):	
 			raise ValueError("Invalid input data provided, data is not a Dataframe.")
 
@@ -246,22 +251,49 @@ class SuggestionsPredictor:
 			raise KeyError(f"Invalid input application_names provided, not all {application_names} applications params exists in {data.columns}.")
 		if not pd.Index(user_names).isin(data.columns).all():
 			raise KeyError(f"Invalid input user_names provided, not all {user_names} applications params exists in {data.columns}.")
-		if not pd.Index([predicted_name]).isin(data.columns).all():
-			raise KeyError(f"Invalid input predicted_name provided, predicted param {predicted_name} doesn't exists in {data.columns}.")
+		if not pd.Index(estimated_parameters.values()).isin(data.columns).all():
+			raise KeyError(f"Invalid input predicted_name provided, one of the {estimated_parameters.values()} doesn't exists in {data.columns}.")
 
 		self.suggestion_names = suggestion_names
 		self.application_names = application_names
 		self.user_names = user_names
-		self.predicted_name = predicted_name
-			
-		self.X = data[suggestion_names+application_names].copy()
-		self.y = data[predicted_name].copy()
+		self.predicted_name = estimated_parameters['suggestion']
+		self.model = model(**model_params)
+		self.X = data[self.suggestion_names+self.application_names].copy()
+		self.y = data[self.predicted_name].copy()
 
 		# Treina o model com os dados
-		self.model = model.fit(self.X, self.y)
+		self.model.fit(self.X, self.y)
 
+    # Se a variável de tempo foi definida, também treina um modelo para predizer o tempo.
+		if 'time' in estimated_parameters:
+			if estimated_parameters['time'] == estimated_parameters['suggestion']:
+				self.model_time = self.model	
+				self.predicted_time_name = self.predicted_name 
+				self.y_time = self.y
+			else:	
+				self.model_time = model(**model_params)
+				self.predicted_time_name = estimated_parameters['time']
+				self.y_time = data[self.predicted_time_name].copy()
+				self.model_time.fit(self.X, self.y_time)
+		else:
+			self,model_time = None		
+
+		if 'memory' in estimated_parameters:
+			if estimated_parameters['memory'] == estimated_parameters['suggestion']:
+				self.model_memory = self.model	
+				self.predicted_memory_name = self.predicted_name 
+				self.y_memory = self.y
+			else:	
+				self.model_memory = model(**model_params)
+				self.predicted_memory_name = estimated_parameters['memory']
+				self.y_memory = data[self.predicted_memory_name].copy()
+				self.model_memory.fit(self.X, self.y_memory)
+		else:
+			self,model_memory = None		
+			
 		# Salva o dataframe usado para treinar o modelo.
-		colunms_names = list(set(suggestion_names+application_names+user_names+[predicted_name]))
+		colunms_names = list(set(suggestion_names+application_names+user_names+list(estimated_parameters.values())))
 		self.dataset = data[colunms_names].copy()
 
 		# Define os possíveis parâmetros para cada sugestão.
@@ -277,11 +309,21 @@ class SuggestionsPredictor:
 			print(f"Suggestion params used in training: {self.suggestion_params}")
 			print(f"Application params used in training: {self.application_params}")
 			print(f"User params used in training: {self.user_params}")
-			print(f"Model predicted variable: {self.predicted_name}")
+			print(f"Model predicted variable for suggestions: {self.predicted_name}")
+			if not self.predicted_time_name is None:
+				print(f"Model predicted variable for predcting time for suggestions: {self.predicted_time_name}")
+			if not self.predicted_memory_name is None:
+				print(f"Model predicted variable for predction memory for : {self.predicted_memory_name}")
 			print("X used in training:\n")
 			print(self.X.to_markdown(tablefmt="grid", floatfmt=".2f" ))
 			print("\n\ny used in training:\n")
 			print(self.y.to_markdown(tablefmt="grid", floatfmt=".2f"))
+			if not self.model_time is None:
+				print("\n\ny used in time predictor:\n")
+				print(self.y_time.to_markdown(tablefmt="grid", floatfmt=".2f"))
+			if not self.model_memory is None:
+				print("\n\ny used in memory predictor:\n")
+				print(self.y_memory.to_markdown(tablefmt="grid", floatfmt=".2f"))
 			print("\n\nDataframe using all application variables:\n")
 			print(data.to_markdown(tablefmt="grid", floatfmt=".2f"))
 			print("\n\n")
@@ -334,14 +376,8 @@ class SuggestionsPredictor:
 	  			
 		if custom_suggestions_params is None:
 		  # Cria um X usando as opções de configuração usadas para treinar o modelo.
-			#suggestions_cobinations = list(itertools.product(*self.suggestion_params.values()))
-			#X = pd.DataFrame(suggestions_cobinations, columns=self.suggestion_params.keys())
 			X = self.dataset.groupby(self.suggestion_names)[self.predicted_name].median().reset_index().copy().drop(columns=[self.predicted_name])
 		else:
-#			# Se uma coluna com as sugesões não existir, usa a suggestão de treinamento.
-#			for suggestion_name in self.suggestion_names:
-#				if suggestion_name not in custom_suggestions_params.keys():
-#					custom_suggestions_params[suggestion_name] = self.suggestion_params[suggestion_name]
 		  # Cria um X usando as opções de configuração passadas como parâmetro
 			suggestions_cobinations = list(itertools.product(*custom_suggestions_params.values()))
 			X = pd.DataFrame(suggestions_cobinations, columns=custom_suggestions_params.keys())
@@ -383,7 +419,25 @@ class SuggestionsPredictor:
 		y_pred_s = pd.Series(y_pred)
 		y_pred_s.name = self.predicted_name		
 		info_suggestion = {"Suggestion": y_suggestion, "Score": y_pred_min, "X": X, "y_pred": y_pred_s, "y_pred_minimum": y_pred_min, "y_pred_minimum_position": y_pred_posmin}
-							 							 
+
+		# Verifica se podemos predizer o tempo de execução e/ou o consumo de memória
+		if not self.model_time is None or not self.model_memory is None:
+			X_dict_aux = y_suggestion | user_applicaion_params
+			X_aux = pd.DataFrame(X_dict_aux, index=[0])
+			if verbose:
+				print(f"Auxiliary X used when prediction time and/or memory for the best suggestion {y_suggestion}, using {user_applicaion_params}\n")
+				print(X_aux.to_markdown(tablefmt="grid", floatfmt=".2f"))
+			if not self.model_time is None:
+				y_time = self.model_time.predict(X_aux)
+				info_suggestion["Time"] = y_time[0]
+				if verbose:	
+					print(f"\n\nMaximum execution time for best suggestion {y_suggestion}, using {user_applicaion_params}: {y_time[0]}") 
+			if not self.model_memory is None:
+				y_memory = self.model_memory.predict(X_aux)
+				info_suggestion["Memory"] = y_memory[0]
+				if verbose:	
+					print(f"\n\nMaximum memory usage for best suggestion {y_suggestion}, using {user_applicaion_params}: {y_memory[0]}") 
+
 		return info_suggestion	                     	
 
 	def get_suggestions(self, user_applications_params_df, custom_suggestions_params=None, verbose=False):
@@ -425,12 +479,18 @@ class SuggestionsPredictor:
 			pickle.dump(self, file)		
 
 	@classmethod
-	def print_suggestion(cls, info_suggestion, show_score=False, show_X=False, show_y_pred=False, suggestion_map=None):
+	def print_suggestion(cls, info_suggestion, show_score=False, show_X=False, show_y_pred=False, 
+											 show_time=False, show_memory=False, suggestion_map=None):
 		if suggestion_map is None:
 			formatted_suggestion = ", ".join(f"{k}={v}" for k, v in info_suggestion['Suggestion'].items())
 		else:
-			formatted_suggestion = ", ".join(f"{suggestion_map[k]}={v}" for k, v in info_suggestion['Suggestion'].items())
+			formatted_suggestion = ", ".join(f"{suggestion_map[k]}={v}" for k, v in info_suggestion['Suggestion'].items())	
 		print(f"Suggestion: {formatted_suggestion}")
+		if show_time:
+			if 'Time' in info_suggestion:
+				print(f"Suggested time: {info_suggestion['Time']} s")
+			if 'Memory' in info_suggestion:
+				print(f"Suggested memory: {info_suggestion['Memory']} Kb")
 		if show_score:
 			print(f"Score: {info_suggestion['Score']}")
 		if show_X:

@@ -304,19 +304,21 @@ def optimize_application(configs_file_path, system_config, applications_config, 
     # Obtém o caminho do arquivo de template, se as opçoes. 
     if user_args.run or not user_args.suggestion:
       if user_args.verbose:
-        SuggestionsPredictor.print_suggestion(suggestion, suggestion_map=reversed_suggestions_map)
+        SuggestionsPredictor.print_suggestion(suggestion, suggestion_map=reversed_suggestions_map, show_time=True, show_memory=True)
 
+      print(applications_config[application_id]['user']['slurm'])
       # Cria o dicionário com as informações para construir o script de submissão (fiz o dicionário para tornar a função
       # independente de como os parâmetros são gerados).
       template_params = {
         'application_name': application_name,
         'suggestion_params': suggestion_mapped,
-        'job_name':  application_name if  user_args.jobname is None else user_args.jobname,
-        'application_params': application_args[1:],
-        'partition': user_config['slurm']['partition'],
-        'max_time': user_config['slurm']['max_time'],
-        'max_memory': user_config['slurm']['max_memory']
-      }  
+        'job_name':  application_name if user_args.jobname is None else user_args.jobname,
+        'application_params': application_args[1:]
+      }
+      pos_default = np.argmax([partition['default'] for partition in applications_config[application_id]['user']['slurm']])
+      template_params['partition'] = applications_config[application_id]['user']['slurm'][pos_default]['partition']
+      template_params['max_time'] = applications_config[application_id]['user']['slurm'][pos_default]['max_time']
+      template_params['max_memory'] = applications_config[application_id]['user']['slurm'][pos_default]['max_memory']  
 
       template_file_path = Path(system_config['templates_path']) / applications_config[application_id]['user']['script_template_name']
       template_content = generate_submission_script(template_file_path, template_params)
@@ -332,13 +334,20 @@ def optimize_application(configs_file_path, system_config, applications_config, 
 
       try:
         # Executa o sbatch se a opção -r ou --run foi usada
-        result = subprocess.run([user_config["slurm"]["submission_program"], f"{user_args.script}"], capture_output=True, text=True, check=True)   
-        print(result.stdout)
+        submission_program = user_config["slurm"]["submission_program"]
+        result = subprocess.run([submission_program, f"{user_args.script}"], capture_output=True, text=True, check=True)   
+        if user_args.verbose:
+          print(f"stdout of {submission_program} execution:\n\n")
+          print(result.stdout)
+          print(f"\n\nstderr of {submission_program} execution:\n\n")
+          print(result.stderr)
       except subprocess.CalledProcessError as e:
-          # This will print the actual error from the terminal command
-          print("❌ Command failed!")
-          print("   Exit code:", e.returncode)
-          print("   Error message:", e.stderr)
+        # This will print the actual error from the terminal command
+        print("❌ Command failed!")
+        print("   Exit code:", e.returncode)
+        print("   Error message:", e.stderr)
+      except FileNotFoundError:
+        print(f"❌ Critical error: Program {submission_program} not found!")
     else:
       SuggestionsPredictor.print_suggestion(suggestion, suggestion_map=reversed_suggestions_map)
 

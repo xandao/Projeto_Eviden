@@ -72,7 +72,8 @@ def train_command(applications_name, applications_config, training_config, syste
                                       application_info['application_parameters']+
                                       application_info['training']['group_parameters']))
       variaveis_do_filtro = application_info['training']['filter_parameters']
-      variavel_de_saida = application_info['estimated_parameter']
+      variaveis_das_predicoes = application_info['estimated_parameters']
+      variavel_predita_da_suggestao = variaveis_das_predicoes['suggestion']
 
       # Lê os dados.
       dados = pd.DataFrame()
@@ -81,7 +82,7 @@ def train_command(applications_name, applications_config, training_config, syste
         nome_arquivo_completo = Path(system_config['dataset_path']) / nome_arquivo
         dados_arquivo = pd.read_csv(nome_arquivo_completo, usecols=variaveis_de_entrada+
                                                                    variaveis_do_filtro+
-                                                                   [variavel_de_saida])
+                                                                   list(variaveis_das_predicoes.values()))
         dados = pd.concat([dados, dados_arquivo])
       dados = dados.reset_index(drop=True)		
 
@@ -101,7 +102,7 @@ def train_command(applications_name, applications_config, training_config, syste
         print(dados_limpos.to_markdown(tablefmt="grid", floatfmt=".2f"))
         print("\n\n--> Static information of filtered application data:\n")
         print(dados_limpos.describe().to_markdown(tablefmt="grid", floatfmt=".2f"))
-        print(f'\n\n--> Predictions for the target {variavel_de_saida}')
+        print(f'\n\n--> Predictions for the target {variavel_predita_da_suggestao}')
 
       predictor_hiperparams = {}
 
@@ -119,7 +120,7 @@ def train_command(applications_name, applications_config, training_config, syste
         best_params, best_score = best_hyper.optimize(dados_limpos, application_info['suggestions_parameters'], 
                                                       application_info['application_parameters'], 
                                                         application_info['training']['group_parameters'], 
-                                                        variavel_de_saida, 
+                                                        variavel_predita_da_suggestao, 
                                                         model() if model_info['fixed_params'] is None else model(**model_info['fixed_params']),
                                                         model_info['grid_search_parms'])
 
@@ -141,7 +142,7 @@ def train_command(applications_name, applications_config, training_config, syste
                                                                                   application_info['suggestions_parameters'], 
                                                                                   application_info['application_parameters'],  
                                                                                   application_info['training']['group_parameters'], 
-                                                                                  variavel_de_saida, predictor_hiperparams)
+                                                                                  variavel_predita_da_suggestao, predictor_hiperparams)
       if verbose:					
         print(f'--> Dataframe with the results of models evaluation:\n')
         print(results_df.to_markdown(tablefmt="grid", floatfmt=".2f"))
@@ -159,11 +160,11 @@ def train_command(applications_name, applications_config, training_config, syste
       predictor.fit(dados_limpos, application_info['suggestions_parameters'], 
                                   application_info['application_parameters'], 
                                   application_info['training']['group_parameters'], 
-                                  variavel_de_saida, 
-                                  model(**best_params),
+                                  variaveis_das_predicoes, 
+                                  model, best_params,
                                   verbose=verbose)
       model_name = training_config['models'][best_model_name]['name']
-      preditor_file_name = predictors_file_path / f"{application_info['name']}_{model_name}_{variavel_de_saida}.pickle"
+      preditor_file_name = predictors_file_path / f"{application_info['name']}_{model_name}_{variavel_predita_da_suggestao}.pickle"
       if verbose:
         print(f'--> Oracle dataframe:\n\n')
         oracle_df = predictor.get_oracle()

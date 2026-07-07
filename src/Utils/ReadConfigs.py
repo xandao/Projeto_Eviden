@@ -210,12 +210,20 @@ class ReadApplicationsConfigs:
   esquema_json = {
     "$schema": "https://json-schema.org",
     "type": "object",
-    "required": ["suggestions_parameters", "application_parameters", "name", "estimated_parameter", "training", "user"],
+    "required": ["suggestions_parameters", "application_parameters", "name", "estimated_parameters", "training", "user"],
     "properties": {
         "suggestions_parameters": {"type": "array", "items": {"type": "string"}},
         "application_parameters": {"type": "array", "items": {"type": "string"}},
         "name": {"type": "string"},
-        "estimated_parameter": {"type": "string"},
+        "estimated_parameters": {
+          "type": "object",
+          "required": ["suggestion"],
+          "properties": {
+            "suggestion": {"type": "string"},
+            "time": {"type": "string"},
+            "memory": {"type": "string"},
+          }
+        },
         
         "training": {
             "type": "object",
@@ -246,7 +254,29 @@ class ReadApplicationsConfigs:
                         }
                     }
                 },
-                "conversions": {"type": "object"}
+                "conversions": {"type": "object"},
+                "slurm": {
+                    "type": "array",
+                    "items": {
+                        "type": "object", 
+                        "required": ["partition", "max_time", "max_memory", "exclusive", "default"],
+                        "properties": {
+                            "partition": {"type": "string"},
+                            "max_time": {"type": "integer"},    
+                            "max_memory": {"type": "integer"},   
+                            "exclusive": {"type": "boolean"},
+                            "default": {"type": "boolean"}
+                        },
+                    },
+                    "contains": {
+                        "type": "object",
+                        "properties": {
+                          "default": { "const": True }
+                        }
+                    },
+                    "minContains": 1,
+                    "maxContains": 1
+                }
             }
         }
     }
@@ -360,13 +390,9 @@ class ReadUserConfig:
         
         "slurm": {
             "type": "object", 
-            "required": ["submission_program", "partition", "max_time", "max_memory", "exclusive"],
+            "required": ["submission_program"],
             "properties": {
                 "submission_program": {"type": "string"},
-                "partition": {"type": "string"},
-                "max_time": {"type": "string"},    
-                "max_memory": {"type": "string"},   
-                "exclusive": {"type": "boolean"}
             }
         }
     }

@@ -2,7 +2,11 @@
   "suggestions_parameters": ["NNodes", "Thread"],
   "application_parameters": ["Bootstrap", "Tamanho"],
   "name": "raxml-sscad-time",
-  "estimated_parameter": "ElapsedRaw",
+  "estimated_parameters": {
+    "suggestion": "ElapsedRaw",
+    "time": "ElapsedRaw",
+    "memory": "MaxVMSize"
+  },
   "training": {
     "group_parameters": ["Bootstrap", "Tamanho"],
     "filter_parameters": ["ElapsedRaw", "Consumo de Energia Total (J)", "EDP"],
@@ -30,6 +34,22 @@
     "conversions": {
       "Bootstrap": ["copy", "Bootstrap"],
       "Tamanho": ["filesize", "Arquivo"]
-    }
+    },
+    "slurm": [
+      {
+        "partition": "sequana_cpu_dev",
+        "max_time": 1200,
+        "max_memory": 367001600,
+        "exclusive": true,
+        "default": false
+      },
+      {
+        "partition": "sequana_cpu",
+        "max_time": 3600,
+        "max_memory": 367001600,
+        "exclusive": true,
+        "default": true
+      }
+    ]
   }
 }

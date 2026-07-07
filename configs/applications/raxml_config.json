@@ -1,66 +1,56 @@
 {
-	"suggestions_parameters": [
-		"NNodes",
-		"Processo p/ no",
-		"Thread p/ proc."
-	],
-	"application_parameters": [
-		"Bootstrap",
-		"Tamanho"
-	],
-	"name": "raxml",
-	"estimated_parameter": "EDP",
-	"training": {
-		"group_parameters": [
-			"Bootstrap",
-			"Tamanho"
-		],
-		"filter_parameters": [
-			"ElapsedRaw",
-			"Consumo de Energia Total (J)",
-			"EDP"
-		],
-		"dataset_files": [
-			"raxml.csv"
-		]
-	},
-	"user": {
-		"executable_names": [
-			"raxmlHPC-PTHREADS-AVX-omp",
-			"raxml"
-		],
-		"script_template_name": "raxml_template.sh",
-		"suggestions_map": {
-			"nodes": "NNodes",
-			"process": "Processo p/ no",
-			"threads": "Thread p/ proc."
-		},
-		"user_options": {
-			"Bootstrap": {
-				"params": [
-					"-N",
-					"-#"
-				],
-				"type": "integer",
-				"help": "Bootstrap number."
-			},
-			"Arquivo": {
-				"params": [
-					"-s"
-				],
-				"type": "string",
-				"help": "Input file."
-			}
-		},
-		"conversions": {
-			"Bootstrap": [
-				"copy",
-				"Bootstrap"
-			],
-			"Tamanho": [
-				"filesize",
-				"Arquivo"
-			]
-		}
-	}
+  "suggestions_parameters": ["NNodes", "Processo p/ no", "Thread p/ proc."],
+  "application_parameters": ["Bootstrap", "Tamanho"],
+  "name": "raxml",
+  "estimated_parameters": {
+    "suggestion": "EDP",
+    "time": "ElapsedRaw",
+    "memory": "MaxVMSize"
+  },
+  "training": {
+    "group_parameters": ["Bootstrap", "Tamanho"],
+    "filter_parameters": ["ElapsedRaw", "Consumo de Energia Total (J)", "EDP"],
+    "dataset_files": ["raxml.csv"]
+  },
+  "user": {
+    "executable_names": ["raxmlHPC-PTHREADS-AVX-omp", "raxml"],
+    "script_template_name": "raxml_template.sh",
+    "suggestions_map": {
+      "nodes": "NNodes",
+      "process": "Processo p/ no",
+      "threads": "Thread p/ proc."
+    },
+    "user_options": {
+      "Bootstrap": {
+        "params": ["-N", "-#"],
+        "type": "integer",
+        "help": "Bootstrap number."
+      },
+      "Arquivo": {
+        "params": ["-s"],
+        "type": "string",
+        "help": "Input file."
+      }
+    },
+    "conversions": {
+      "Bootstrap": ["copy", "Bootstrap"],
+      "Tamanho": ["filesize", "Arquivo"]
+    },
+    "slurm": [
+      {
+        "partition": "sequana_cpu_dev",
+        "max_time": 1200,
+        "max_memory": 367001600,
+        "exclusive": true,
+        "default": true
+      },
+      {
+        "partition": "sequana_cpu",
+        "max_time": 3600,
+        "max_memory": 367001600,
+        "exclusive": true,
+        "default": false
+      }
+    ]
+  }
 }

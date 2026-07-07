@@ -1,102 +1,75 @@
 {
-	"suggestions_parameters": [
-		"NNodes",
-		"Processo p/ no",
-		"Thread p/ proc."
-	],
-	"application_parameters": [
-		"Zone X",
-		"Zone Y",
-		"Iterações",
-		"Grid X",
-		"Grid Y",
-		"Grid Z"
-	],
-	"name": "ntb",
-	"estimated_parameter": "EDP",
-	"training": {
-		"group_parameters": [
-			"Benchmark",
-			"Classe"
-		],
-		"filter_parameters": [
-			"ElapsedRaw",
-			"Consumo de Energia Total (J)",
-			"EDP"
-		],
-		"dataset_files": [
-			"ntb_1.csv",
-			"ntb_2.csv",
-			"ntb_3.csv",
-			"ntb_4.csv",
-			"ntb_5.csv",
-			"ntb_6.csv"
-		]
-	},
-	"user": {
-		"executable_names": [
-			"ntb.sh"
-		],
-		"script_template_name": "ntb_template.sh",
-		"predictor_name": "ntb",
-		"suggestions_map": {
-			"nodes": "NNodes",
-			"process": "Processo p/ no",
-			"threads": "Thread p/ proc."
-		},
-		"user_options": {
-			"Benchmark": {
-				"params": [
-					"-b"
-				],
-				"type": "string",
-				"help": "Benchmark name."
-			},
-			"Classe": {
-				"params": [
-					"-c"
-				],
-				"type": "string",
-				"help": "Class name."
-			}
-		},
-		"conversions": {
-			"Zone X": [
-				"map",
-				"ntb_map_table.cvs",
-				"Benchmark",
-				"Classe"
-			],
-			"Zone Y": [
-				"map",
-				"ntb_map_table.cvs",
-				"Benchmark",
-				"Classe"
-			],
-			"Iterações": [
-				"map",
-				"ntb_map_table.cvs",
-				"Benchmark",
-				"Classe"
-			],
-			"Grid X": [
-				"map",
-				"ntb_map_table.cvs",
-				"Benchmark",
-				"Classe"
-			],
-			"Grid Y": [
-				"map",
-				"ntb_map_table.cvs",
-				"Benchmark",
-				"Classe"
-			],
-			"Grid Z": [
-				"map",
-				"ntb_map_table.cvs",
-				"Benchmark",
-				"Classe"
-			]
-		}
-	}
+  "suggestions_parameters": ["NNodes", "Processo p/ no", "Thread p/ proc."],
+  "application_parameters": [
+    "Zone X",
+    "Zone Y",
+    "Iterações",
+    "Grid X",
+    "Grid Y",
+    "Grid Z"
+  ],
+  "name": "ntb",
+  "estimated_parameters": {
+    "suggestion": "EDP",
+    "time": "ElapsedRaw",
+    "memory": "MaxVMSize"
+  },
+  "training": {
+    "group_parameters": ["Benchmark", "Classe"],
+    "filter_parameters": ["ElapsedRaw", "Consumo de Energia Total (J)", "EDP"],
+    "dataset_files": [
+      "ntb_1.csv",
+      "ntb_2.csv",
+      "ntb_3.csv",
+      "ntb_4.csv",
+      "ntb_5.csv",
+      "ntb_6.csv"
+    ]
+  },
+  "user": {
+    "executable_names": ["ntb.sh"],
+    "script_template_name": "ntb_template.sh",
+    "predictor_name": "ntb",
+    "suggestions_map": {
+      "nodes": "NNodes",
+      "process": "Processo p/ no",
+      "threads": "Thread p/ proc."
+    },
+    "user_options": {
+      "Benchmark": {
+        "params": ["-b"],
+        "type": "string",
+        "help": "Benchmark name."
+      },
+      "Classe": {
+        "params": ["-c"],
+        "type": "string",
+        "help": "Class name."
+      }
+    },
+    "conversions": {
+      "Zone X": ["map", "ntb_map_table.cvs", "Benchmark", "Classe"],
+      "Zone Y": ["map", "ntb_map_table.cvs", "Benchmark", "Classe"],
+      "Iterações": ["map", "ntb_map_table.cvs", "Benchmark", "Classe"],
+      "Grid X": ["map", "ntb_map_table.cvs", "Benchmark", "Classe"],
+      "Grid Y": ["map", "ntb_map_table.cvs", "Benchmark", "Classe"],
+      "Grid Z": ["map", "ntb_map_table.cvs", "Benchmark", "Classe"]
+    },
+    "slurm": [
+      {
+        "partition": "sequana_cpu_dev",
+        "max_time": 1200,
+        "max_memory": 367001600,
+        "exclusive": true,
+        "default": false
+      },
+      {
+        "partition": "sequana_cpu",
+        "max_time": 3600,
+        "max_memory": 367001600,
+        "exclusive": true,
+        "default": true
+      }
+    ]
+  }
 }
