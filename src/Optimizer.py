@@ -191,6 +191,26 @@ def generate_submission_script(template_file_path, template_params):
   # TODO: O --exclusive está fixo, pois não sei se é recomendado treinar um modelo com --exclusive 
   #       usar o --oversubscribe.
 
+  def format_size(size_in_bytes):
+    labels = ['B', 'K', 'M', 'G', 'T', 'P']
+    label_index = 0
+
+    # Continua divindo pór 1024 até encontrar a escala correta
+    while size_in_bytes >= 1024 and label_index < len(labels) - 1:
+      size_in_bytes = size_in_bytes / 1024.0
+      label_index += 1
+
+    # Retorna o tamanho formatado.
+    return f"{np.ceil(size_in_bytes):.0f}{labels[label_index]}"
+  
+  def format_time(time_in_seconds):
+    days = time_in_seconds // 86400
+    hours = (time_in_seconds % 86400) // 3600
+    minutes = ((time_in_seconds % 86400) % 3600) // 60
+    seconds = time_in_seconds % 60
+    prefix = f"{days}-" if days > 0 else ""
+    return f"{prefix}{hours:02}:{minutes:02}:{seconds:02}"
+          
   # Salva em uma string o conteúdo do arquivo de template.
   template_content = template_file_path.read_text(encoding="utf-8")
 
@@ -219,10 +239,13 @@ def generate_submission_script(template_file_path, template_params):
   template_content = template_content.replace("<<partition>>", f"{template_params['partition']}")
 
   # Altera o tempo máximo de execução
-  template_content = template_content.replace("<<max_time>>", f"{template_params['max_time']}")
+  template_content = template_content.replace("<<max_time>>", f"{format_time(template_params['max_time'])}")
+
+  # Altera o tipo de execução, compartilhada (----oversubscribe) ou exclusiva (--exclusive).
+  template_content = template_content.replace("<<execution_type>>", "exclusive" if template_params['exclusive'] else "oversubscribe")
 
   # Altera o uso máxumo de memória
-  template_content = template_content.replace("<<max_memory>>", f"{template_params['max_memory']}")
+  template_content = template_content.replace("<<max_memory>>", f"{format_size(template_params['max_memory'] * 1024)}")
 
   return template_content
 
@@ -306,19 +329,59 @@ def optimize_application(configs_file_path, system_config, applications_config, 
       if user_args.verbose:
         SuggestionsPredictor.print_suggestion(suggestion, suggestion_map=reversed_suggestions_map, show_time=True, show_memory=True)
 
-      print(applications_config[application_id]['user']['slurm'])
+      #print(applications_config[application_id]['user']['slurm'])
       # Cria o dicionário com as informações para construir o script de submissão (fiz o dicionário para tornar a função
       # independente de como os parâmetros são gerados).
+      list_partitions = applications_config[application_id]['user']['slurm']
       template_params = {
         'application_name': application_name,
         'suggestion_params': suggestion_mapped,
         'job_name':  application_name if user_args.jobname is None else user_args.jobname,
-        'application_params': application_args[1:]
+        'application_params': application_args[1:],
       }
-      pos_default = np.argmax([partition['default'] for partition in applications_config[application_id]['user']['slurm']])
-      template_params['partition'] = applications_config[application_id]['user']['slurm'][pos_default]['partition']
-      template_params['max_time'] = applications_config[application_id]['user']['slurm'][pos_default]['max_time']
-      template_params['max_memory'] = applications_config[application_id]['user']['slurm'][pos_default]['max_memory']  
+      default_partition = np.argmax([partition['default'] for partition in list_partitions])
+      if not 'Time' in suggestion.keys() and not 'Memory' in suggestion.keys():
+        partition_used = list_partitions[default_partition]
+      else:
+        if 'Time' in suggestion.keys():
+          predicted_time = np.ceil(suggestion['Time'])
+          valid_time_partitions = {pos for pos, partition in enumerate(list_partitions) if partition['max_time'] >= predicted_time}
+        else:
+          predicted_time = None
+          valid_time_partitions = None                                           
+        if 'Memory' in suggestion.keys():
+          predicted_memory = np.ceil(suggestion['Memory'])
+          valid_memory_partitions = {pos for pos, partition in enumerate(list_partitions) if partition['max_memory'] >= predicted_memory}
+        else:
+          predicted_memory = None
+          valid_memory_partitions = None    
+ 
+        # Descobre as partições que podem ser usadas.
+        if not valid_time_partitions is None and not valid_memory_partitions is None: 
+          valid_partitions = valid_time_partitions.intersection(valid_memory_partitions) 
+        elif not valid_time_partitions is None:
+          valid_partitions = valid_time_partitions
+        else:  
+          valid_partitions = valid_memory_partitions
+
+        if valid_partitions:                                           
+          # A partição escolhida será a com menor tempo máximo.
+          pos_best_partition = np.nanargmin([partition['max_time'] if pos in valid_partitions else np.nan for pos, partition in enumerate(list_partitions)])
+          partition_used = list_partitions[pos_best_partition]
+        else:   
+          partition_used = list_partitions[default_partition]
+        
+        # Dá um pelo menos aviso se a o tempo, caso predito, for maior do que o tempo máximo da partição escolhida e/ou
+        # se o uso de mamória, caso predito, for maior do que o uso de memória máximo da partição escolhida
+        if not predicted_time is None and predicted_time > partition_used['max_time']:
+          print(f"⚠️ Warning: Predicted time {predicted_time} is greather than {partition_used['max_time']} maximun partition {partition_used['partition']} execution time!")
+        if not predicted_memory is None and predicted_memory > partition_used['max_memory']:
+          print(f"⚠️ Warning: Predicted time {predicted_memory} is greather than {partition_used['max_memory']} maximun partition {partition_used['partition']} memory that can be allocated!")
+
+      template_params['partition'] = partition_used['partition']
+      template_params['max_time'] = partition_used['max_time']
+      template_params['max_memory'] = partition_used['max_memory']  
+      template_params['exclusive'] = partition_used['exclusive']  
 
       template_file_path = Path(system_config['templates_path']) / applications_config[application_id]['user']['script_template_name']
       template_content = generate_submission_script(template_file_path, template_params)

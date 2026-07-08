@@ -3,9 +3,9 @@
 #SBATCH --ntasks-per-node=2
 #SBATCH --ntasks=8
 #SBATCH --cpus-per-task=8
-#SBATCH --partition=sequana_cpu
+#SBATCH --partition=sequana_cpu_dev
 #SBATCH --job-name=teste
-#SBATCH --time=01:00:00
+#SBATCH --time=00:20:00
 #SBATCH --exclusive
 #SBATCH --mem=350G
 

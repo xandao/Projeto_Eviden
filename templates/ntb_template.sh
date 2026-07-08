@@ -6,7 +6,7 @@
 #SBATCH --partition=<<partition>>
 #SBATCH --job-name=<<job_name>>
 #SBATCH --time=<<max_time>>
-#SBATCH --exclusive
+#SBATCH --<<execution_type>>
 #SBATCH --mem=<<max_memory>>
 
 module load nas/1.0

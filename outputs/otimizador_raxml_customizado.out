@@ -740,7 +740,22 @@ Prediced y when prediting EDP for all possible suggestions:
 | 179 |  14972.76 |
 +-----+-----------+
 mininum y_pred for application params {'Bootstrap': 100, 'Tamanho': 231143}: 11446.524913454205 in position 64 of y_preed
+Auxiliary X used when prediction time and/or memory for the best suggestion {'NNodes': 4, 'Processo p/ no': 2, 'Thread p/ proc.': 8}, using {'Bootstrap': 100, 'Tamanho': 231143}
+
++----+----------+------------------+-------------------+-------------+-----------+
+|    |   NNodes |   Processo p/ no |   Thread p/ proc. |   Bootstrap |   Tamanho |
++====+==========+==================+===================+=============+===========+
+|  0 |     4.00 |             2.00 |              8.00 |      100.00 | 231143.00 |
++----+----------+------------------+-------------------+-------------+-----------+
+
+
+Maximum execution time for best suggestion {'NNodes': 4, 'Processo p/ no': 2, 'Thread p/ proc.': 8}, using {'Bootstrap': 100, 'Tamanho': 231143}: 5.478254448758244
+
+
+Maximum memory usage for best suggestion {'NNodes': 4, 'Processo p/ no': 2, 'Thread p/ proc.': 8}, using {'Bootstrap': 100, 'Tamanho': 231143}: 1463387.0250968856
 Suggestion: nodes=4, process=2, threads=8
+Suggested time: 5.478254448758244 s
+Suggested memory: 1463387.0250968856 Kb
 Submission script: 
  
 #!/bin/bash
@@ -748,9 +763,9 @@ Submission script:
 #SBATCH --ntasks-per-node=2
 #SBATCH --ntasks=8
 #SBATCH --cpus-per-task=8
-#SBATCH --partition=sequana_cpu
+#SBATCH --partition=sequana_cpu_dev
 #SBATCH --job-name=teste-customizado
-#SBATCH --time=01:00:00
+#SBATCH --time=00:20:00
 #SBATCH --exclusive
 #SBATCH --mem=350G
 
@@ -776,6 +791,15 @@ srun -n $SLURM_NTASKS -c $SLURM_CPUS_PER_TASK --cpu-bind=$CPU_BIND $EXEC $PARAMS
 
 
 
-Submitted batch job 998400
+stdout of sbatch execution:
+
+
+Submitted batch job 398861
 Program: ../outputs/raxml_customizado.sh
+
+
+
+stderr of sbatch execution:
+
+
 
