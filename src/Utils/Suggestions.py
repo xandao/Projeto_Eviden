@@ -232,14 +232,14 @@ class SuggestionsPredictor:
 		self.dataset = None
 		self.model = None
 		self.model_time = None
-		self.model_memory = None
+		#self.model_memory = None
 		self.suggestion_params = None
 		self.application_params = None
 		self.user_params = None
 		self.X = None
 		self.y = None
 		self.y_time = None
-		self.y_memory = None
+		#self.y_memory = None
 	    	
 	def fit(self, data, suggestion_names, application_names, user_names, estimated_parameters, model, model_params, verbose=False):
 		if not isinstance(data, pd.DataFrame):	
@@ -279,18 +279,18 @@ class SuggestionsPredictor:
 		else:
 			self,model_time = None		
 
-		if 'memory' in estimated_parameters:
-			if estimated_parameters['memory'] == estimated_parameters['suggestion']:
-				self.model_memory = self.model	
-				self.predicted_memory_name = self.predicted_name 
-				self.y_memory = self.y
-			else:	
-				self.model_memory = model(**model_params)
-				self.predicted_memory_name = estimated_parameters['memory']
-				self.y_memory = data[self.predicted_memory_name].copy()
-				self.model_memory.fit(self.X, self.y_memory)
-		else:
-			self,model_memory = None		
+#		if 'memory' in estimated_parameters:
+#			if estimated_parameters['memory'] == estimated_parameters['suggestion']:
+#				self.model_memory = self.model	
+#				self.predicted_memory_name = self.predicted_name 
+#				self.y_memory = self.y
+#			else:	
+#				self.model_memory = model(**model_params)
+#				self.predicted_memory_name = estimated_parameters['memory']
+#				self.y_memory = data[self.predicted_memory_name].copy()
+#				self.model_memory.fit(self.X, self.y_memory)
+#		else:
+#			self.model_memory = None		
 			
 		# Salva o dataframe usado para treinar o modelo.
 		colunms_names = list(set(suggestion_names+application_names+user_names+list(estimated_parameters.values())))
@@ -312,8 +312,8 @@ class SuggestionsPredictor:
 			print(f"Model predicted variable for suggestions: {self.predicted_name}")
 			if not self.predicted_time_name is None:
 				print(f"Model predicted variable for predcting time for suggestions: {self.predicted_time_name}")
-			if not self.predicted_memory_name is None:
-				print(f"Model predicted variable for predction memory for : {self.predicted_memory_name}")
+			#if not self.predicted_memory_name is None:
+			#	print(f"Model predicted variable for predction memory for : {self.predicted_memory_name}")
 			print("X used in training:\n")
 			print(self.X.to_markdown(tablefmt="grid", floatfmt=".2f" ))
 			print("\n\ny used in training:\n")
@@ -321,9 +321,9 @@ class SuggestionsPredictor:
 			if not self.model_time is None:
 				print("\n\ny used in time predictor:\n")
 				print(self.y_time.to_markdown(tablefmt="grid", floatfmt=".2f"))
-			if not self.model_memory is None:
-				print("\n\ny used in memory predictor:\n")
-				print(self.y_memory.to_markdown(tablefmt="grid", floatfmt=".2f"))
+			#if not self.model_memory is None:
+			#	print("\n\ny used in memory predictor:\n")
+			#	print(self.y_memory.to_markdown(tablefmt="grid", floatfmt=".2f"))
 			print("\n\nDataframe using all application variables:\n")
 			print(data.to_markdown(tablefmt="grid", floatfmt=".2f"))
 			print("\n\n")
@@ -432,11 +432,11 @@ class SuggestionsPredictor:
 				info_suggestion["Time"] = y_time[0]
 				if verbose:	
 					print(f"\n\nMaximum execution time for best suggestion {y_suggestion}, using {user_applicaion_params}: {y_time[0]}") 
-			if not self.model_memory is None:
-				y_memory = self.model_memory.predict(X_aux)
-				info_suggestion["Memory"] = y_memory[0]
-				if verbose:	
-					print(f"\n\nMaximum memory usage for best suggestion {y_suggestion}, using {user_applicaion_params}: {y_memory[0]}") 
+			#if not self.model_memory is None:
+			#	y_memory = self.model_memory.predict(X_aux)
+			#	info_suggestion["Memory"] = y_memory[0]
+			#	if verbose:	
+			#		print(f"\n\nMaximum memory usage for best suggestion {y_suggestion}, using {user_applicaion_params}: {y_memory[0]}") 
 
 		return info_suggestion	                     	
 

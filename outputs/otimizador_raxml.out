@@ -570,12 +570,8 @@ Auxiliary X used when prediction time and/or memory for the best suggestion {'NN
 
 
 Maximum execution time for best suggestion {'NNodes': 4, 'Processo p/ no': 2, 'Thread p/ proc.': 8}, using {'Bootstrap': 100, 'Tamanho': 231143}: 5.478254448758244
-
-
-Maximum memory usage for best suggestion {'NNodes': 4, 'Processo p/ no': 2, 'Thread p/ proc.': 8}, using {'Bootstrap': 100, 'Tamanho': 231143}: 1463387.0250968856
 Suggestion: nodes=4, process=2, threads=8
 Suggested time: 5.478254448758244 s
-Suggested memory: 1463387.0250968856 Kb
 Submission script: 
  
 #!/bin/bash
@@ -614,7 +610,7 @@ srun -n $SLURM_NTASKS -c $SLURM_CPUS_PER_TASK --cpu-bind=$CPU_BIND $EXEC $PARAMS
 stdout of sbatch execution:
 
 
-Submitted batch job 507856
+Submitted batch job 995773
 Program: ../outputs/raxml.sh
 
 

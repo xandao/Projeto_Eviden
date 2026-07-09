@@ -340,43 +340,26 @@ def optimize_application(configs_file_path, system_config, applications_config, 
         'application_params': application_args[1:],
       }
       default_partition = np.argmax([partition['default'] for partition in list_partitions])
-      if not 'Time' in suggestion.keys() and not 'Memory' in suggestion.keys():
-        partition_used = list_partitions[default_partition]
-      else:
-        if 'Time' in suggestion.keys():
-          predicted_time = np.ceil(suggestion['Time'])
-          valid_time_partitions = {pos for pos, partition in enumerate(list_partitions) if partition['max_time'] >= predicted_time}
-        else:
-          predicted_time = None
-          valid_time_partitions = None                                           
-        if 'Memory' in suggestion.keys():
-          predicted_memory = np.ceil(suggestion['Memory'])
-          valid_memory_partitions = {pos for pos, partition in enumerate(list_partitions) if partition['max_memory'] >= predicted_memory}
-        else:
-          predicted_memory = None
-          valid_memory_partitions = None    
- 
-        # Descobre as partições que podem ser usadas.
-        if not valid_time_partitions is None and not valid_memory_partitions is None: 
-          valid_partitions = valid_time_partitions.intersection(valid_memory_partitions) 
-        elif not valid_time_partitions is None:
-          valid_partitions = valid_time_partitions
-        else:  
-          valid_partitions = valid_memory_partitions
-
-        if valid_partitions:                                           
+      if 'Time' in suggestion.keys():
+        predicted_time = np.ceil(suggestion['Time'])
+        valid_time_partitions = {pos for pos, partition in enumerate(list_partitions) if partition['max_time'] >= predicted_time}
+        if valid_time_partitions:                                           
           # A partição escolhida será a com menor tempo máximo.
-          pos_best_partition = np.nanargmin([partition['max_time'] if pos in valid_partitions else np.nan for pos, partition in enumerate(list_partitions)])
+          pos_best_partition = np.nanargmin([partition['max_time'] if pos in valid_time_partitions else np.nan for pos, partition in enumerate(list_partitions)])
           partition_used = list_partitions[pos_best_partition]
         else:   
           partition_used = list_partitions[default_partition]
+
+        # Verifica se a partução escolhida tem tempo suficiente para executar o trabalho.  
+        if predicted_time > partition_used['max_time']:
+          print(f"⚠️ Warning: Predicted time {predicted_time} is greather than {partition_used['max_time']} maximun partition {partition_used['partition']} execution time!")
+      else:
+        partition_used = list_partitions[default_partition]
         
         # Dá um pelo menos aviso se a o tempo, caso predito, for maior do que o tempo máximo da partição escolhida e/ou
         # se o uso de mamória, caso predito, for maior do que o uso de memória máximo da partição escolhida
-        if not predicted_time is None and predicted_time > partition_used['max_time']:
-          print(f"⚠️ Warning: Predicted time {predicted_time} is greather than {partition_used['max_time']} maximun partition {partition_used['partition']} execution time!")
-        if not predicted_memory is None and predicted_memory > partition_used['max_memory']:
-          print(f"⚠️ Warning: Predicted time {predicted_memory} is greather than {partition_used['max_memory']} maximun partition {partition_used['partition']} memory that can be allocated!")
+#        if not predicted_memory is None and predicted_memory > partition_used['max_memory']:
+#          print(f"⚠️ Warning: Predicted time {predicted_memory} is greather than {partition_used['max_memory']} maximun partition {partition_used['partition']} memory that can be allocated!")
 
       template_params['partition'] = partition_used['partition']
       template_params['max_time'] = partition_used['max_time']

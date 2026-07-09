@@ -4,8 +4,7 @@
   "name": "raxml-sscad-time",
   "estimated_parameters": {
     "suggestion": "ElapsedRaw",
-    "time": "ElapsedRaw",
-    "memory": "MaxVMSize"
+    "time": "ElapsedRaw"
   },
   "training": {
     "group_parameters": ["Bootstrap", "Tamanho"],

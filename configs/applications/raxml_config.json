@@ -4,8 +4,7 @@
   "name": "raxml",
   "estimated_parameters": {
     "suggestion": "EDP",
-    "time": "ElapsedRaw",
-    "memory": "MaxVMSize"
+    "time": "ElapsedRaw"
   },
   "training": {
     "group_parameters": ["Bootstrap", "Tamanho"],

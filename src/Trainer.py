@@ -108,7 +108,7 @@ def train_command(applications_name, applications_config, training_config, syste
 
       for preditor_key, model_info in training_config["models"].items():
         if verbose:
-          print(f'--> Optimizing model {model_info["name"]} hyperparameters:')
+          print(f"\n\n--> Optimizing model {model_info['name']} using hyperparameters values {model_info['grid_search_parms']}:")
         # Descobre e importa o modelo de modo dinâmico.
         module_path, model_name = model_info['import_path'].rsplit(".", 1)
         # Importa e obtem dinamicamente o modelo.
@@ -119,10 +119,10 @@ def train_command(applications_name, applications_config, training_config, syste
         best_hyper = BestHiperparams(verbose=verbose)
         best_params, best_score = best_hyper.optimize(dados_limpos, application_info['suggestions_parameters'], 
                                                       application_info['application_parameters'], 
-                                                        application_info['training']['group_parameters'], 
-                                                        variavel_predita_da_suggestao, 
-                                                        model() if model_info['fixed_params'] is None else model(**model_info['fixed_params']),
-                                                        model_info['grid_search_parms'])
+                                                      application_info['training']['group_parameters'], 
+                                                      variavel_predita_da_suggestao, 
+                                                      model() if model_info['fixed_params'] is None else model(**model_info['fixed_params']),
+                                                      model_info['grid_search_parms'])
 
         if verbose:
           print(f"---> Model {model_info['name']}: Best hyperparameters -> {best_params}; Best score -> {best_score}")
@@ -136,7 +136,7 @@ def train_command(applications_name, applications_config, training_config, syste
 
       # Determina o melhor modelo, usando a validacao cruzada.;
       if verbose:	
-        print(f"--> Discover the best model of the list {', '.join(predictor_hiperparams.keys())}:")
+        print(f"\n\n--> Discover the best model of the list {', '.join(predictor_hiperparams.keys())}:")
       cross_validator = DiscoverBestModel(verbose=verbose)	
       best_model_name, best_model_score, results_df, mean_scores_models_df = cross_validator.best_model(dados_limpos, 
                                                                                   application_info['suggestions_parameters'], 
