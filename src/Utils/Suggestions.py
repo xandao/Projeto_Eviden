@@ -2,23 +2,60 @@ import pandas as pd
 import scipy.stats as st
 from scipy.stats import gmean
 import numpy as np
-
+import numpy.typing as npt
 import sklearn.model_selection as skms
 import sklearn.ensemble as sken
 import sklearn.tree as sktree
 import sklearn.preprocessing as skpp
 import pickle
 import itertools
+from sklearn.base import BaseEstimator
+from Utils.Common import debug_code
 
 # Item 1: Diferença entre o EDP esperado da configuração sugerida e o EDP esperado da configuração do oráculo dividida pela EDP esperado da configuração do oráculo.
-def min_edp_config_diff(y_true, y_pred):
+def min_edp_config_diff(y_true: npt.NDArray[np.float64], y_pred: npt.NDArray[np.float64]) -> float:
+	"""
+	Função para calcular diferença pondenrada entre o valor mínimo em y_true e o valor 
+	real associado ao menor valor predito em y_true.
+
+	Parâmetros:
+
+	  y_true : array_like(float)
+        Vetor de entreda com os valores reais das medidas.
+    y_pred : array_like(float)
+        Vetor de entreda com os valores preditos das medidas.
+        
+  Retorna:
+
+	  float
+        A diferença ponderada entre o menor valor real e o valor real associado ao menor valor predito.
+	"""
 	y_true_min = y_true.min()
 	y_pred_min_pos = y_pred.argmin()
 	y_expected_min = y_true[y_pred_min_pos]
 
 	return (y_expected_min - y_true_min) / y_true_min
 
-def train_min_edp_config_diff(trained_estimator, X_test, y_test):
+def train_min_edp_config_diff(trained_estimator: BaseEstimator, X_test: pd.DataFrame, y_test: pd.Series) -> float:
+	"""
+	Função para fazer a predição e depois calcular diferença pondenrada entre o valor mínimo em y_true e o valor 
+	real associado ao menor valor predito em y_true usando a função min_edp_config_diff.
+
+	Parâmetros:
+
+	  trained_estimator: BaseEstimator
+		    Estimador usado para fazer a predição. O estimador precisa seguir a interface do scikit-learn
+				para os estimadores.
+	  X_test : Pandas dataframe
+        Dataframe do Pandas com as características.
+    y_pred : array_like(float)
+        Series do Pandas com os valores reais da variável alvo da predição.
+        
+  Retorna:
+
+	  float
+        A diferença ponderada entre o menor valor real e o valor real associado ao menor valor predito.
+	"""
 	df_test_mean_EDP = pd.concat((X_test, y_test), axis=1).groupby(list(X_test.columns))[y_test.name].median().reset_index()
 	X_test = df_test_mean_EDP[X_test.columns]
 	y_test = df_test_mean_EDP[y_test.name]

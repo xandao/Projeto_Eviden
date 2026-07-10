@@ -2,18 +2,15 @@ import pandas as pd
 import numpy as np
 from Utils.Suggestions import SuggestionsPredictor
 from Utils.ReadConfigs import ReadSystemConfig, ReadApplicationsConfigs, ReadUserConfig, PredictorsInfoConfig
-from pprint import pprint
 import sys
 import argparse
 from pathlib import Path
 import os
 from functools import partial
 import subprocess
+from Utils.Common import debug_code, configs_file_path
 
 def read_configs():
-  # Lê a variável de ambiente com o caminho do diretório com as configurações
-  configs_file_path = Path(os.getenv('APPOPTIMIZER_CONFIGS_DIR', '../configs'))
-
   # Lê as variáveis gerais.
   system_config_file_path = configs_file_path / 'system_config.json'
   system_config = ReadSystemConfig().read_system_config(system_config_file_path)

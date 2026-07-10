@@ -3,15 +3,12 @@ from Utils.Suggestions import FilterOutliers, BestHiperparams, DiscoverBestModel
 from Utils.ReadConfigs import ReadSystemConfig, ReadApplicationsConfigs, ReadTrainingConfig, PredictorsInfoConfig
 import importlib
 import argparse
-import os
 import sys
 from pathlib import Path
 from functools import partial
+from Utils.Common import debug_code, configs_file_path
 
 def read_configs():
-  # Lê a variável de ambiente com o caminho do diretório com as configurações
-  configs_file_path = Path(os.getenv('APPOPTIMIZER_CONFIGS_DIR', '../configs'))
-
   # Lê os as variáveis gerais.
   system_config_file_path = configs_file_path / 'system_config.json'
   system_config = ReadSystemConfig().read_system_config(system_config_file_path)

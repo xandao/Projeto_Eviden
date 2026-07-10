@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from jsonschema import validate, ValidationError
+from Utils.Common import debug_code
 class ReadSystemConfig:
   """
   Classe para ler as configurações do sistema, comuns aos scripts de 
@@ -68,20 +69,24 @@ class ReadSystemConfig:
         self.system_config = json.load(file)
  
       validate(instance=self.system_config, schema=ReadSystemConfig.esquema_json)
-      print(f"✅ Sucess: File {system_config_path.name} is a valid system config file!")
+      if debug_code:
+        print(f"✅ Sucesso: Arquivo {system_config_path.name} é um arquivo válido de configuração do sistema e foi carregado com sucesso!")
       return self.system_config 
         
     except ValidationError as e:
     # Quando falha no 'oneOf', ele avisa que não bateu com nenhum molde
-      print(f"❌ Validation error in file {system_config_path.name}!")
-      print(f"   Details of error: {e.message}")
+      print(f"❌ Erro ao validar o JSON do arquivo de sistema {system_config_path.name}!")
+      print(f"   Detalhes do erro: {e.message}")
+      print(f"   Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except json.JSONDecodeError:
-      print(f"❌ Critical error: File {system_config_path.name} could not be read as valid JSON (syntax error)!")
-      print(f"   Details: {e.msg} at line {e.lineno}, column {e.colno}!")
+      print(f"❌ Erro crítico: O arquivo {system_config_path.name} não pode ser lido como um arquivo JSON válido! Erro de sintaxe!")
+      print(f"   Detalhes do erro: {e.msg} at line {e.lineno}, column {e.colno}!")
+      print(f"   Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except FileNotFoundError:
-      print(f"❌ Critical error: File {system_config_path.name} not found!")
+      print(f"❌ Erro crítico: Arquivo {system_config_path.name} não foi encontrado!")
+      print(f"   Por favor, reporte este erro ao adminstrador do sistema!")
       return None
 class ReadTrainingConfig:
   """
@@ -163,20 +168,24 @@ class ReadTrainingConfig:
         self.training_config = json.load(file)
 
       validate(instance=self.training_config, schema=ReadTrainingConfig.esquema_json)
-      print(f"✅ Sucess: File {training_config_path.name} is a valid training config file!")
+      if debug_code:
+        print(f"✅ Sucesso: Arquivo {training_config_path.name} é um arquivo válido de configuração de treinamento e foi carregado com sucesso!")
       return self.training_config 
         
     except ValidationError as e:
     # Quando falha no 'oneOf', ele avisa que não bateu com nenhum molde
-      print(f"❌ Validation error in file {training_config_path.name}!")
-      print(f"   Details of error: {e.message}")
+      print(f"❌ Erro ao validar o JSON do arquivo de treinamento {training_config_path.name}!")
+      print(f"   Detalhes do erro: {e.message}")
+      print(f"   Por favor, reporte este erro ao adminstrador do sistema!")
       return None
-    except json.JSONDecodeError as e:
-      print(f"❌ Critical error: File {training_config_path.name} could not be read as valid JSON (syntax error)!")
-      print(f"   Details: {e.msg} at line {e.lineno}, column {e.colno}")
+    except json.JSONDecodeError:
+      print(f"❌ Erro crítico: O arquivo {training_config_path.name} não pode ser lido como um arquivo JSON válido! Erro de sintaxe!")
+      print(f"   Detalhes do erro: {e.msg} at line {e.lineno}, column {e.colno}!")
+      print(f"   Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except FileNotFoundError:
-      print(f"❌ Critical error: File {training_config_path.name} not found!")
+      print(f"❌ Erro crítico: Arquivo {training_config_path.name} não foi encontrado!")
+      print(f"   Por favor, reporte este erro ao adminstrador do sistema!")
       return None
 
 class ReadApplicationsConfigs:
@@ -318,27 +327,32 @@ class ReadApplicationsConfigs:
 
             validate(instance=app_json, schema=ReadApplicationsConfigs.esquema_json)
             self.applications_config[app_json['name']] = app_json
-            print(f"✅ Sucess: File {file.name} is a valid training config file!")
-
+            if debug_code:
+              print(f"✅ Sucesso: Arquivo {file.name} é um arquivo válido de configuração de uma aplicação e foi carregado com sucesso!")
           else:
-            print(f"⚠️ Warning! Ignoring invalid json file {file.name} with json extension")  
-
-      print(f"✅ Sucess: Files in {applications_config_dir.name} applications config directory are all valid application scripts!")
+            print(f"⚠️ Aviso: Ignorando o caminho {file.name} que não é um arquivo válido JSON!")  
+            print(f"   Por favor, reporte este aviso ao adminstrador do sistema!")
+  
+      if debug_code:
+        print(f"✅ Sucesso: Todos os arquicos {applications_config_dir.name} do diretório com as confugurações das aplicações são válidos e foram lidos!")
       return self.applications_config 
         
     except ValidationError as e:
     # Quando falha no 'oneOf', ele avisa que não bateu com nenhum molde
-      print(f"❌ Validation error in file {file.name}!")
-      print(f"   Details of error: {e.message}")
+      print(f"❌ Erro ao validar o JSON do arquivo da aplicação {file.name}!")
+      print(f"   Detalhes do erro: {e.message}")
+      print(f"   Por favor, reporte este erro ao adminstrador do sistema!")
       return None
-    except json.JSONDecodeError as e:
-      print(f"❌ Critical error: File {file.name} could not be read as valid JSON (syntax error)!")
-      print(f"   Details: {e.msg} at line {e.lineno}, column {e.colno}")
+    except json.JSONDecodeError:
+      print(f"❌ Erro crítico: O arquivo {file.name} não pode ser lido como um arquivo JSON válido! Erro de sintaxe!")
+      print(f"   Detalhes do erro: {e.msg} at line {e.lineno}, column {e.colno}!")
+      print(f"   Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except FileNotFoundError:
-      print(f"❌ Critical error: File {file.name} not found!")
+      print(f"❌ Erro crítico: Arquivo {file.name} não foi encontrado!")
+      print(f"   Por favor, reporte este erro ao adminstrador do sistema!")
       return None
-  
+ 
 class ReadUserConfig:
   """
   Classe para ler as configurações usadas pelo script do usuário.
@@ -429,22 +443,25 @@ class ReadUserConfig:
         self.user_config = json.load(file)
 
       validate(instance=self.user_config, schema=ReadUserConfig.esquema_json)
-      print(f"✅ Sucess: File {user_config_path.name} is a valid applications config file!")
+      if debug_code:
+        print(f"✅ Sucesso: Arquivo {user_config_path.name} é um arquivo válido de configuração do script do usuário e foi carregado com sucesso!")
       return self.user_config 
         
     except ValidationError as e:
     # Quando falha no 'oneOf', ele avisa que não bateu com nenhum molde
-      print(f"❌ Validation error in file {user_config_path.name}!")
-      print(f"   Details of error: {e.message}")
+      print(f"❌ Erro ao validar o JSON do arquivo do script do usuário {user_config_path.name}!")
+      print(f"   Detalhes do erro: {e.message}")
+      print(f"   Por favor, reporte este erro ao adminstrador do sistema!")
       return None
-    except json.JSONDecodeError as e:
-      print(f"❌ Critical error: File {user_config_path.name} could not be read as valid JSON (syntax error)!")
-      print(f"   Details: {e.msg} at line {e.lineno}, column {e.colno}")
+    except json.JSONDecodeError:
+      print(f"❌ Erro crítico: O arquivo {user_config_path.name} não pode ser lido como um arquivo JSON válido! Erro de sintaxe!")
+      print(f"   Detalhes do erro: {e.msg} at line {e.lineno}, column {e.colno}!")
+      print(f"   Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except FileNotFoundError:
-      print(f"❌ Critical error: File {user_config_path.name} not found!")
+      print(f"❌ Erro crítico: Arquivo {user_config_path.name} não foi encontrado!")
+      print(f"   Por favor, reporte este erro ao adminstrador do sistema!")
       return None
-
 class PredictorsInfoConfig:
   """
   Classe para ler as configurações que mapeiam cada apluicação ao seu 
@@ -505,23 +522,28 @@ class PredictorsInfoConfig:
         with open(predictors_info_config_path, 'r') as file:
           self.predictors_info_config = json.load(file)
         validate(instance=self.predictors_info_config, schema=PredictorsInfoConfig.esquema_json)
-        print(f"✅ Sucess: File {predictors_info_config_path.name} is a valid predictors config file!")
+        if debug_code:
+          print(f"✅ Sucesso: Arquivo {predictors_info_config_path.name} é um arquivo válido de configuração dos preditores e foi carregado com sucesso!")
       else:  
-        print(f"⚠️ Warning: Path {predictors_info_config_path.name} does not exist! No problem if no model has been trained yet!")
+        if debug_code:
+          print(f"⚠️ Aviso: O arquivo {predictors_info_config_path.name} não existe, mas não tem problema se o erro for gerado pelo script de treinamento!")
         self.predictors_info_config = {}
       return self.predictors_info_config
 
     except ValidationError as e:
     # Quando falha no 'oneOf', ele avisa que não bateu com nenhum molde
-      print(f"❌ Validation error in file {predictors_info_config_path.name}!")
-      print(f"   Details of error: {e.message}")
+      print(f"❌ Erro ao validar o JSON do arquivo do script do usuário {predictors_info_config_path.name}!")
+      print(f"   Detalhes do erro: {e.message}")
+      print(f"   Por favor, reporte este erro ao adminstrador do sistema!")
       return None
-    except json.JSONDecodeError as e:
-      print(f"❌ Critical error: File {predictors_info_config_path.name} could not be read as valid JSON (syntax error)!")
-      print(f"   Details: {e.msg} at line {e.lineno}, column {e.colno}")
+    except json.JSONDecodeError:
+      print(f"❌ Erro crítico: O arquivo {predictors_info_config_path.name} não pode ser lido como um arquivo JSON válido! Erro de sintaxe!")
+      print(f"   Detalhes do erro: {e.msg} at line {e.lineno}, column {e.colno}!")
+      print(f"   Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except FileNotFoundError:
-      print(f"❌ Critical error: File {predictors_info_config_path.name} not found!")
+      print(f"❌ Erro crítico: Arquivo {predictors_info_config_path.name} não foi encontrado!")
+      print(f"   Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     
   def save_predictors_info_config(self, predictors_info_config: Path) -> None: 
