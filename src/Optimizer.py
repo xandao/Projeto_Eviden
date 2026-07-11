@@ -8,50 +8,79 @@ from pathlib import Path
 import os
 from functools import partial
 import subprocess
-from Utils.Common import debug_code, configs_file_path
+from Utils.Common import configs_file_path, debug_code
+import textwrap
+import tempfile
 
-def read_configs():
+def read_configs(verbose=False):
   # Lê as variáveis gerais.
   system_config_file_path = configs_file_path / 'system_config.json'
-  system_config = ReadSystemConfig().read_system_config(system_config_file_path)
+  system_config = ReadSystemConfig(verbose).read_system_config(system_config_file_path)
 
   # Lê os parâmetros da aplicação
   application_configs_dir_path = configs_file_path / 'applications'
-  applications_configs = ReadApplicationsConfigs().read_applications_config(application_configs_dir_path)
+  applications_configs = ReadApplicationsConfigs(verbose).read_applications_config(application_configs_dir_path)
 
   # Lê as configurações do script do usuário
   user_config_file_path = configs_file_path / 'user_config.json'
-  user_config = ReadUserConfig().read_user_config(user_config_file_path)
+  user_config = ReadUserConfig(verbose).read_user_config(user_config_file_path)
 
   # Lê as configurações que associam cada preditor a aplicação correspondente,
   if system_config is None:
     predictors_info_config = None
   else:
     predictors_info_file_parh = Path(system_config["predictors_path"]) / system_config["predictors_info_config_filename"]
-    predictors_info_config = PredictorsInfoConfig().read_predictors_info_config(predictors_info_file_parh)
+    predictors_info_config = PredictorsInfoConfig(verbose).read_predictors_info_config(predictors_info_file_parh)
 
   return configs_file_path, system_config, applications_configs, user_config, predictors_info_config
 
-def process_script_args(user_config):
-  parser = argparse.ArgumentParser(description="Test script to predict suggestion variables.")
+def process_script_args():
+  parser = argparse.ArgumentParser(description="Script para escolher a melhor configuração para aplicações selecionadas.",
+                                   usage="%(prog)s [opções] -- [executável da aplicação] [-h] [opções obrigatórias da aplicação] [outras opções da aplicação]",
+                                   add_help=False, formatter_class=argparse.RawTextHelpFormatter)
 
-  parser.add_argument("-r", "--run", action="store_true", default=False, help="Submit script with the best configurations.")
-  parser.add_argument("-j", "--jobname", type=str, default=None, help="Job name (used with option -r or --run)")
-  parser.add_argument("-s", "--script", type=str, default=user_config.get('default_script_name', 'script.sh'), 
-                      help="Save generated script in a file.")
-  parser.add_argument("-S", "--suggestion", action="store_true", default=False, 
-                      help="Only returns suggested execution params.")
-  if "nodes" in user_config["suggestions_names"]:
-    parser.add_argument("-n", "--nodes", type=str, nargs="*", default=None, help='List of possible nodes')
-  if "process" in user_config["suggestions_names"]:
-    parser.add_argument("-p", "--process", type=str, nargs="*", default=None, help='List of possible process')
-  if "threads" in user_config["suggestions_names"]:
-    parser.add_argument("-t", "--threads", type=str, nargs="*", default=None, help='List of possible threads')
-  parser.add_argument("-v", "--verbose", action="store_true", default=False, help="Enable output verbosity")
-  parser.add_argument("-l", "--list", action="store_true", default=False, help="List available applications to optimize.")
-
+  opcoes = parser.add_argument_group("Opções principais")
+  ajuda = parser.add_argument_group("Ajuda")
+  opcoes.add_argument("-r", "--run", action="store_true", default=False, help="Submete o script com a melhor configuração de execução.")
+  opcoes.add_argument("-j", "--jobname", type=str, default=None, help="Nome do trabalho registrado no sistema de submissão")
+  opcoes.add_argument("-s", "--script", type=str, default=None, help="Salva o script gerado em um arquivo.")
+  opcoes.add_argument("-S", "--suggestion", action="store_true", default=False, 
+                      help="Somente mostra a sugestão para os parâmetros do script.")
+  opcoes.add_argument("-n", "--nodes", type=str, nargs="*", default=None, 
+                      help=textwrap.dedent('''Lista com os possíveis números de nós, se a aplicação usa mulltiplos nós.
+Usada conjuntamente com as opções -p e -t que terão os valores default se não usadas.
+Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo.  
+Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o s, que será igual a 1.
+Default 1:1.
+Exemplos: -n 1 2:10:2 -> Nós: 1, 2, 4, 6, 8, 10.
+          -n :10:2    -> Nós: 1, 3, 5, 7, 9.
+          -n 1:5      -> Nós: 1, 2, 3, 4, 5.                                                                 
+                      '''))                      
+  opcoes.add_argument("-p", "--process", type=str, nargs="*", default=None, 
+                      help=textwrap.dedent('''Lista com os possíveis números de nós, se a aplicação usa mulltiplos nós.
+Usada conjuntamente com as opções -n e -t que terão os valores default se não usadas.
+Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo. 
+Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o s, que será igual a 1.
+Default 1:1.
+Exemplos: -p 1 2:      -> Processos: 1, 2.
+          -n 1 :3:1    -> Processos: 1, 2, 3.
+          -n :3 6:12:3 -> Processos: 1, 2, 3, 6, 9, 12                                                                  
+                      '''))
+  opcoes.add_argument("-t", "--threads", type=str, nargs="*", default=None, 
+                      help=textwrap.dedent('''Lista com os possíveis números de nós, se a aplicação usa mulltiplos nós.
+Usada conjuntamente com as opções -n e -p que terão os valores default se não usadas.
+Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo.  
+Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o s, que será igual a 1.
+Default 1:1.
+Exemplos: -n 1 2:24:2 -> Threads: 1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24
+          -n 2 :24:8  -> Threads: 2, 24, 32, 40, 48.
+          -n 2 24 48  -> Threads: 2, 24, 48.  
+                      '''))
+  opcoes.add_argument("-v", "--verbose", action="store_true", default=False, help="Habilida a verbosidade do script.")
+  opcoes.add_argument("-l", "--list", action="store_true", default=False, help="Lista as aplicações cujas execuções podem ser otimizadas pelo script.")
+  ajuda.add_argument("-h", "--help", action="help", help="Mostra esta mensagem de ajuda e sai")
   # Divide os parâmetros do script e da aplicação (separados por "--").
-  application_param_separator = user_config.get('application_params_separator', '--')
+  application_param_separator = '--'
 
   if application_param_separator in sys.argv:
     separator_pos = sys.argv.index(application_param_separator)
@@ -124,11 +153,9 @@ def convert_user_params(required_applicaion_params, conversions, application_con
   dataframe_map_dict = {}
   # Funções de conversão
   def copy_func(*args):
-    #print("Alo 1")
     return getattr(required_applicaion_params, args[0])
 
   def filesize_func(*args):
-    #print("Alo 2")
     return Path(getattr(required_applicaion_params, args[0])).stat().st_size
 
   def map_func(user_arg_name, *args):
@@ -139,8 +166,15 @@ def convert_user_params(required_applicaion_params, conversions, application_con
       df_map = dataframe_map_dict[dataframe_map_file_name]
     else:
       df_map = pd.read_csv(dataframe_map_full_path_name) 
-      #print(f"Dataframe de mapeamento {dataframe_map_file_name}: \n\n")
-      #print(df_map.to_markdown(tablefmt="grid"))
+
+      # TODO: Deixei esta depuração, habilitada pela variável de ambiente APPOPTIMIZER_DEBUG.
+      # TODO: Podemos tirar todas as depurações no futuro.
+      # TODO: Ínicio do código de depuração:
+      if debug_code:
+        print(f"🪲  Dataframe de mapeamento {dataframe_map_file_name}: \n\n")
+        print(df_map.to_markdown(tablefmt="grid"))
+      # TODO: Fim do código de depuração.
+        
       dataframe_map_dict[dataframe_map_file_name] = df_map
 
     # Cria a condicional para fazer a procura no dataframe de mapeamento.
@@ -170,24 +204,28 @@ def convert_user_params(required_applicaion_params, conversions, application_con
 
     return converted_user_params
   except FileNotFoundError as e:
-    print(f"File {e.filename} not Found: {e.strerror}")
+    print(f"❌ O arquivo {e.filename} nao foi encontrado.")
+    print(f"❌ Por favor, avise o erro ao adistrador do sistema o erro: {e.strerror}!")
     return None
   except PermissionError as e:
-    print(f"Permission denied when accessing the file {e.filename}: {e.error}")
+    print(f"❌ Erro de permissão ao acessar o arquivo {e.filename}.")
+    print(f"❌ Por favor, avise o erro ao adistrador do sistema o erro: {e.error}.")
+    return None
+  except IOError as e:
+    print(f"❌ Erro de I/O ao ler o arquivo {e.filename}!")
+    print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
+    print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
     return None
   except KeyError as e:
-    print(f"Key error when processing option value : {', '.join(e.args)}")
+    print(f"❌ Erro interno ao processar o valor da opção {', '.join(e.args)}.")
+    print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
     return None
   except Exception as e:
-    print(f"Unknown error when processing option value: {', '.join(e.args)}!")
+    print(f"❌ Erro desconhecido ao processar o valor da opção {', '.join(e.args)}")
+    print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
     return None
 
-
 def generate_submission_script(template_file_path, template_params):
-  # TODO: predicamos decidir como preencher os campos --partition, --time, --mem.
-  # TODO: O --exclusive está fixo, pois não sei se é recomendado treinar um modelo com --exclusive 
-  #       usar o --oversubscribe.
-
   def format_size(size_in_bytes):
     labels = ['B', 'K', 'M', 'G', 'T', 'P']
     label_index = 0
@@ -251,13 +289,12 @@ def optimize_application(configs_file_path, system_config, applications_config, 
   # Verifica se o usuário deseja somente listar as aplicações
   if user_args.list:
       for application_id in sorted(applications_config.keys()):
-        if user_args.verbose:
-          print(f"⚠️ Apllication identification: {application_id}, possible executable name(s): {', '.join(applications_config[application_id]['user']['executable_names'])}")
+        print(f"➡️  Aplicação {application_id}, possíveis nomes para os executáveis: {', '.join(applications_config[application_id]['user']['executable_names'])}")
       return True
   else:
     # Caso não deseje listar as aplucações, precisamos fornecer uma aplicaçao, pois o usuário deseja otimizar o uso dos reursos.
     if not application_args:
-      print("❌ An application, with its parameters, was not provided. For each application, some parameters are mandatory. See more details using the help, specifying the application name.")
+      print("❌ Não foi fornecido o nome da aplicação a ser otimizada e os seus parâm,etros de execução.")
       return False
     
     # Diretorio dos arquivos de configuração das aplicações.
@@ -273,35 +310,36 @@ def optimize_application(configs_file_path, system_config, applications_config, 
 
     # Verifica se a apliucação existe
     if application_id is None:
-      print(f"⚠️ Sorry, but optimization for application {application_name} is not currently supported.")  
+      print(f"⚠️  A otimização para a aplicação {application_name} ainda não é suportada!")  
       return False
-
+    
     # Processa os parâmetros da aplicação.
-    parser_application = argparse.ArgumentParser(description="Parser application parameters", prog=application_name)
+    parser_application = argparse.ArgumentParser(description="Parser responsável pelos parâmetros da aplicação.", prog=application_name,
+                                                 usage="Alo!")
     applicatiom_params = applications_config[application_id]['user']['user_options']
     for param in applicatiom_params.keys():
       parser_application.add_argument(*applicatiom_params[param]['params'], required=True, help=applicatiom_params[param]['help'], 
                                       type=get_type(applicatiom_params[param]['type']), dest=param)
 
     # Converte os argumentos da aplicação para o dicionário a ser usado pela função de predição.                                  
-    #parser_application.print_help()
-    #sys.exit(0)
     required_applicaion_params, other_applicatios_params = parser_application.parse_known_args(application_args[1:])
-    #print(required_applicaion_params, other_applicatios_params)
-    if not user_args.nodes is None or not user_args.process is None or not user_args.threads is None:
-      custom_suggestions = {}
-      for suggestion_name in user_config['suggestions_names']:
-        #print(applications_config[application_id_aux]['user']['suggestions_map'][suggestion_name])
-        if suggestion_name in applications_config[application_id]['user']['suggestions_map'].keys():
-          custom_params = get_options_suggestion(getattr(user_args, suggestion_name))
-          if custom_params is None:
-            print(f"❌ Error processing option --{suggestion_name}!")
-            return False
-          custom_suggestions[applications_config[application_id]['user']['suggestions_map'][suggestion_name]] = custom_params
-        else:
-          print(f'⚠️ Igoring --{suggestion_name} not used by the application {application_name}!')  
-    else:
-      custom_suggestions = None
+
+    # Verifica se o usuário usou as opções número de nós, de processos por nó, e de threads por processo.
+    custom_suggestions = None
+    for suggestion_name in applications_config[application_id]['user']['suggestions_map']:
+      if not hasattr(user_args, suggestion_name):
+        print(f"❌ A configuração necessário {suggestion_name} não existe nas opções do script para a aplcação {application_id}.")
+        print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+        return False
+      else:  
+        suggestion_value = getattr(user_args, suggestion_name)
+        custom_params = get_options_suggestion(suggestion_value)
+        if custom_params is None:
+          print(f"❌ Erro de sintaxe ao processar a opção --{suggestion_name} com o valor {suggestion_value}!")
+          return False
+        if custom_suggestions is None:
+          custom_suggestions = {}
+        custom_suggestions[applications_config[application_id]['user']['suggestions_map'][suggestion_name]] = custom_params
 
     # Processa os patâmetros usados pela aplicação para o preditor. 
     user_application_params = convert_user_params(required_applicaion_params, applications_config[application_id]['user']['conversions'], 
@@ -309,9 +347,6 @@ def optimize_application(configs_file_path, system_config, applications_config, 
     if user_application_params is None:
       return False
 
-    #print(user_params_dict)
-    #print(custom_suggestions)
-    
     # Lê o preditor usado para fazer a melhor sugestão dos parâmetros de execução da aplicação.
     predictor_path = Path(system_config['predictors_path']) / predictors_info_config[application_id]
     predictor = SuggestionsPredictor.load_predictor(predictor_path)
@@ -326,7 +361,6 @@ def optimize_application(configs_file_path, system_config, applications_config, 
       if user_args.verbose:
         SuggestionsPredictor.print_suggestion(suggestion, suggestion_map=reversed_suggestions_map, show_time=True, show_memory=True)
 
-      #print(applications_config[application_id]['user']['slurm'])
       # Cria o dicionário com as informações para construir o script de submissão (fiz o dicionário para tornar a função
       # independente de como os parâmetros são gerados).
       list_partitions = applications_config[application_id]['user']['slurm']
@@ -338,78 +372,137 @@ def optimize_application(configs_file_path, system_config, applications_config, 
       }
       default_partition = np.argmax([partition['default'] for partition in list_partitions])
       if 'Time' in suggestion.keys():
+        # Aproxima o tempo para o maior tempo inteiro.
         predicted_time = np.ceil(suggestion['Time'])
-        valid_time_partitions = {pos for pos, partition in enumerate(list_partitions) if partition['max_time'] >= predicted_time}
+        # Descobre quais partições podem executar a aplicação.
+        valid_time_partitions = [partition for partition in list_partitions if partition['max_time'] >= predicted_time]
+        # Se existirem partições, escolhe a com o menor tempo (portanto, mas próximo do tempo da aplicação, já que todas as partiçoes da lista)
         if valid_time_partitions:                                           
           # A partição escolhida será a com menor tempo máximo.
-          pos_best_partition = np.nanargmin([partition['max_time'] if pos in valid_time_partitions else np.nan for pos, partition in enumerate(list_partitions)])
-          partition_used = list_partitions[pos_best_partition]
+          partition_used = min(valid_time_partitions, key=lambda partition: partition['max_time'] - predicted_time)
         else:   
-          partition_used = list_partitions[default_partition]
+          partition_used = max(list_partitions, key=lambda partition: partition['max_time'])
 
         # Verifica se a partução escolhida tem tempo suficiente para executar o trabalho.  
         if predicted_time > partition_used['max_time']:
-          print(f"⚠️ Warning: Predicted time {predicted_time} is greather than {partition_used['max_time']} maximun partition {partition_used['partition']} execution time!")
+          print(f"⚠️  O tempo predito aproximado {predicted_time} é maior do que o tempo máximo {partition_used['max_time']} de execução da partição {partition_used['partition']}!")
       else:
         partition_used = list_partitions[default_partition]
         
-        # Dá um pelo menos aviso se a o tempo, caso predito, for maior do que o tempo máximo da partição escolhida e/ou
-        # se o uso de mamória, caso predito, for maior do que o uso de memória máximo da partição escolhida
-#        if not predicted_memory is None and predicted_memory > partition_used['max_memory']:
-#          print(f"⚠️ Warning: Predicted time {predicted_memory} is greather than {partition_used['max_memory']} maximun partition {partition_used['partition']} memory that can be allocated!")
-
+      # define os dados para gerar o script de confuguração.
       template_params['partition'] = partition_used['partition']
       template_params['max_time'] = partition_used['max_time']
       template_params['max_memory'] = partition_used['max_memory']  
       template_params['exclusive'] = partition_used['exclusive']  
 
+
       template_file_path = Path(system_config['templates_path']) / applications_config[application_id]['user']['script_template_name']
       template_content = generate_submission_script(template_file_path, template_params)
 
       if user_args.verbose:      
-        print("Submission script: \n ")
+        print("➡️  Script de submissão: \n")
         print(template_content)
         print()
 
       # Salva no arquivo passado como parâmetro ou o nome default definido no arquivo de cofiguração do usuário
-      with open(user_args.script, "w", encoding="utf-8") as script_file:
-        script_file.write(template_content)
+      # Se o usuário não fornecer um nome pela opção -s ou --script, cria um arquivo temporário.
+      if user_args.script is None:
+        try:
+          with tempfile.NamedTemporaryFile(mode='w+t', delete=False) as temp:
+              temp.write(template_content)
+              script_file_name = temp.name 
 
+          # TODO: Depois podemos remover, se necessário, este código de depuração.
+          # TODO: Início.
+          if debug_code:
+            print(f"🪲  Arquivo temporário {script_file_name} criado para armazenar o script de submissão.")
+          # TODO: Fim  
+        except IOError as e:
+          print(f"❌ Não foi possível criar o arquivo temporário. {e.filename}")
+          print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
+          print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+          return False
+      else:
+        # Salva o script de su
+        try:
+          script_file_name = user_args.script
+          with open(script_file_name, "w", encoding="utf-8") as script_file:
+            script_file.write(template_content)
+          print(f"➡️  Script de submissão {script_file_name} criado com sucesso!")
+        except PermissionError as e:
+          print(f"❌ Erro de permissão ao acessar o arquivo {script_file_name}!")
+          return False
+        except IOError as e:
+          print(f"❌ Erro de I/O ao ler o arquivo {script_file_name}!")
+          print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
+          return False
       try:
         # Executa o sbatch se a opção -r ou --run foi usada
         submission_program = user_config["slurm"]["submission_program"]
-        result = subprocess.run([submission_program, f"{user_args.script}"], capture_output=True, text=True, check=True)   
+        result = subprocess.run([submission_program, f"{script_file_name}"], capture_output=True, text=True, check=True)   
+
+        print("➡️  Script de submissão submetido com sucesso!")
+
+        # TODO: Depois podemos remover, se necessário, este código de depuração.
+        # TODO: Início.
+        if debug_code:
+          print(f"🪲  O código de retorno da execução do programa de submissão {submission_program} foi {result}")
+          print("🪲  O campo returncode do objeto CompletedProcess deveria ser 0, pois um valor diferente de 0 deveria gerar a exceção subprocess.CalledProcessError.")
+        # TODO: Fim  
+ 
+        # Imprime a saída da execução do programa de submissão do script.
+        # TODO: Está correto isso ser um vernose? Talvez usar a variáel global debug_code?        
         if user_args.verbose:
-          print(f"stdout of {submission_program} execution:\n\n")
+          print(f"➡️  stdout da execução de {submission_program}:\n\n")
           print(result.stdout)
-          print(f"\n\nstderr of {submission_program} execution:\n\n")
-          print(result.stderr)
+          print(f"\n\n➡️  stderr de execução de {submission_program}:\n\n")
+          print(result.stderr)        
+        # Remove o arquivo temporário, se ele foi criado.
       except subprocess.CalledProcessError as e:
         # This will print the actual error from the terminal command
-        print("❌ Command failed!")
-        print("   Exit code:", e.returncode)
-        print("   Error message:", e.stderr)
+        print("❌ Não foi possṕivel executar o comando {submission_program}!")
+        print("❌ Código de saída:", e.returncode)
+        print("❌ mensagem de erro:", e.stderr)
       except FileNotFoundError:
-        print(f"❌ Critical error: Program {submission_program} not found!")
+        print(f"❌ O programa {submission_program} não foi achado no sistema!")
+        print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+      finally:
+        # Se criamos um arquivo temporario, removemos depois de usarmos.
+        if user_args.script is None:
+
+          # TODO: Depois podemos remover, se necessário, este código de depuração.
+          # TODO: Início.
+          if debug_code:
+            print(f"🪲  Tentando remover o arquivo temporário {script_file_name}.")
+          # TODO: Fim  
+          try:
+            if os.path.exists(script_file_name):
+              os.remove(script_file_name)    
+            if debug_code:
+              print(f"🪲  Arquivo temporário {script_file_name} removido com sucesso.")
+          except OSError as e:
+              if debug_code:
+                print(f"🪲  Não foi possível remover o arquivo {e.filename}")
+                print(f"🪲  Código do erro: {e.errno}; Mensagem: {e.strerror}!")
+                print(f"🪲  Por favor, reporte este erro ao adminstrador do sistema!")
     else:
       SuggestionsPredictor.print_suggestion(suggestion, suggestion_map=reversed_suggestions_map)
 
     return True
 
+# Processa a linha de comando.
+user_args, application_args, parser = process_script_args()
+
 # Lê os arquivos de confoguraçã.o
-configs_file_path, system_config, applications_configs, user_config, predictors_info_config = read_configs()
+configs_file_path, system_config, applications_configs, user_config, predictors_info_config = read_configs(verbose=user_args.verbose)
 
 if system_config is None or applications_configs is None or user_config is None or predictors_info_config is None:
+  print('❌ Erro ao processar um dos arquivos de configuração. Por favor, avise o erro ao suporte.')
   exit(-1)
-
-# Processa a linha de comando.
-user_args, application_args, parser = process_script_args(user_config)
-#print(script_args)
-#print(application_args)
 
 # Processa os parâmetros da linha de comando
 status = optimize_application(configs_file_path, system_config, applications_configs, user_config, application_args, 
                               predictors_info_config, user_args)
 if not status:
-  parser.print_help()
+#  parser.print_help()
   exit(-1)

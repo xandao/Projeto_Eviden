@@ -458,7 +458,7 @@ class SuggestionsPredictor:
 		info_suggestion = {"Suggestion": y_suggestion, "Score": y_pred_min, "X": X, "y_pred": y_pred_s, "y_pred_minimum": y_pred_min, "y_pred_minimum_position": y_pred_posmin}
 
 		# Verifica se podemos predizer o tempo de execução e/ou o consumo de memória
-		if not self.model_time is None or not self.model_memory is None:
+		if not self.model_time is None:
 			X_dict_aux = y_suggestion | user_applicaion_params
 			X_aux = pd.DataFrame(X_dict_aux, index=[0])
 			if verbose:
@@ -469,11 +469,6 @@ class SuggestionsPredictor:
 				info_suggestion["Time"] = y_time[0]
 				if verbose:	
 					print(f"\n\nMaximum execution time for best suggestion {y_suggestion}, using {user_applicaion_params}: {y_time[0]}") 
-			#if not self.model_memory is None:
-			#	y_memory = self.model_memory.predict(X_aux)
-			#	info_suggestion["Memory"] = y_memory[0]
-			#	if verbose:	
-			#		print(f"\n\nMaximum memory usage for best suggestion {y_suggestion}, using {user_applicaion_params}: {y_memory[0]}") 
 
 		return info_suggestion	                     	
 

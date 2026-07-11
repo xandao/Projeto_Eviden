@@ -6,20 +6,20 @@ import argparse
 import sys
 from pathlib import Path
 from functools import partial
-from Utils.Common import debug_code, configs_file_path
+from Utils.Common import configs_file_path
 
-def read_configs():
+def read_configs(verbose=False):
   # Lê os as variáveis gerais.
   system_config_file_path = configs_file_path / 'system_config.json'
-  system_config = ReadSystemConfig().read_system_config(system_config_file_path)
+  system_config = ReadSystemConfig(verbose).read_system_config(system_config_file_path)
 
   # Lê os parâmetros da aplicação
   application_configs_dir_path = configs_file_path / 'applications'
-  applications_configs = ReadApplicationsConfigs().read_applications_config(application_configs_dir_path)
+  applications_configs = ReadApplicationsConfigs(verbose).read_applications_config(application_configs_dir_path)
 
   # Lê os parâmetros dos modelos escolhidos para avaliação;
   training_config_file_path = configs_file_path / 'training_config.json'
-  training_config = ReadTrainingConfig().read_training_config(training_config_file_path)
+  training_config = ReadTrainingConfig(verbose).read_training_config(training_config_file_path)
 
   return configs_file_path, applications_configs, training_config, system_config
 
@@ -196,15 +196,14 @@ def execute_commands(command, applications_configs, training_config, system_conf
   print("Invalid {command[0]} command!")
   return False
     
-# Lê as configuraçoes;
-configs_file_path, applications_configs, training_config, system_config  = read_configs()
-if applications_configs is None or training_config is None or system_config is None:
-  print("❌ Error when reading one of the confoigurations!")
-  exit(-1)
-
 # Processa os parâmetros do script.
 command, verbose, parser = process_script_args()
 
+# Lê as configuraçoes;
+configs_file_path, applications_configs, training_config, system_config  = read_configs(verbose)
+if applications_configs is None or training_config is None or system_config is None:
+  print("❌ Error when reading one of the confoigurations!")
+  exit(-1)
 # Executa os comandos do script.
 
 Status = execute_commands(command, applications_configs, training_config, system_config, verbose)
