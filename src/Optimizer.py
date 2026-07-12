@@ -350,7 +350,7 @@ def optimize_application(configs_file_path, system_config, applications_config, 
     # Lê o preditor usado para fazer a melhor sugestão dos parâmetros de execução da aplicação.
     predictor_path = Path(system_config['predictors_path']) / predictors_info_config[application_id]
     predictor = SuggestionsPredictor.load_predictor(predictor_path)
-    suggestion = predictor.get_suggestion(user_application_params, custom_suggestions, verbose=user_args.verbose)
+    suggestion = predictor.get_suggestion(user_application_params, custom_suggestions, verbose=debug_code)
 
     # Cria o mapeamento reverso para a impressao
     reversed_suggestions_map = {v:k for k, v in applications_config[application_id]['user']['suggestions_map'].items()}
@@ -406,7 +406,7 @@ def optimize_application(configs_file_path, system_config, applications_config, 
 
       # Salva no arquivo passado como parâmetro ou o nome default definido no arquivo de cofiguração do usuário
       # Se o usuário não fornecer um nome pela opção -s ou --script, cria um arquivo temporário.
-      if user_args.script is None:
+      if user_args.script is None and user_args.run:
         try:
           with tempfile.NamedTemporaryFile(mode='w+t', delete=False) as temp:
               temp.write(template_content)
@@ -425,7 +425,10 @@ def optimize_application(configs_file_path, system_config, applications_config, 
       else:
         # Salva o script de su
         try:
-          script_file_name = user_args.script
+          if user_args.script is None:
+            script_file_name = user_config["default_script_name"]
+          else:     
+            script_file_name = user_args.script
           with open(script_file_name, "w", encoding="utf-8") as script_file:
             script_file.write(template_content)
           print(f"➡️  Script de submissão {script_file_name} criado com sucesso!")
@@ -437,27 +440,28 @@ def optimize_application(configs_file_path, system_config, applications_config, 
           print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
           return False
       try:
-        # Executa o sbatch se a opção -r ou --run foi usada
-        submission_program = user_config["slurm"]["submission_program"]
-        result = subprocess.run([submission_program, f"{script_file_name}"], capture_output=True, text=True, check=True)   
+        if user_args.run:
+          # Executa o sbatch se a opção -r ou --run foi usada
+          submission_program = user_config["slurm"]["submission_program"]
+          result = subprocess.run([submission_program, f"{script_file_name}"], capture_output=True, text=True, check=True)   
 
-        print("➡️  Script de submissão submetido com sucesso!")
+          print("➡️  Script de submissão submetido com sucesso!")
 
-        # TODO: Depois podemos remover, se necessário, este código de depuração.
-        # TODO: Início.
-        if debug_code:
-          print(f"🪲  O código de retorno da execução do programa de submissão {submission_program} foi {result}")
-          print("🪲  O campo returncode do objeto CompletedProcess deveria ser 0, pois um valor diferente de 0 deveria gerar a exceção subprocess.CalledProcessError.")
-        # TODO: Fim  
- 
-        # Imprime a saída da execução do programa de submissão do script.
-        # TODO: Está correto isso ser um vernose? Talvez usar a variáel global debug_code?        
-        if user_args.verbose:
-          print(f"➡️  stdout da execução de {submission_program}:\n\n")
-          print(result.stdout)
-          print(f"\n\n➡️  stderr de execução de {submission_program}:\n\n")
-          print(result.stderr)        
-        # Remove o arquivo temporário, se ele foi criado.
+          # TODO: Depois podemos remover, se necessário, este código de depuração.
+          # TODO: Início.
+          if debug_code:
+            print(f"🪲  O código de retorno da execução do programa de submissão {submission_program} foi {result}")
+            print("🪲  O campo returncode do objeto CompletedProcess deveria ser 0, pois um valor diferente de 0 deveria gerar a exceção subprocess.CalledProcessError.")
+          # TODO: Fim  
+  
+          # Imprime a saída da execução do programa de submissão do script.
+          # TODO: Está correto isso ser um vernose? Talvez usar a variáel global debug_code?        
+          if user_args.verbose:
+            print(f"➡️  stdout da execução de {submission_program}:\n\n")
+            print(result.stdout)
+            print(f"\n\n➡️  stderr de execução de {submission_program}:\n\n")
+            print(result.stderr)        
+          # Remove o arquivo temporário, se ele foi criado.
       except subprocess.CalledProcessError as e:
         # This will print the actual error from the terminal command
         print("❌ Não foi possṕivel executar o comando {submission_program}!")
@@ -468,7 +472,7 @@ def optimize_application(configs_file_path, system_config, applications_config, 
         print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       finally:
         # Se criamos um arquivo temporario, removemos depois de usarmos.
-        if user_args.script is None:
+        if user_args.script is None and user_args.run:
 
           # TODO: Depois podemos remover, se necessário, este código de depuração.
           # TODO: Início.

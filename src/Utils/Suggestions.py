@@ -228,9 +228,9 @@ class DiscoverBestModel:
 			self.cv_results[name] = { 'cv_results': cv_results, 'results_dataframe': cv_results_df}
 
 			if self.verbose:
-				print(f"\n\nModel {name} table:\n")
+				print(f"\n\n➡️  Model {name} table:\n")
 				print(cv_results_df.to_markdown(tablefmt="grid"))
-				print(f"\n\nModel {name} statistics:\n")
+				print(f"\n\n➡️  Model {name} statistics:\n")
 				print(cv_results_df.describe())
 				print("\n\n")
 
@@ -316,19 +316,6 @@ class SuggestionsPredictor:
 		else:
 			self,model_time = None		
 
-#		if 'memory' in estimated_parameters:
-#			if estimated_parameters['memory'] == estimated_parameters['suggestion']:
-#				self.model_memory = self.model	
-#				self.predicted_memory_name = self.predicted_name 
-#				self.y_memory = self.y
-#			else:	
-#				self.model_memory = model(**model_params)
-#				self.predicted_memory_name = estimated_parameters['memory']
-#				self.y_memory = data[self.predicted_memory_name].copy()
-#				self.model_memory.fit(self.X, self.y_memory)
-#		else:
-#			self.model_memory = None		
-			
 		# Salva o dataframe usado para treinar o modelo.
 		colunms_names = list(set(suggestion_names+application_names+user_names+list(estimated_parameters.values())))
 		self.dataset = data[colunms_names].copy()
@@ -343,25 +330,20 @@ class SuggestionsPredictor:
 		self.user_params = {col: list(data[col].unique()) for col in user_names}
 		
 		if verbose:
-			print(f"Suggestion params used in training: {self.suggestion_params}")
-			print(f"Application params used in training: {self.application_params}")
-			print(f"User params used in training: {self.user_params}")
-			print(f"Model predicted variable for suggestions: {self.predicted_name}")
+			print(f"➡️  Parâmetros de sugestão usados no treinamento: {self.suggestion_params}")
+			print(f"➡️  Parâmetros de aplicação usados no treinamento: {self.application_params}")
+			print(f"➡️  Parâmetros de usuário usados no treinamento: {self.user_params}")
+			print(f"➡️  Variável alvo do modelo auxiliar usado na escolha da melor sugestão: {self.predicted_name}")
 			if not self.predicted_time_name is None:
-				print(f"Model predicted variable for predcting time for suggestions: {self.predicted_time_name}")
-			#if not self.predicted_memory_name is None:
-			#	print(f"Model predicted variable for predction memory for : {self.predicted_memory_name}")
-			print("X used in training:\n")
+				print(f"➡️  Varíavel alvo do modelo predizer o tempo da melhor sugestão: {self.predicted_time_name}")
+			print("➡️  X usado no treinamento dos modelos:\n")
 			print(self.X.to_markdown(tablefmt="grid", floatfmt=".2f" ))
-			print("\n\ny used in training:\n")
+			print("\n\n➡️  y usado no treinamento do modelo auxiliar:\n")
 			print(self.y.to_markdown(tablefmt="grid", floatfmt=".2f"))
 			if not self.model_time is None:
-				print("\n\ny used in time predictor:\n")
+				print("➡️  \n\ny usado pelo modelo para a predição dos tempos:\n")
 				print(self.y_time.to_markdown(tablefmt="grid", floatfmt=".2f"))
-			#if not self.model_memory is None:
-			#	print("\n\ny used in memory predictor:\n")
-			#	print(self.y_memory.to_markdown(tablefmt="grid", floatfmt=".2f"))
-			print("\n\nDataframe using all application variables:\n")
+			print("➡️  \n\nDataframe contendo todas as variáceis usadas nos treinamentos:\n")
 			print(data.to_markdown(tablefmt="grid", floatfmt=".2f"))
 			print("\n\n")
 			
@@ -371,17 +353,16 @@ class SuggestionsPredictor:
 		# Calcula o dataset do oraculo.
 		df_aux = self.dataset.groupby(self.suggestion_names+self.user_names)[self.predicted_name].median().reset_index()
 		if verbose:
-			print(f"\n\nMedian of variable {self.predicted_name} for all repetitions for each combination of variables {self.suggestion_names+self.user_names}\n")
+			print(f"\n\n➡️  Medianas da variável {self.predicted_name} para todas as repetições de cada combinação dos valores das variáveis {self.suggestion_names+self.user_names}\n")
 			df_aux.to_markdown(tablefmt="grid", floatfmt=".2f")
-			print("\n\n")
 		df_oracle = df_aux.groupby(self.user_names).apply(lambda x: x[x[self.predicted_name] == x[self.predicted_name].min()], include_groups=False)
 		if verbose:
-			print("Oracle dataset")
+			print("\n\n➡️  Dataframe do oráculo\n\n")
 			df_oracle.to_markdown(tablefmt="grid", floatfmt=".2f")
 
 		return df_oracle
 	
-	def get_importances(self):
+	def get_importances(self, verbose=True):
 		if self.model is None:
 			raise ValueError("The model hasn't been trained yet!")
 		
@@ -395,10 +376,16 @@ class SuggestionsPredictor:
 			importances_dict = {
 				'names': importances_names,
 				'values': importances
-			}		
-
+			}
 			importances_df = pd.DataFrame(importances_dict)	
+
+			if verbose:
+				print(f"➡️  Diciońario com as importâncias: {importances_dict}\n\n")		
+				print("\n\n➡️  Dataframe das importâncias\n\n")
+				importances_df.to_markdown(tablefmt="grid", floatfmt=".2f")
 		else:		
+			if verbose:
+				print("➡️  O estimador usado não define as importâncias das variáveis!")		
 			importances_df = None
 		
 		return importances_df
@@ -426,7 +413,7 @@ class SuggestionsPredictor:
 		X = X[self.X.columns]	
    	
 		if verbose:
-			print(f"X used when prediting {self.predicted_name} for all possible suggestions:\n")	
+			print(f"➡️  X usado quando foi predito todos os valores da variável alvo {self.predicted_name} para todas as possíveis sugestões:\n")	
 			print(X.to_markdown(tablefmt="grid", floatfmt=".2f"))
 			print("\n\n")
 
@@ -434,7 +421,7 @@ class SuggestionsPredictor:
 		y_pred = self.model.predict(X)
 
 		if verbose:
-			print(f"Prediced y when prediting {self.predicted_name} for all possible suggestions:\n")	
+			print(f"➡️  y predito da variável alvo {self.predicted_name} para todas as possíveis sugestões:\n")	
 			print(pd.Series(y_pred).to_markdown(tablefmt="grid", floatfmt=".2f"))
 
 		return (y_pred, X)
@@ -447,8 +434,7 @@ class SuggestionsPredictor:
 		y_pred_posmin = y_pred.argmin()
 		y_pred_min = y_pred.min()
 		if verbose:
-			#print(f"y_pred para os seguintes parâmetros da aplicação: {user_params}")
-			print(f"mininum y_pred for application params {user_applicaion_params}: {y_pred_min} in position {y_pred_posmin} of y_preed")
+			print(f"y mínimo predito para os parâmetros da aplicação {user_applicaion_params}: {y_pred_min} está na posição {y_pred_posmin} do vetor de predições!")
 		# A sugestão será a configuração associada ao menor valor da variável predita.	
 		y_suggestion = X.loc[y_pred_posmin,self.suggestion_names].to_dict()
 		
@@ -462,13 +448,14 @@ class SuggestionsPredictor:
 			X_dict_aux = y_suggestion | user_applicaion_params
 			X_aux = pd.DataFrame(X_dict_aux, index=[0])
 			if verbose:
-				print(f"Auxiliary X used when prediction time and/or memory for the best suggestion {y_suggestion}, using {user_applicaion_params}\n")
+				print(f"➡️  X auxiliar usado ao predizer a o tempo da melhor sugestão {y_suggestion}, using {user_applicaion_params}\n")
 				print(X_aux.to_markdown(tablefmt="grid", floatfmt=".2f"))
+				print("\n\n")
 			if not self.model_time is None:
 				y_time = self.model_time.predict(X_aux)
 				info_suggestion["Time"] = y_time[0]
 				if verbose:	
-					print(f"\n\nMaximum execution time for best suggestion {y_suggestion}, using {user_applicaion_params}: {y_time[0]}") 
+					print(f"➡️  Tempo de execução predito para a melhor configuração {y_suggestion}, using {user_applicaion_params}: {y_time[0]}") 
 
 		return info_suggestion	                     	
 
@@ -483,7 +470,7 @@ class SuggestionsPredictor:
 		for idx in user_applications_params_df.index:
 			user_params = user_applications_params_df.loc[idx].to_dict()
 			if verbose:
-				print(f"Definindo a sugestão para os parâmetros {user_params} do usuário")
+				print(f"➡️  Definindo a sugestão para os parâmetros {user_params} do usuário")
 			info_suggestion = self.get_suggestion(user_params, custom_suggestions_params, verbose)
 			info_suggestions.append(info_suggestion)
 
@@ -517,20 +504,18 @@ class SuggestionsPredictor:
 			formatted_suggestion = ", ".join(f"{k}={v}" for k, v in info_suggestion['Suggestion'].items())
 		else:
 			formatted_suggestion = ", ".join(f"{suggestion_map[k]}={v}" for k, v in info_suggestion['Suggestion'].items())	
-		print(f"Suggestion: {formatted_suggestion}")
+		print(f"➡️  Sugestão: {formatted_suggestion}")
 		if show_time:
 			if 'Time' in info_suggestion:
-				print(f"Suggested time: {info_suggestion['Time']} s")
-			if 'Memory' in info_suggestion:
-				print(f"Suggested memory: {info_suggestion['Memory']} Kb")
+				print(f"➡️  Tempo para a sugestão: {info_suggestion['Time']} s")
 		if show_score:
-			print(f"Score: {info_suggestion['Score']}")
+			print(f"➡️  Pontuação da sugestão: {info_suggestion['Score']}")
 		if show_X:
-			print('X used in predictions when choosing the best suggetstion:\n')
+			print('➡️  X usado nas predições feitas quando estavamos escolhendo a malhor sugestão:\n')
 			print(info_suggestion['X'].to_markdown(tablefmt="grid", floatfmt=".2f"))
 			print("\n\n")
 		if show_y_pred:
-			print(f"Predicetd y used when choosing the best suggetstion, mininum {info_suggestion['y_pred_minimum']} in position {info_suggestion['y_pred_minimum_position']}:\n")
+			print(f"➡️  y pedito usado para escolher a melhor sugestão, sendo que o mínimo {info_suggestion['y_pred_minimum']} está na posição {info_suggestion['y_pred_minimum_position']}:\n")
 			print(info_suggestion['y_pred'].to_markdown(tablefmt="grid", floatfmt=".2f"))
 			print("\n\n")
 		

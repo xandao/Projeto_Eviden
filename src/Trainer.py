@@ -166,7 +166,7 @@ def train_command(applications_name, applications_config, training_config, syste
         print(f'--> Oracle dataframe:\n\n')
         oracle_df = predictor.get_oracle()
         print(oracle_df.to_markdown(tablefmt="grid", floatfmt=".2f"))
-        importances_df = predictor.get_importances()
+        importances_df = predictor.get_importances(verbose=verbose)
         if not importances_df is None:
           print(f'\n\n--> Predictor importances dataframe:\n\n')
           print(importances_df.to_markdown(tablefmt="grid", floatfmt=".2f"))
