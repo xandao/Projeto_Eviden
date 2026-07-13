@@ -50,7 +50,7 @@ class ReadSystemConfig:
     self.system_config = None
     self.verbose = verbose
 
-  def read_system_config(self, system_config_path: Path) -> dict | None:
+  def read_system_config(self, system_config_path):
     """
     Função para ler o arquivo de configuração do script do usuário do
     arquivo passado como parâmetro.
@@ -323,7 +323,7 @@ class ReadApplicationsConfigs:
     self.applications_config = None
     self.verbose = verbose
 
-  def read_applications_config(self, applications_config_dir: Path) -> dict | None:
+  def read_applications_config(self, applications_config_dir):
     """
     Função para ler o arquivo de configuração com as configurações
     do treinamento de cada aplicação para a qual treinamos o melhor 
@@ -450,7 +450,7 @@ class ReadUserConfig:
     self.user_config = None
     self.verbose = verbose
 
-  def read_user_config(self, user_config_path: Path) -> dict | None:
+  def read_user_config(self, user_config_path):
     """
     Função para ler o arquivo de configuração do script do usuário do
     arquivo passado como parâmetro.
@@ -539,7 +539,7 @@ class PredictorsInfoConfig:
     self.predictors_info_config = None
     self.verbose = verbose
 
-  def read_predictors_info_config(self, predictors_info_config_path: Path) -> dict | None:
+  def read_predictors_info_config(self, predictors_info_config_path):
     """
     Função para ler o arquivo de configuração do script que mapeia cada
     aplicação ao seu preditor.
@@ -592,7 +592,7 @@ class PredictorsInfoConfig:
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     
-  def save_predictors_info_config(self, predictors_info_config: Path) -> None: 
+  def save_predictors_info_config(self, predictors_info_config): 
     """
     Função para salvar o arquivo de configuração do mapeamento das aplicações,
     comvertendo o dicionário com o mapeamento para o arquivo correspondente

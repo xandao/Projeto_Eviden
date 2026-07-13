@@ -13,7 +13,7 @@ from sklearn.base import BaseEstimator
 from Utils.Common import debug_code
 
 # Item 1: Diferença entre o EDP esperado da configuração sugerida e o EDP esperado da configuração do oráculo dividida pela EDP esperado da configuração do oráculo.
-def min_edp_config_diff(y_true: npt.NDArray[np.float64], y_pred: npt.NDArray[np.float64]) -> float:
+def min_edp_config_diff(y_true, y_pred):
 	"""
 	Função para calcular diferença pondenrada entre o valor mínimo em y_true e o valor 
 	real associado ao menor valor predito em y_true.
@@ -36,7 +36,7 @@ def min_edp_config_diff(y_true: npt.NDArray[np.float64], y_pred: npt.NDArray[np.
 
 	return (y_expected_min - y_true_min) / y_true_min
 
-def train_min_edp_config_diff(trained_estimator: BaseEstimator, X_test: pd.DataFrame, y_test: pd.Series) -> float:
+def train_min_edp_config_diff(trained_estimator, X_test, y_test):
 	"""
 	Função para fazer a predição e depois calcular diferença pondenrada entre o valor mínimo em y_true e o valor 
 	real associado ao menor valor predito em y_true usando a função min_edp_config_diff.
