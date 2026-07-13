@@ -1,14 +1,17 @@
-✅ Sucess: File system_config.json is a valid system config file!
-✅ Sucess: File raxml-sscad-time_config.json is a valid training config file!
-✅ Sucess: File raxml_config.json is a valid training config file!
-✅ Sucess: File ntb_config.json is a valid training config file!
-✅ Sucess: File raxml-sscad_config.json is a valid training config file!
-✅ Sucess: Files in applications applications config directory are all valid application scripts!
-✅ Sucess: File user_config.json is a valid applications config file!
-✅ Sucess: File predictors_info.json is a valid predictors config file!
-X used when prediting EDP for all possible suggestions:
+✅ Arquivo system_config.json é um arquivo válido de configuração do sistema e foi carregado com sucesso!
+✅ Arquivo raxml-sscad-time_config.json é um arquivo válido de configuração de uma aplicação e foi carregado com sucesso!
+✅ Arquivo raxml_config.json é um arquivo válido de configuração de uma aplicação e foi carregado com sucesso!
+✅ Arquivo ntb_config.json é um arquivo válido de configuração de uma aplicação e foi carregado com sucesso!
+✅ Arquivo raxml-sscad_config.json é um arquivo válido de configuração de uma aplicação e foi carregado com sucesso!
+✅ Todos os arquicos applications do diretório com as confugurações das aplicações são válidos e foram lidos!
+✅ Arquivo user_config.json é um arquivo válido de configuração do script do usuário e foi carregado com sucesso!
+✅ Arquivo predictors_info.json é um arquivo válido de configuração dos preditores e foi carregado com sucesso!
+➡️  Sugestão: nodes=4, process=2, threads=8
+➡️  Tempo para a sugestão: 5.48 s
+➡️  Pontuação da sugestão: 11446.52
+➡️  X usado nas predições feitas quando estavamos escolhendo a malhor sugestão:
 
-+-----+----------+------------------+-------------------+-------------+-----------+
+ +-----+----------+------------------+-------------------+-------------+-----------+
 |     |   NNodes |   Processo p/ no |   Thread p/ proc. |   Bootstrap |   Tamanho |
 +=====+==========+==================+===================+=============+===========+
 |   0 |     1.00 |             1.00 |              4.00 |      100.00 | 231143.00 |
@@ -280,14 +283,12 @@ X used when prediting EDP for all possible suggestions:
 | 133 |     4.00 |             2.00 |             22.00 |      100.00 | 231143.00 |
 +-----+----------+------------------+-------------------+-------------+-----------+
 | 134 |     4.00 |             2.00 |             24.00 |      100.00 | 231143.00 |
-+-----+----------+------------------+-------------------+-------------+-----------+
++-----+----------+------------------+-------------------+-------------+-----------+ 
 
+➡️  y predito usado para escolher a melhor sugestão, sendo que o mínimo 11446.524913454205 está na posição 126:
 
-
-Prediced y when prediting EDP for all possible suggestions:
-
-+-----+-----------+
-|     |         0 |
+ +-----+-----------+
+|     |       EDP |
 +=====+===========+
 |   0 |  48155.61 |
 +-----+-----------+
@@ -558,22 +559,10 @@ Prediced y when prediting EDP for all possible suggestions:
 | 133 |  23174.11 |
 +-----+-----------+
 | 134 |  34731.91 |
-+-----+-----------+
-mininum y_pred for application params {'Bootstrap': 100, 'Tamanho': 231143}: 11446.524913454205 in position 126 of y_preed
-Auxiliary X used when prediction time and/or memory for the best suggestion {'NNodes': 4, 'Processo p/ no': 2, 'Thread p/ proc.': 8}, using {'Bootstrap': 100, 'Tamanho': 231143}
++-----+-----------+ 
 
-+----+----------+------------------+-------------------+-------------+-----------+
-|    |   NNodes |   Processo p/ no |   Thread p/ proc. |   Bootstrap |   Tamanho |
-+====+==========+==================+===================+=============+===========+
-|  0 |     4.00 |             2.00 |              8.00 |      100.00 | 231143.00 |
-+----+----------+------------------+-------------------+-------------+-----------+
+➡️  Script de submissão: 
 
-
-Maximum execution time for best suggestion {'NNodes': 4, 'Processo p/ no': 2, 'Thread p/ proc.': 8}, using {'Bootstrap': 100, 'Tamanho': 231143}: 5.478254448758244
-Suggestion: nodes=4, process=2, threads=8
-Suggested time: 5.478254448758244 s
-Submission script: 
- 
 #!/bin/bash
 #SBATCH --nodes=4
 #SBATCH --ntasks-per-node=2
@@ -607,15 +596,4 @@ srun -n $SLURM_NTASKS -c $SLURM_CPUS_PER_TASK --cpu-bind=$CPU_BIND $EXEC $PARAMS
 
 
 
-stdout of sbatch execution:
-
-
-Submitted batch job 995773
-Program: ../outputs/raxml.sh
-
-
-
-stderr of sbatch execution:
-
-
-
+➡️  Script de submissão ../outputs/raxml.sh criado com sucesso!

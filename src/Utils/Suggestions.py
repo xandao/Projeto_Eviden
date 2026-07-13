@@ -228,11 +228,10 @@ class DiscoverBestModel:
 			self.cv_results[name] = { 'cv_results': cv_results, 'results_dataframe': cv_results_df}
 
 			if self.verbose:
-				print(f"\n\n➡️  Model {name} table:\n")
-				print(cv_results_df.to_markdown(tablefmt="grid"))
-				print(f"\n\n➡️  Model {name} statistics:\n")
-				print(cv_results_df.describe())
-				print("\n\n")
+				print(f"➡️  Model {name} table:")
+				print("\n", cv_results_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
+				print(f"➡️  Model {name} statistics:")
+				print("\n", cv_results_df.describe().to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
 
 			self.results_df = pd.concat([self.results_df, cv_results_df])
 
@@ -334,18 +333,17 @@ class SuggestionsPredictor:
 			print(f"➡️  Parâmetros de aplicação usados no treinamento: {self.application_params}")
 			print(f"➡️  Parâmetros de usuário usados no treinamento: {self.user_params}")
 			print(f"➡️  Variável alvo do modelo auxiliar usado na escolha da melor sugestão: {self.predicted_name}")
-			if not self.predicted_time_name is None:
+			if self.predicted_time_name is not None:
 				print(f"➡️  Varíavel alvo do modelo predizer o tempo da melhor sugestão: {self.predicted_time_name}")
-			print("➡️  X usado no treinamento dos modelos:\n")
-			print(self.X.to_markdown(tablefmt="grid", floatfmt=".2f" ))
-			print("\n\n➡️  y usado no treinamento do modelo auxiliar:\n")
-			print(self.y.to_markdown(tablefmt="grid", floatfmt=".2f"))
-			if not self.model_time is None:
-				print("➡️  \n\ny usado pelo modelo para a predição dos tempos:\n")
-				print(self.y_time.to_markdown(tablefmt="grid", floatfmt=".2f"))
-			print("➡️  \n\nDataframe contendo todas as variáceis usadas nos treinamentos:\n")
-			print(data.to_markdown(tablefmt="grid", floatfmt=".2f"))
-			print("\n\n")
+			print("➡️  X usado no treinamento dos modelos:")
+			print("\n", self.X.to_markdown(tablefmt="grid", floatfmt=".2f" ), "\n")
+			print("➡️  y usado no treinamento do modelo auxiliar:")
+			print("\n", self.y.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
+			if self.model_time is not None:
+				print("➡️  y usado pelo modelo para a predição dos tempos:")
+				print("\n", self.y_time.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
+			print("➡️  Dataframe contendo todas as variáceis usadas nos treinamentos:")
+			print("\n", data.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
 			
 		return self 		
 		
@@ -353,12 +351,12 @@ class SuggestionsPredictor:
 		# Calcula o dataset do oraculo.
 		df_aux = self.dataset.groupby(self.suggestion_names+self.user_names)[self.predicted_name].median().reset_index()
 		if verbose:
-			print(f"\n\n➡️  Medianas da variável {self.predicted_name} para todas as repetições de cada combinação dos valores das variáveis {self.suggestion_names+self.user_names}\n")
-			df_aux.to_markdown(tablefmt="grid", floatfmt=".2f")
+			print(f"➡️  Medianas da variável {self.predicted_name} para todas as repetições de cada combinação dos valores das variáveis {self.suggestion_names+self.user_names}:")
+			print("\n", df_aux.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
 		df_oracle = df_aux.groupby(self.user_names).apply(lambda x: x[x[self.predicted_name] == x[self.predicted_name].min()], include_groups=False)
 		if verbose:
-			print("\n\n➡️  Dataframe do oráculo\n\n")
-			df_oracle.to_markdown(tablefmt="grid", floatfmt=".2f")
+			print("➡️  Dataframe do oráculo:")
+			print("\n", df_oracle.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
 
 		return df_oracle
 	
@@ -380,9 +378,9 @@ class SuggestionsPredictor:
 			importances_df = pd.DataFrame(importances_dict)	
 
 			if verbose:
-				print(f"➡️  Diciońario com as importâncias: {importances_dict}\n\n")		
-				print("\n\n➡️  Dataframe das importâncias\n\n")
-				importances_df.to_markdown(tablefmt="grid", floatfmt=".2f")
+				print(f"➡️  Diciońario com as importâncias: {importances_dict}")		
+				print("➡️  Dataframe das importâncias")
+				print("\n", importances_df.to_markdown(tablefmt="grid", floatfmt=".2f"))
 		else:		
 			if verbose:
 				print("➡️  O estimador usado não define as importâncias das variáveis!")		
@@ -413,16 +411,15 @@ class SuggestionsPredictor:
 		X = X[self.X.columns]	
    	
 		if verbose:
-			print(f"➡️  X usado quando foi predito todos os valores da variável alvo {self.predicted_name} para todas as possíveis sugestões:\n")	
-			print(X.to_markdown(tablefmt="grid", floatfmt=".2f"))
-			print("\n\n")
+			print(f"➡️  X usado quando foi predito todos os valores da variável alvo {self.predicted_name} para todas as possíveis sugestões:")	
+			print("\n", X.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
 
 		# Faz a predição para o X_aux.
 		y_pred = self.model.predict(X)
 
 		if verbose:
-			print(f"➡️  y predito da variável alvo {self.predicted_name} para todas as possíveis sugestões:\n")	
-			print(pd.Series(y_pred).to_markdown(tablefmt="grid", floatfmt=".2f"))
+			print(f"➡️  y predito da variável alvo {self.predicted_name} para todas as possíveis sugestões:")	
+			print("\n", pd.Series(y_pred).to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
 
 		return (y_pred, X)
 	
@@ -444,23 +441,25 @@ class SuggestionsPredictor:
 		info_suggestion = {"Suggestion": y_suggestion, "Score": y_pred_min, "X": X, "y_pred": y_pred_s, "y_pred_minimum": y_pred_min, "y_pred_minimum_position": y_pred_posmin}
 
 		# Verifica se podemos predizer o tempo de execução e/ou o consumo de memória
-		if not self.model_time is None:
+		if self.model_time is not None:
 			X_dict_aux = y_suggestion | user_applicaion_params
 			X_aux = pd.DataFrame(X_dict_aux, index=[0])
 			if verbose:
-				print(f"➡️  X auxiliar usado ao predizer a o tempo da melhor sugestão {y_suggestion}, using {user_applicaion_params}\n")
-				print(X_aux.to_markdown(tablefmt="grid", floatfmt=".2f"))
-				print("\n\n")
-			if not self.model_time is None:
-				y_time = self.model_time.predict(X_aux)
-				info_suggestion["Time"] = y_time[0]
-				if verbose:	
-					print(f"➡️  Tempo de execução predito para a melhor configuração {y_suggestion}, using {user_applicaion_params}: {y_time[0]}") 
+				print(f"➡️  X auxiliar usado ao predizer a o tempo da melhor sugestão {y_suggestion}, using {user_applicaion_params}:")
+				print("\n", X_aux.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
+
+      # Fazendo a predição do tempo.
+			y_time = self.model_time.predict(X_aux)
+
+      # Obtendo o tempo predito.
+			info_suggestion["Time"] = y_time[0]
+			if verbose:	
+				print(f"➡️  Tempo de execução predito para a melhor configuração {y_suggestion}, using {user_applicaion_params}: {y_time[0]}") 
 
 		return info_suggestion	                     	
 
 	def get_suggestions(self, user_applications_params_df, custom_suggestions_params=None, verbose=False):
-		if not type(user_applications_params_df) is pd.DataFrame:
+		if not isinstance(user_applications_params_df, pd.DataFrame):
 			raise ValueError("Invalid input user_params_df provided, not a Pandas DataFrame.")
 		if not pd.Index(self.application_names).isin(user_applications_params_df.columns).all():
 			raise KeyError(f"Invalid input user_params_df provided, not all {self.application_names} user params exists in user predictions dataset.")
@@ -499,7 +498,7 @@ class SuggestionsPredictor:
 
 	@classmethod
 	def print_suggestion(cls, info_suggestion, show_score=False, show_X=False, show_y_pred=False, 
-											 show_time=False, show_memory=False, suggestion_map=None):
+											 show_time=False, suggestion_map=None):
 		if suggestion_map is None:
 			formatted_suggestion = ", ".join(f"{k}={v}" for k, v in info_suggestion['Suggestion'].items())
 		else:
@@ -507,17 +506,15 @@ class SuggestionsPredictor:
 		print(f"➡️  Sugestão: {formatted_suggestion}")
 		if show_time:
 			if 'Time' in info_suggestion:
-				print(f"➡️  Tempo para a sugestão: {info_suggestion['Time']} s")
+				print(f"➡️  Tempo para a sugestão: {info_suggestion['Time']:.2f} s")
 		if show_score:
-			print(f"➡️  Pontuação da sugestão: {info_suggestion['Score']}")
+			print(f"➡️  Pontuação da sugestão: {info_suggestion['Score']:.2f}")
 		if show_X:
-			print('➡️  X usado nas predições feitas quando estavamos escolhendo a malhor sugestão:\n')
-			print(info_suggestion['X'].to_markdown(tablefmt="grid", floatfmt=".2f"))
-			print("\n\n")
+			print('➡️  X usado nas predições feitas quando estavamos escolhendo a malhor sugestão:')
+			print("\n", info_suggestion['X'].to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
 		if show_y_pred:
-			print(f"➡️  y pedito usado para escolher a melhor sugestão, sendo que o mínimo {info_suggestion['y_pred_minimum']} está na posição {info_suggestion['y_pred_minimum_position']}:\n")
-			print(info_suggestion['y_pred'].to_markdown(tablefmt="grid", floatfmt=".2f"))
-			print("\n\n")
+			print(f"➡️  y predito usado para escolher a melhor sugestão, sendo que o mínimo {info_suggestion['y_pred_minimum']} está na posição {info_suggestion['y_pred_minimum_position']}:")
+			print("\n", info_suggestion['y_pred'].to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
 		
 	@classmethod
 	def load_predictor(cls, file_name):

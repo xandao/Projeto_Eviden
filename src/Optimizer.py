@@ -76,7 +76,7 @@ Exemplos: -n 1 2:24:2 -> Threads: 1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24
           -n 2 :24:8  -> Threads: 2, 24, 32, 40, 48.
           -n 2 24 48  -> Threads: 2, 24, 48.  
                       '''))
-  opcoes.add_argument("-v", "--verbose", action="store_true", default=False, help="Habilida a verbosidade do script.")
+  opcoes.add_argument("-v", "--verbose", action="store_true", default=False, help="Habilita a verbosidade do script.")
   opcoes.add_argument("-l", "--list", action="store_true", default=False, help="Lista as aplicações cujas execuções podem ser otimizadas pelo script.")
   ajuda.add_argument("-h", "--help", action="help", help="Mostra esta mensagem de ajuda e sai")
   # Divide os parâmetros do script e da aplicação (separados por "--").
@@ -171,7 +171,7 @@ def convert_user_params(required_applicaion_params, conversions, application_con
       # TODO: Podemos tirar todas as depurações no futuro.
       # TODO: Ínicio do código de depuração:
       if debug_code:
-        print(f"🪲  Dataframe de mapeamento {dataframe_map_file_name}: \n\n")
+        print(f"➡️  Dataframe de mapeamento {dataframe_map_file_name}: \n\n")
         print(df_map.to_markdown(tablefmt="grid"))
       # TODO: Fim do código de depuração.
         
@@ -325,22 +325,28 @@ def optimize_application(configs_file_path, system_config, applications_config, 
     required_applicaion_params, other_applicatios_params = parser_application.parse_known_args(application_args[1:])
 
     # Verifica se o usuário usou as opções número de nós, de processos por nó, e de threads por processo.
-    custom_suggestions = None
+    # Primeiramemte verifica se o usuário definiu alguma das opções de configuração;
+    use_custom_config = False
     for suggestion_name in applications_config[application_id]['user']['suggestions_map']:
       if not hasattr(user_args, suggestion_name):
         print(f"❌ A configuração necessário {suggestion_name} não existe nas opções do script para a aplcação {application_id}.")
         print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
         return False
-      else:  
+      elif getattr(user_args, suggestion_name) is not None:
+        use_custom_config = True
+    # Se o usuário definir pelo menos uma opção, usa a configuração customizada com as outras opções com valores defaault se não definidas
+    # pelo usuário.    
+    if use_custom_config:
+      custom_suggestions = {}
+      for suggestion_name in applications_config[application_id]['user']['suggestions_map']:
         suggestion_value = getattr(user_args, suggestion_name)
         custom_params = get_options_suggestion(suggestion_value)
         if custom_params is None:
           print(f"❌ Erro de sintaxe ao processar a opção --{suggestion_name} com o valor {suggestion_value}!")
           return False
-        if custom_suggestions is None:
-          custom_suggestions = {}
         custom_suggestions[applications_config[application_id]['user']['suggestions_map'][suggestion_name]] = custom_params
-
+    else:  
+      custom_suggestions = None
     # Processa os patâmetros usados pela aplicação para o preditor. 
     user_application_params = convert_user_params(required_applicaion_params, applications_config[application_id]['user']['conversions'], 
                                                   application_configs_dir_path)  
@@ -359,7 +365,8 @@ def optimize_application(configs_file_path, system_config, applications_config, 
     # Obtém o caminho do arquivo de template, se as opçoes. 
     if user_args.run or not user_args.suggestion:
       if user_args.verbose:
-        SuggestionsPredictor.print_suggestion(suggestion, suggestion_map=reversed_suggestions_map, show_time=True, show_memory=True)
+        SuggestionsPredictor.print_suggestion(suggestion, suggestion_map=reversed_suggestions_map, show_time=True,
+                                              show_score=True, show_X=True, show_y_pred=True)
 
       # Cria o dicionário com as informações para construir o script de submissão (fiz o dicionário para tornar a função
       # independente de como os parâmetros são gerados).
@@ -415,7 +422,7 @@ def optimize_application(configs_file_path, system_config, applications_config, 
           # TODO: Depois podemos remover, se necessário, este código de depuração.
           # TODO: Início.
           if debug_code:
-            print(f"🪲  Arquivo temporário {script_file_name} criado para armazenar o script de submissão.")
+            print(f"➡️  Arquivo temporário {script_file_name} criado para armazenar o script de submissão.")
           # TODO: Fim  
         except IOError as e:
           print(f"❌ Não foi possível criar o arquivo temporário. {e.filename}")
@@ -450,8 +457,8 @@ def optimize_application(configs_file_path, system_config, applications_config, 
           # TODO: Depois podemos remover, se necessário, este código de depuração.
           # TODO: Início.
           if debug_code:
-            print(f"🪲  O código de retorno da execução do programa de submissão {submission_program} foi {result}")
-            print("🪲  O campo returncode do objeto CompletedProcess deveria ser 0, pois um valor diferente de 0 deveria gerar a exceção subprocess.CalledProcessError.")
+            print(f"➡️  O código de retorno da execução do programa de submissão {submission_program} foi {result}")
+            print("➡️  O campo returncode do objeto CompletedProcess deveria ser 0, pois um valor diferente de 0 deveria gerar a exceção subprocess.CalledProcessError.")
           # TODO: Fim  
   
           # Imprime a saída da execução do programa de submissão do script.
@@ -477,20 +484,20 @@ def optimize_application(configs_file_path, system_config, applications_config, 
           # TODO: Depois podemos remover, se necessário, este código de depuração.
           # TODO: Início.
           if debug_code:
-            print(f"🪲  Tentando remover o arquivo temporário {script_file_name}.")
+            print(f"➡️  Tentando remover o arquivo temporário {script_file_name}.")
           # TODO: Fim  
           try:
             if os.path.exists(script_file_name):
               os.remove(script_file_name)    
             if debug_code:
-              print(f"🪲  Arquivo temporário {script_file_name} removido com sucesso.")
+              print(f"➡️  Arquivo temporário {script_file_name} removido com sucesso.")
           except OSError as e:
-              if debug_code:
-                print(f"🪲  Não foi possível remover o arquivo {e.filename}")
-                print(f"🪲  Código do erro: {e.errno}; Mensagem: {e.strerror}!")
-                print(f"🪲  Por favor, reporte este erro ao adminstrador do sistema!")
+            if debug_code:
+              print(f"➡️  Não foi possível remover o arquivo {e.filename}")
+              print(f"➡️  Código do erro: {e.errno}; Mensagem: {e.strerror}!")
     else:
-      SuggestionsPredictor.print_suggestion(suggestion, suggestion_map=reversed_suggestions_map)
+      SuggestionsPredictor.print_suggestion(suggestion, suggestion_map=reversed_suggestions_map, show_score=user_args.verbose, 
+                                            show_X=user_args.verbose, show_y_pred=user_args.verbose, show_time=user_args.verbose)
 
     return True
 
