@@ -159,7 +159,7 @@ class ReadTrainingConfig:
     self.training_config = None
     self.verbose = verbose
 
-  def read_training_config(self, training_config_path: Path) -> dict | None:
+  def read_training_config(self, training_config_path):
     """
     Função para ler o arquivo de configuração com as configurações
     do treinamento dos modelos, usado pelo script de treinamento.
