@@ -1,6 +1,6 @@
 {
-	"predictors_path": "../predictors",
-	"templates_path": "../templates",
-	"dataset_path": "../data",
-	"predictors_info_config_filename": "predictors_info.json"
+  "predictors_path": "predictors",
+  "templates_path": "templates",
+  "dataset_path": "data",
+  "predictors_info_config_filename": "predictors_info.json"
 }

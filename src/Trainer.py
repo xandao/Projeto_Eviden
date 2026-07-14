@@ -6,10 +6,15 @@ import argparse
 import sys
 from pathlib import Path
 from functools import partial
-from Utils.Common import configs_file_path, debug_code
+from Utils.Common import base_files_path, configs_files_dir, debug_code
 
 def read_configs(verbose=False):
   # Lê os as variáveis gerais.
+  if base_files_path is None:
+    print("❌ Variável de ambiente APPOPTIMIZER_BASE_DIR com o caminho da base dos scripts não foi definida")
+    return None, None, None, None
+  else:
+    configs_file_path = base_files_path / configs_files_dir
   system_config_file_path = configs_file_path / 'system_config.json'
   system_config = ReadSystemConfig(verbose).read_system_config(system_config_file_path)
 
@@ -53,11 +58,11 @@ def models_command(training_config):
 
 def train_command(applications_name, applications_config, training_config, system_config, verbose=False):
   # Define o caminho do diretório com os arquivos dos preditores e do arquivo de configuração.
-  predictors_file_path = Path(system_config['predictors_path'])
+  predictors_file_path = base_files_path / Path(system_config['predictors_path'])
   # Lê as configurações que associam cada preditor a aplicação correspondente,
-  predictors_info_file_parh = predictors_file_path / system_config["predictors_info_config_filename"]
+  predictors_info_file_path = predictors_file_path / system_config["predictors_info_config_filename"]
   predictors_info_config_obj = PredictorsInfoConfig()
-  predictors_info_config = predictors_info_config_obj.read_predictors_info_config(predictors_info_file_parh)
+  predictors_info_config = predictors_info_config_obj.read_predictors_info_config(predictors_info_file_path)
   if predictors_info_config is None:
     return False
   
@@ -80,7 +85,7 @@ def train_command(applications_name, applications_config, training_config, syste
       dados = pd.DataFrame()
 
       for nome_arquivo in application_info['training']['dataset_files']:
-        nome_arquivo_completo = Path(system_config['dataset_path']) / nome_arquivo
+        nome_arquivo_completo = base_files_path / Path(system_config['dataset_path']) / nome_arquivo
         dados_arquivo = pd.read_csv(nome_arquivo_completo, usecols=variaveis_de_entrada+
                                                                    variaveis_do_filtro+
                                                                    list(variaveis_das_predicoes.values()))
@@ -202,7 +207,7 @@ def execute_commands(command, applications_configs, training_config, system_conf
    commands_dict[command[0]]()
    return True
  else:  
-  print("Invalid {command[0]} command!")
+  print("Comando {command[0]} inválido!")
   return False
     
 # Processa os parâmetros do script.
@@ -211,7 +216,7 @@ command, verbose, parser = process_script_args()
 # Lê as configuraçoes;
 configs_file_path, applications_configs, training_config, system_config  = read_configs(verbose)
 if applications_configs is None or training_config is None or system_config is None:
-  print("❌ Error when reading one of the confoigurations!")
+  print("❌ Erro ao ler uma das configurações!")
   exit(-1)
 # Executa os comandos do script.
 

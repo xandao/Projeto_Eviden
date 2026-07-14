@@ -8,12 +8,17 @@ from pathlib import Path
 import os
 from functools import partial
 import subprocess
-from Utils.Common import configs_file_path, debug_code
+from Utils.Common import base_files_path, configs_files_dir, debug_code
 import textwrap
 import tempfile
 
 def read_configs(verbose=False):
   # Lê as variáveis gerais.
+  if base_files_path is None:
+    print("❌ Variável de ambiente APPOPTIMIZER_BASE_DIR com o caminho da base dos scripts não foi definida")
+    return None, None, None, None, None
+  else:
+    configs_file_path = base_files_path / configs_files_dir
   system_config_file_path = configs_file_path / 'system_config.json'
   system_config = ReadSystemConfig(verbose).read_system_config(system_config_file_path)
 
@@ -29,7 +34,7 @@ def read_configs(verbose=False):
   if system_config is None:
     predictors_info_config = None
   else:
-    predictors_info_file_parh = Path(system_config["predictors_path"]) / system_config["predictors_info_config_filename"]
+    predictors_info_file_parh = base_files_path / Path(system_config["predictors_path"]) / system_config["predictors_info_config_filename"]
     predictors_info_config = PredictorsInfoConfig(verbose).read_predictors_info_config(predictors_info_file_parh)
 
   return configs_file_path, system_config, applications_configs, user_config, predictors_info_config
@@ -354,7 +359,7 @@ def optimize_application(configs_file_path, system_config, applications_config, 
       return False
 
     # Lê o preditor usado para fazer a melhor sugestão dos parâmetros de execução da aplicação.
-    predictor_path = Path(system_config['predictors_path']) / predictors_info_config[application_id]
+    predictor_path = base_files_path / Path(system_config['predictors_path']) / predictors_info_config[application_id]
     predictor = SuggestionsPredictor.load_predictor(predictor_path)
     suggestion = predictor.get_suggestion(user_application_params, custom_suggestions, verbose=debug_code)
 
@@ -403,7 +408,7 @@ def optimize_application(configs_file_path, system_config, applications_config, 
       template_params['exclusive'] = partition_used['exclusive']  
 
 
-      template_file_path = Path(system_config['templates_path']) / applications_config[application_id]['user']['script_template_name']
+      template_file_path = base_files_path / Path(system_config['templates_path']) / applications_config[application_id]['user']['script_template_name']
       template_content = generate_submission_script(template_file_path, template_params)
 
       if user_args.verbose:      

@@ -339,48 +339,58 @@ class ReadApplicationsConfigs:
                    ocorreu ao ler ou varificar a sintaxe do arquvo.                                    
     """
     self.applications_config_dir = applications_config_dir  
-    self.applications_config = {}
-    try:
-      for file in Path(applications_config_dir).rglob("*.json"):
-          if file.is_file():
-            with open(file, 'r') as json_file:
-              app_json = json.load(json_file)
+    applications_files = list(Path(applications_config_dir).rglob("*.json"))
+    if applications_files:
+      self.applications_config = {}
+      try:
+        for file in applications_files:
+            if file.is_file():
+              with open(file, 'r') as json_file:
+                app_json = json.load(json_file)
 
-            validate(instance=app_json, schema=ReadApplicationsConfigs.esquema_json)
-            self.applications_config[app_json['name']] = app_json
-            if self.verbose:
-              print(f"✅ Arquivo {file.name} é um arquivo válido de configuração de uma aplicação e foi carregado com sucesso!")
-          else:
-            print(f"⚠️ Ignorando o caminho {file.name} que não é um arquivo válido JSON!")  
-            print(f"⚠️ Por favor, reporte este aviso ao adminstrador do sistema!")
-  
-      if self.verbose:
-        print(f"✅ Todos os arquicos {applications_config_dir.name} do diretório com as confugurações das aplicações são válidos e foram lidos!")
-      return self.applications_config 
+              validate(instance=app_json, schema=ReadApplicationsConfigs.esquema_json)
+              self.applications_config[app_json['name']] = app_json
+              if self.verbose:
+                print(f"✅ Arquivo {file.name} é um arquivo válido de configuração de uma aplicação e foi carregado com sucesso!")
+            else:
+              print(f"⚠️ Ignorando o caminho {file.name} que não é um arquivo válido JSON!")  
+              print(f"⚠️ Por favor, reporte este aviso ao adminstrador do sistema!")
+    
+        if self.verbose:
+          print(f"✅ Todos os arquicos {applications_config_dir.name} do diretório com as confugurações das aplicações são válidos e foram lidos!")
+        return self.applications_config 
         
-    except ValidationError as e:
-    # Quando falha no 'oneOf', ele avisa que não bateu com nenhum molde
-      print(f"❌ Erro ao validar o JSON do arquivo da aplicação {file.name}!")
-      print(f"❌ Detalhes do erro: {e.message}")
-      print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
-      return None
-    except json.JSONDecodeError as e:
-      print(f"❌ O arquivo {file.name} não pode ser lido como um arquivo JSON válido! Erro de sintaxe!")
-      print(f"❌ Detalhes do erro: {e.msg} at line {e.lineno}, column {e.colno}!")
-      print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
-      return None
-    except FileNotFoundError:
-      print(f"❌ O arquivo {file.name} não foi encontrado!")
-      print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
-      return None
-    except PermissionError as e:
-      print(f"❌ Erro de permissão ao acessar o arquivo {file.name}!")
-      print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
-      return None
-    except IOError as e:
-      print(f"❌ Erro de I/O ao ler o arquivo {file.name}!")
-      print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
-      print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+      except ValidationError as e:
+      # Quando falha no 'oneOf', ele avisa que não bateu com nenhum molde
+        print(f"❌ Erro ao validar o JSON do arquivo da aplicação {file.name}!")
+        print(f"❌ Detalhes do erro: {e.message}")
+        print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+        return None
+      except json.JSONDecodeError as e:
+        print(f"❌ O arquivo {file.name} não pode ser lido como um arquivo JSON válido! Erro de sintaxe!")
+        print(f"❌ Detalhes do erro: {e.msg} at line {e.lineno}, column {e.colno}!")
+        print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+        return None
+      except FileNotFoundError:
+        print(f"❌ O arquivo {file.name} não foi encontrado!")
+        print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+        return None
+      except PermissionError as e:
+        print(f"❌ Erro de permissão ao acessar o arquivo {file.name}!")
+        print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+        return None
+      except IOError as e:
+        print(f"❌ Erro de I/O ao ler o arquivo {file.name}!")
+        print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
+        print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+        return None
+    else:
+      if applications_config_dir.is_dir():
+        print(f"❌ O diretório {applications_config_dir} está vazio ou não tem arquivos no formato JSON!")
+        print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+      else:  
+        print(f"❌ O caminho {applications_config_dir} não é de um diretório ou não existe!")
+        print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
  
 class ReadUserConfig:
