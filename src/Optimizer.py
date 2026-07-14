@@ -150,7 +150,7 @@ def get_options_suggestion(suggestion_args):
       return None
   
   # Remove valores duplicados
-  options = list(set(options))
+  options = sorted(list(set(options)))
   return options
 
 def convert_user_params(required_applicaion_params, conversions, application_configs_dir):
@@ -317,7 +317,10 @@ def optimize_application(configs_file_path, system_config, applications_config, 
     if application_id is None:
       print(f"⚠️  A otimização para a aplicação {application_name} ainda não é suportada!")  
       return False
-    
+
+    application_partitios_list = applications_config[application_id]['user']['slurm']
+    names_application_partitioms = {partition['partition'] for partition in application_partitios_list}
+
     # Processa os parâmetros da aplicação.
     parser_application = argparse.ArgumentParser(description="Parser responsável pelos parâmetros da aplicação.", prog=application_name,
                                                  usage="Alo!")
@@ -334,11 +337,12 @@ def optimize_application(configs_file_path, system_config, applications_config, 
     use_custom_config = False
     for suggestion_name in applications_config[application_id]['user']['suggestions_map']:
       if not hasattr(user_args, suggestion_name):
-        print(f"❌ A configuração necessário {suggestion_name} não existe nas opções do script para a aplcação {application_id}.")
+        print(f"❌ A configuração necessária {suggestion_name} não existe nas opções do script para a aplcação {application_id}.")
         print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
         return False
       elif getattr(user_args, suggestion_name) is not None:
         use_custom_config = True
+    
     # Se o usuário definir pelo menos uma opção, usa a configuração customizada com as outras opções com valores defaault se não definidas
     # pelo usuário.    
     if use_custom_config:
@@ -349,6 +353,14 @@ def optimize_application(configs_file_path, system_config, applications_config, 
         if custom_params is None:
           print(f"❌ Erro de sintaxe ao processar a opção --{suggestion_name} com o valor {suggestion_value}!")
           return False
+        max_value_custom_params = max(custom_params)
+        max_possible_value = max([partition[suggestion_name] for partition in application_partitios_list])
+        if max_value_custom_params > max_possible_value:
+          print(f"⚠️  Descantando todos os valores para a opção \033[31m{suggestion_name}\033[0m maiores do que {max_possible_value} "
+                f"permitidos pelas possíveis partições \033[1;34m{', '.join(names_application_partitioms)}\033[0m da aplicação "
+                f"{application_name}!")
+          custom_params = [custom_value for custom_value in custom_params if custom_value <= max_possible_value]                 
+
         custom_suggestions[applications_config[application_id]['user']['suggestions_map'][suggestion_name]] = custom_params
     else:  
       custom_suggestions = None
@@ -367,8 +379,6 @@ def optimize_application(configs_file_path, system_config, applications_config, 
     suggestion_map = applications_config[application_id]['user']['suggestions_map']
     reversed_suggestions_map = {v:k for k, v in suggestion_map.items()}
     suggestion_mapped = {reversed_suggestions_map[k]:v for k,v in suggestion['Suggestion'].items()}
-    print(reversed_suggestions_map)
-    print(suggestion_mapped)
     
     # Obtém o caminho do arquivo de template, se as opçoes. 
     if user_args.run or not user_args.suggestion:
@@ -408,39 +418,15 @@ def optimize_application(configs_file_path, system_config, applications_config, 
         # A partição escolhida será a com menor tempo máximo.
         partition_used = min(valid_partitions_list, key=lambda partition: partition['max_time'] - predicted_time)
       else:   
-        partition_used = max(list_partitions, key=lambda partition: partition['max_time'])
+        # A partição usada será a default (para evitar erros, a partição default deveria ser a com todos os recursos que sugerimos com 
+        # os valores. A list compreension deveria retornar somente um gerador com somente um elemento, obtido com o next, 
+        # pois o validados do JSON deveria impedir mais de uma partição com o dafault igual a true e também todas as partições com 
+        # o default igual a false.
+        partition_used = next([partition for partition in list_partitions if partition["dafault"]])
         # Verifica se o tempo da partição é maior do que o temṕo predito, e sá um aviso se isso ocorrer
         if predicted_time > partition_used['max_time']:
           print(f"⚠️  O tempo predito aproximado {predicted_time} é maior do que o tempo máximo {partition_used['max_time']} de execução da partição {partition_used['partition']}!")
 
-
-#      default_partition = np.argmax([partition['default'] for partition in list_partitions])
-#      if 'Time' in suggestion.keys():
-#        # Aproxima o tempo para o maior tempo inteiro.
-#        predicted_time = np.ceil(suggestion['Time'])
-#        # Descobre quais partições podem executar a aplicação.
-#        valid_partitions_list = []
-#        for partition in list_partitions:
-#          valid_partition = partition['max_time'] >= predicted_time
-#          for suggestion_name in suggestion['Suggestion']:
-#            partition_suggestion_name = reversed_suggestions_map[suggestion_name]
-#            valid_partition = valid_partition and partition[partition_suggestion_name] >= suggestion['Suggestion'][suggestion_name]
-#          if valid_partition:
-#            valid_partitions_list.append(partition)
-#
-#        # Se existirem partições, escolhe a com o menor tempo (portanto, mas próximo do tempo da aplicação, já que todas as partiçoes da lista)
-#        if valid_partitions_list:                                           
-#          # A partição escolhida será a com menor tempo máximo.
-#          partition_used = min(valid_partitions_list, key=lambda partition: partition['max_time'] - predicted_time)
-#        else:   
-#          partition_used = max(list_partitions, key=lambda partition: partition['max_time'])
-#
-#        # Verifica se a partução escolhida tem tempo suficiente para executar o trabalho.  
-#        if predicted_time > partition_used['max_time']:
-#          print(f"⚠️  O tempo predito aproximado {predicted_time} é maior do que o tempo máximo {partition_used['max_time']} de execução da partição {partition_used['partition']}!")
-#      else:
-#        partition_used = list_partitions[default_partition]
-        
       # define os dados para gerar o script de confuguração.
       template_params['partition'] = partition_used['partition']
       template_params['max_time'] = partition_used['max_time']
