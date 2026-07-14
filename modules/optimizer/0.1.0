@@ -9,8 +9,6 @@ proc ModulesHelp { } {
 
 module-whatis "Application optimizer version 0.1.0"
 
-# Set the root directory of your software
-
 # Santos Dumont 1.0
 set basedir "/scratch/cenapadrjsd/alexandre.porto/trainer_and_optmizer"
 # Santos Dumont 2.0
@@ -18,13 +16,10 @@ set basedir "/scratch/cenapadrjsd/alexandre.porto/trainer_and_optmizer"
 
 # Update environment variables
 prepend-path PATH "$basedir/bin"
-setenv MY_APP_DIR "$basedir"
-# Configs base directory
-setenv APPOPTIMIZER_CONFIGS_DIR $basedir/configs
 
-# Update environment variables
-prepend-path PATH "$basedir/bin"
-setenv MY_APP_DIR "$basedir"
+# Configs base directory
+setenv APPOPTIMIZER_BASE_PATH $basedir
+setenv APPOPTIMIZER_CONFIGS_DIR "configs"
 
 # Actions when the module is LOADED
 if { [module-info mode load] } {

@@ -9,8 +9,6 @@ proc ModulesHelp { } {
 
 module-whatis "Predictors creator version 0.1.0"
 
-# Set the root directory of your software
-
 # Santos Dumont 1.0
 set basedir "/scratch/cenapadrjsd/alexandre.porto/trainer_and_optmizer"
 # Santos Dumont 2.0
@@ -18,9 +16,10 @@ set basedir "/scratch/cenapadrjsd/alexandre.porto/trainer_and_optmizer"
 
 # Update environment variables
 prepend-path PATH "$basedir/bin"
-setenv MY_APP_DIR "$basedir"
+
 # Configs base directory
-setenv APPOPTIMIZER_CONFIGS_DIR $basedir/configs
+setenv APPOPTIMIZER_BASE_PATH $basedir
+setenv APPOPTIMIZER_CONFIGS_DIR "configs"
 
 # Actions when the module is LOADED
 if { [module-info mode load] } {
@@ -30,3 +29,4 @@ if { [module-info mode load] } {
 # Actions when the module is UNLOADED
 if { [module-info mode remove] } {
   module unload python/3.9.12_sequana
+}
