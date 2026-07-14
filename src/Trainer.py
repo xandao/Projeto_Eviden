@@ -6,12 +6,12 @@ import argparse
 import sys
 from pathlib import Path
 from functools import partial
-from Utils.Common import base_files_path, configs_files_dir, debug_code
+from Utils.Common import base_files_path_env_name, base_files_path, configs_files_dir, debug_code
 
 def read_configs(verbose=False):
   # Lê os as variáveis gerais.
   if base_files_path is None:
-    print("❌ Variável de ambiente APPOPTIMIZER_BASE_DIR com o caminho da base dos scripts não foi definida")
+    print(f"❌ Variável de ambiente {base_files_path_env_name} com o caminho da base dos scripts não foi definida")
     return None, None, None, None
   else:
     configs_file_path = base_files_path / configs_files_dir

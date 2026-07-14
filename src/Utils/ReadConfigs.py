@@ -251,7 +251,6 @@ class ReadApplicationsConfigs:
           "properties": {
             "suggestion": {"type": "string"},
             "time": {"type": "string"},
-            "memory": {"type": "string"},
           }
         },
         
@@ -289,13 +288,16 @@ class ReadApplicationsConfigs:
                     "type": "array",
                     "items": {
                         "type": "object", 
-                        "required": ["partition", "max_time", "max_memory", "exclusive", "default"],
+                        "required": ["partition", "max_time", "max_memory", "exclusive", "default", "nodes", "process", "threads"],
                         "properties": {
                             "partition": {"type": "string"},
                             "max_time": {"type": "integer"},    
                             "max_memory": {"type": "integer"},   
                             "exclusive": {"type": "boolean"},
-                            "default": {"type": "boolean"}
+                            "default": {"type": "boolean"},
+                            "nodes": {"type": "integer"},    
+                            "process": {"type": "integer"},    
+                            "threads": {"type": "integer"},    
                         },
                     },
                     "contains": {

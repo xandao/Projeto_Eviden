@@ -6,6 +6,8 @@
 ✅ Todos os arquicos applications do diretório com as confugurações das aplicações são válidos e foram lidos!
 ✅ Arquivo user_config.json é um arquivo válido de configuração do script do usuário e foi carregado com sucesso!
 ✅ Arquivo predictors_info.json é um arquivo válido de configuração dos preditores e foi carregado com sucesso!
+{'NNodes': 'nodes', 'Processo p/ no': 'process', 'Thread p/ proc.': 'threads'}
+{'nodes': 4, 'process': 2, 'threads': 8}
 ➡️  Sugestão: nodes=4, process=2, threads=8
 ➡️  Tempo para a sugestão: 5.48 s
 ➡️  Pontuação da sugestão: 11446.52

@@ -41,14 +41,20 @@
         "max_time": 1200,
         "max_memory": 367001600,
         "exclusive": true,
-        "default": true
+        "default": true,
+        "nodes": 4,
+        "process": 2,
+        "threads": 48
       },
       {
         "partition": "sequana_cpu",
         "max_time": 3600,
         "max_memory": 367001600,
         "exclusive": true,
-        "default": false
+        "default": false,
+        "nodes": 20,
+        "process": 2,
+        "threads": 48
       }
     ]
   }

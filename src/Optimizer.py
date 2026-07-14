@@ -8,14 +8,14 @@ from pathlib import Path
 import os
 from functools import partial
 import subprocess
-from Utils.Common import base_files_path, configs_files_dir, debug_code
+from Utils.Common import base_files_path_env_name, base_files_path, configs_files_dir, debug_code
 import textwrap
 import tempfile
 
 def read_configs(verbose=False):
   # Lê as variáveis gerais.
   if base_files_path is None:
-    print("❌ Variável de ambiente APPOPTIMIZER_BASE_DIR com o caminho da base dos scripts não foi definida")
+    print(f"❌ Variável de ambiente {base_files_path_env_name} com o caminho da base dos scripts não foi definida")
     return None, None, None, None, None
   else:
     configs_file_path = base_files_path / configs_files_dir
@@ -364,8 +364,11 @@ def optimize_application(configs_file_path, system_config, applications_config, 
     suggestion = predictor.get_suggestion(user_application_params, custom_suggestions, verbose=debug_code)
 
     # Cria o mapeamento reverso para a impressao
-    reversed_suggestions_map = {v:k for k, v in applications_config[application_id]['user']['suggestions_map'].items()}
+    suggestion_map = applications_config[application_id]['user']['suggestions_map']
+    reversed_suggestions_map = {v:k for k, v in suggestion_map.items()}
     suggestion_mapped = {reversed_suggestions_map[k]:v for k,v in suggestion['Suggestion'].items()}
+    print(reversed_suggestions_map)
+    print(suggestion_mapped)
     
     # Obtém o caminho do arquivo de template, se as opçoes. 
     if user_args.run or not user_args.suggestion:
@@ -382,24 +385,61 @@ def optimize_application(configs_file_path, system_config, applications_config, 
         'job_name':  application_name if user_args.jobname is None else user_args.jobname,
         'application_params': application_args[1:],
       }
-      default_partition = np.argmax([partition['default'] for partition in list_partitions])
+
+      # Verifica se existe o tempo predito para a sugestão.
       if 'Time' in suggestion.keys():
         # Aproxima o tempo para o maior tempo inteiro.
         predicted_time = np.ceil(suggestion['Time'])
+      else:  
+        predicted_time = 0
+      # Verifica quais partições podem ser usadas pela sugestão.
+      valid_partitions_list = []
+      for partition in list_partitions:
         # Descobre quais partições podem executar a aplicação.
-        valid_time_partitions = [partition for partition in list_partitions if partition['max_time'] >= predicted_time]
-        # Se existirem partições, escolhe a com o menor tempo (portanto, mas próximo do tempo da aplicação, já que todas as partiçoes da lista)
-        if valid_time_partitions:                                           
-          # A partição escolhida será a com menor tempo máximo.
-          partition_used = min(valid_time_partitions, key=lambda partition: partition['max_time'] - predicted_time)
-        else:   
-          partition_used = max(list_partitions, key=lambda partition: partition['max_time'])
+        valid_partition = partition['max_time'] >= predicted_time
+        for suggestion_name in suggestion['Suggestion']:
+          partition_suggestion_name = reversed_suggestions_map[suggestion_name]
+          valid_partition = valid_partition and partition[partition_suggestion_name] >= suggestion['Suggestion'][suggestion_name]
+        if valid_partition:
+          valid_partitions_list.append(partition)
 
-        # Verifica se a partução escolhida tem tempo suficiente para executar o trabalho.  
+      # Se existirem partições, escolhe a com o menor tempo (portanto, mas próximo do tempo da aplicação, já que todas as partiçoes da lista)
+      if valid_partitions_list:                                           
+        # A partição escolhida será a com menor tempo máximo.
+        partition_used = min(valid_partitions_list, key=lambda partition: partition['max_time'] - predicted_time)
+      else:   
+        partition_used = max(list_partitions, key=lambda partition: partition['max_time'])
+        # Verifica se o tempo da partição é maior do que o temṕo predito, e sá um aviso se isso ocorrer
         if predicted_time > partition_used['max_time']:
           print(f"⚠️  O tempo predito aproximado {predicted_time} é maior do que o tempo máximo {partition_used['max_time']} de execução da partição {partition_used['partition']}!")
-      else:
-        partition_used = list_partitions[default_partition]
+
+
+#      default_partition = np.argmax([partition['default'] for partition in list_partitions])
+#      if 'Time' in suggestion.keys():
+#        # Aproxima o tempo para o maior tempo inteiro.
+#        predicted_time = np.ceil(suggestion['Time'])
+#        # Descobre quais partições podem executar a aplicação.
+#        valid_partitions_list = []
+#        for partition in list_partitions:
+#          valid_partition = partition['max_time'] >= predicted_time
+#          for suggestion_name in suggestion['Suggestion']:
+#            partition_suggestion_name = reversed_suggestions_map[suggestion_name]
+#            valid_partition = valid_partition and partition[partition_suggestion_name] >= suggestion['Suggestion'][suggestion_name]
+#          if valid_partition:
+#            valid_partitions_list.append(partition)
+#
+#        # Se existirem partições, escolhe a com o menor tempo (portanto, mas próximo do tempo da aplicação, já que todas as partiçoes da lista)
+#        if valid_partitions_list:                                           
+#          # A partição escolhida será a com menor tempo máximo.
+#          partition_used = min(valid_partitions_list, key=lambda partition: partition['max_time'] - predicted_time)
+#        else:   
+#          partition_used = max(list_partitions, key=lambda partition: partition['max_time'])
+#
+#        # Verifica se a partução escolhida tem tempo suficiente para executar o trabalho.  
+#        if predicted_time > partition_used['max_time']:
+#          print(f"⚠️  O tempo predito aproximado {predicted_time} é maior do que o tempo máximo {partition_used['max_time']} de execução da partição {partition_used['partition']}!")
+#      else:
+#        partition_used = list_partitions[default_partition]
         
       # define os dados para gerar o script de confuguração.
       template_params['partition'] = partition_used['partition']
