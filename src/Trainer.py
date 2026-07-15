@@ -94,9 +94,9 @@ def train_command(applications_name, applications_config, training_config, syste
 
       if verbose:
         print("--> Conjunto de dados original da aplicação, antes da filtragem do outliers:")
-        print("\n", dados.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
+        print("\n", dados.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
         print("--> Dados estatísticos referentes ao conjunto de dados original:")
-        print("\n", dados.describe().to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
+        print("\n", dados.describe().to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
 
       # Filtra os dados.
       data_filter = FilterOutliers()
@@ -104,9 +104,9 @@ def train_command(applications_name, applications_config, training_config, syste
 
       if verbose:
         print("--> Conjunto de dados da aplicação após a filtragem dos outliers:")
-        print("\n", dados_limpos.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
+        print("\n", dados_limpos.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
         print("---> Dados estatísticos referentes ao conjunto de dados filtrado:")
-        print("\n", dados_limpos.describe().to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
+        print("\n", dados_limpos.describe().to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
         print(f"--> Predições para a variável alvo {variavel_predita_da_suggestao}")
 
       predictor_hiperparams = {}
@@ -133,7 +133,7 @@ def train_command(applications_name, applications_config, training_config, syste
           print(f"---> Modelo {model_info['name']}: Melhores hiperparâmetros -> {best_params}; Melhor score -> {best_score}")
           print("----> Dataframe com a avaliação de todas as combinações dos hiperparâmetros:")         
           hyperparams_score = best_hyper.get_hrperparams_scores() 
-          print("\n", hyperparams_score.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
+          print("\n", hyperparams_score.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
       
         if model_info['fixed_params'] is not None:
             best_params = dict(**best_params, **model_info['fixed_params'])
@@ -150,9 +150,9 @@ def train_command(applications_name, applications_config, training_config, syste
                                                                                   variavel_predita_da_suggestao, predictor_hiperparams)
       if verbose:					
         print(f'---> Dataframe com os resultados das avaliações dos modelos:')
-        print("\n", results_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
+        print("\n", results_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
         print(f'---> Dataframe com os resultados médios para cada modelo, ordenado do melhor para o pior modelo:')
-        print("\n", mean_scores_models_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
+        print("\n", mean_scores_models_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
         print(f'--> Treinando agora o preditor com o melhor modelo {best_model_name} (pontuação: {best_model_score}), usando {best_params} como os hiperparâmetros customizados.')
 
       # Descobre e importa o modelo de modo dinâmico.
@@ -173,18 +173,17 @@ def train_command(applications_name, applications_config, training_config, syste
       if verbose:
         print('---> Dataframe do oráculo:')
         oracle_df = predictor.get_oracle()
-        print("\n", oracle_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
+        print("\n", oracle_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
       # Obtém as imformações das importâncias, se o modelo as define  
       importances_df = predictor.get_importances(verbose=debug_code)
-      if importances_df is not None:
+      if verbose and importances_df is not None:
         print('---> Dataframe com as importâncias do modelo:')
-        print("\n", importances_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n")
+        print("\n", importances_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
       else:  
         print("---> O modelo não avalia as importâncias das características.")
       
       # Salva o arquivo do preditor no formato .pickle.
-      print(f'--> Salvando o preditor treinado como o modelo {best_model_name} (nome {model_name}) no arquivo {preditor_file_name}')
-      print('--> Foram feitos dois treinamentos')
+      print(f'--> Salvando o preditor treinado como o modelo {best_model_name} (nome {model_name}) no arquivo {preditor_file_name}.')
 
       predictor.save_predictor(preditor_file_name)
 
