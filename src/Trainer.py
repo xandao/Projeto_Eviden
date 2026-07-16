@@ -88,7 +88,7 @@ def train_command(applications_name, applications_config, training_config, syste
         nome_arquivo_completo = base_files_path / Path(system_config['dataset_path']) / nome_arquivo
         dados_arquivo = pd.read_csv(nome_arquivo_completo, usecols=variaveis_de_entrada+
                                                                    variaveis_do_filtro+
-                                                                   list(variaveis_das_predicoes.values()))
+                                                                   list(variaveis_das_predicoes.values()),encoding='latin-1')
         dados = pd.concat([dados, dados_arquivo])
       dados = dados.reset_index(drop=True)		
 
