@@ -1,0 +1,2 @@
+---> O modelo não avalia as importâncias das características.
+--> Salvando o preditor treinado como o modelo ExtraTreesRegressor (nome ETR) no arquivo D:\Arquivos\LNCC\Projeto_Eviden\predictors\raxml_ETR_EDP.pickle.

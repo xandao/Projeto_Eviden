@@ -1,0 +1,2 @@
+---> O modelo não avalia as importâncias das características.
+--> Salvando o preditor treinado como o modelo DecisionTreeRegressor (nome DTR) no arquivo D:\Arquivos\LNCC\Projeto_Eviden\predictors\ntb_DTR_EDP.pickle.
