@@ -433,19 +433,20 @@ class ReadUserConfig:
         },
         "users_activity": {
             "type": "object", 
-            "required": ["enable", "users_executed_apps_file", "users_jobs_data_file"],
+            "required": ["enable", "data_file_prefix", "data_file_type"],
             "properties": {
                 "enable": {"type": "boolean"},
-                "users_executed_apps_file": {"type": "string"},
-                "users_jobs_data_file": {"type": "string"}
+                "data_file_prefix": {"type": "string"},
+                "data_file_type": {"type": "string"}
             }
         },
         
         "slurm": {
             "type": "object", 
-            "required": ["submission_program"],
+            "required": ["submission_program", "submission_message"],
             "properties": {
                 "submission_program": {"type": "string"},
+                "submission_message": {"type": "string"}
             }
         }
     }

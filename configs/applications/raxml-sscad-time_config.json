@@ -13,7 +13,7 @@
   },
   "user": {
     "executable_names": ["raxml-sscad-time"],
-    "script_template_name": "raxml_sscad_template.sh",
+    "script_template_name": "raxml-sscad-time_template.sh",
     "suggestions_map": {
       "nodes": "NNodes",
       "threads": "Thread"

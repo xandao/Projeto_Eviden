@@ -11,6 +11,7 @@ import subprocess
 from Utils.Common import base_files_path_env_name, base_files_path, configs_files_dir, debug_code
 import textwrap
 import tempfile
+import re
 
 def read_configs(verbose=False):
   # Lê as variáveis gerais.
@@ -289,6 +290,20 @@ def generate_submission_script(template_file_path, template_params):
 
   return template_content
 
+# JobName, JobID, [Parâmetros da Sugestão: RAxML, NAS -> "NNodes", "Processo p/ no", "Thread p/ proc.";
+# RAxMl SSCAD -> [NNodes, Thread], [Parâmetros da Aplicação: RAxML -> Bootstrap. Arquivo, Tamanho;
+# NAS -< Benchmark, Classe, Zone X, Zone Y, Iterações, Grid X, Grid Y, Grid Z], Tempo Predito, 
+# Score: EDP Predito.
+#
+# Obs.: EDP Predito -> EDP predito da configuração sugerida -> menor EDP de todas as configurções avaliadas.
+#
+# Script de monitoração: Iria, de tempos em tempos, para cada aplicação, pegar cada coluna JobID e verificar
+# se o job já terminou e, em caso, positivo, adicionar as informações relevantes obtidas pelo sacct aos
+# dados do job.
+
+def submission_log():
+  pass  
+
 def optimize_application(configs_file_path, system_config, applications_config, user_config, 
                          application_args, predictors_info_config, user_args):
   # Verifica se o usuário deseja somente listar as aplicações
@@ -485,6 +500,13 @@ def optimize_application(configs_file_path, system_config, applications_config, 
 
           print("➡️  Script de submissão submetido com sucesso!")
 
+          # Imprime para o usuário o ID do job submetido.
+          # Extrai o ID da saída do sbatch
+          job_id_regex = re.compile(user_config['slurm']['submission_message']) 
+          resultado = re.search(job_id_regex, result.stdout)
+          job_id = resultado.group(1) 
+          print(f"➡️  O trabalho foi submetido com o identificador {job_id}.")
+
           # TODO: Depois podemos remover, se necessário, este código de depuração.
           # TODO: Início.
           if debug_code:
@@ -499,7 +521,7 @@ def optimize_application(configs_file_path, system_config, applications_config, 
             print(result.stdout)
             print(f"\n\n➡️  stderr de execução de {submission_program}:\n\n")
             print(result.stderr)        
-          # Remove o arquivo temporário, se ele foi criado.
+
       except subprocess.CalledProcessError as e:
         # This will print the actual error from the terminal command
         print("❌ Não foi possṕivel executar o comando {submission_program}!")

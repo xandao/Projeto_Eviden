@@ -3,11 +3,12 @@
   "default_script_name": "script.sh",
   "users_activity": {
     "enable": true,
-    "users_executed_apps_file": "users_exected_apps.csv",
-    "users_jobs_data_file": "users_executed_jobs_data.csv"
+    "data_file_prefix": "executed_jobs_data",
+    "data_file_type": "csv"
   },
   "slurm": {
-    "submission_program": "sbatch"
+    "submission_program": "sbatch",
+    "submission_message": ".*Submitted batch job (\\d+).*"
   },
   "suggestions_names": ["nodes", "process", "threads"]
 }
