@@ -3,24 +3,23 @@ from pathlib import Path
 from jsonschema import validate, ValidationError
 class ReadSystemConfig:
   """
-  Classe para ler as configurações do sistema, comuns aos scripts de 
-  treinamento e do usuário.
+  Classe para ler as configurações do sistema, referentes aos principais
+  diretórios usados e também configurações comuns aos scripts de
+  treinamento e de sugestão.
 
   Atributos:
     system_config_path (Path | None): Caminho completo para o arquivo de
                                       configuração dos scripts de treinamento 
                                       e do usuário.
-    system_config (dict | None): Dicionário com o arquivo de configuração comuns 
-                                 dos scripts convertido do formato JSON.
+    system_config (dict | None): Dicionário com o arquivo de configuração 
+                                 convertido do formato JSON.
                                                                     
     esquema_json (dict): Esquema de validação para o script do sistema.         
     verbose (bool): Habilita/desabilita informações de verbosidade.                   
 """
   
   # ---------------------------------------------------------------------
-  # Esquema de validação para o script do sistema, usado pelo script que 
-  # treina os modelos e o script usado pelo usário do sistema (tem os 
-  # caminhos dos diretórios usados).
+  # Esquema de validação para o arquivo de configuração do sistema.
   # ---------------------------------------------------------------------
   esquema_json = {
     "$schema": "https://json-schema.org",
@@ -43,8 +42,7 @@ class ReadSystemConfig:
     Função de inicialização da classe ReadSystemConfig.
 
     Parâmetros:
-      verbose: Habilita/desabilita informações de verbosidade.
-      
+      verbose: Habilita/desabilita informações de verbosidade.      
     """
     self.system_config_path = None  
     self.system_config = None
@@ -52,48 +50,63 @@ class ReadSystemConfig:
 
   def read_system_config(self, system_config_path):
     """
-    Função para ler o arquivo de configuração do script do usuário do
-    arquivo passado como parâmetro.
+    Função para ler o arquivo de configuração do sistema a partir do arquivo
+    passado como parâmetro.
 
     Parâmetros:
       system_config_path (Path): Caminho completo do arquivo de configuração
-                                 do script do usuário.
+                                 com a configuração do sistema em JSON.
 
     Retorna:
-      dict | None: O dicionário com o arquivo JSON da configuração do usuário 
+      dict | None: O dicionário com o arquivo JSON da configuração do sistema 
                    convertido para um dicionário, ou None se algum erro ocorreu
-                   ao ler ou varificar a sintaxe do arquvo.                                     
+                   ao ler ou verificar a sintaxe do arquivo ou a conformidade 
+                   do JSON do arquivo com o esquema esquema_json.                                     
     """
+    # Armazena o camainho do arquivo.
     self.system_config_path = system_config_path
+    
+    # Tenta abrir o arquivo e processá-lo se o caminho existir e for um arquivo.
     try:
+      # Tenta comverter o JSON, verificando a sintaxe do formato.
       with open(system_config_path, 'r') as file:
         self.system_config = json.load(file)
- 
+    
+      # Verifica se o arquivo JSON, com a sintaxe correta, está em conformidade
+      # com o esquema esquema_json.
       validate(instance=self.system_config, schema=ReadSystemConfig.esquema_json)
+
+      # Imprime a informação de sucesso se a verbosidade estiver habilitada.
       if self.verbose:
         print(f"✅ Arquivo {system_config_path.name} é um arquivo válido de configuração do sistema e foi carregado com sucesso!")
+
+      # Retorna a confihuração do sistema lida convertida para um dicionário.  
       return self.system_config 
         
     except ValidationError as e:
-    # Quando falha no 'oneOf', ele avisa que não bateu com nenhum molde
+      # Ocorreu um erro ao validar o esquema do arquivo JSON lido
       print(f"❌ Erro ao validar o JSON do arquivo de sistema {system_config_path.name}!")
       print(f"❌ Detalhes do erro: {e.message}")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except json.JSONDecodeError as e:
+      # Ocorreu um erro de sintaxe ao ler o arquivo JSON.
       print(f"❌ O arquivo {system_config_path.name} não pode ser lido como um arquivo JSON válido! Erro de sintaxe!")
       print(f"❌ Detalhes do erro: {e.msg} at line {e.lineno}, column {e.colno}!")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except FileNotFoundError:
+      # O arquivo não foi encontradp.
       print(f"❌ O arquivo {system_config_path.name} não foi encontrado!")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except PermissionError as e:
+      # O usuário que executou o script não tem permissão para acessar o arquivo.
       print(f"❌ Erro de permissão ao acessar o arquivo {system_config_path.name}!")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except IOError as e:
+      # Ocorreu um erro de I/O ao acessar o arquivo.
       print(f"❌ Erro de I/O ao ler o arquivo {system_config_path.name}!")
       print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
