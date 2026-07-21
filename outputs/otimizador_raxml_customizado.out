@@ -6,8 +6,8 @@
 ✅ Todos os arquicos applications do diretório com as confugurações das aplicações são válidos e foram lidos!
 ✅ Arquivo user_config.json é um arquivo válido de configuração do script do usuário e foi carregado com sucesso!
 ✅ Arquivo predictors_info.json é um arquivo válido de configuração dos preditores e foi carregado com sucesso!
-⚠️  Descantando todos os valores para a opção [31mprocess[0m maiores do que 2 permitidos pelas possíveis partições [1;34msequana_cpu_dev, sequana_cpu[0m da aplicação raxml!
-⚠️  Descantando todos os valores para a opção [31mthreads[0m maiores do que 48 permitidos pelas possíveis partições [1;34msequana_cpu_dev, sequana_cpu[0m da aplicação raxml!
+⚠️  Descantando todos os valores para a opção [31mprocess[0m maiores do que 2 permitidos pelas possíveis partições [1;34msequana_cpu, sequana_cpu_dev[0m da aplicação raxml!
+⚠️  Descantando todos os valores para a opção [31mthreads[0m maiores do que 48 permitidos pelas possíveis partições [1;34msequana_cpu, sequana_cpu_dev[0m da aplicação raxml!
 ➡️  Sugestão: nodes=4, process=2, threads=8
 ➡️  Tempo para a sugestão: 5.48 s
 ➡️  Pontuação da sugestão: 11446.52
@@ -459,3 +459,18 @@ srun -n $SLURM_NTASKS -c $SLURM_CPUS_PER_TASK --cpu-bind=$CPU_BIND $EXEC $PARAMS
 
 
 ➡️  Script de submissão ../outputs/raxml_customizado.sh criado com sucesso!
+➡️  Script de submissão submetido com sucesso!
+➡️  O trabalho foi submetido com o identificador 859469.
+➡️  stdout da execução de sbatch:
+
+
+Program: ../outputs/raxml_customizado.sh
+Submitted batch job 859469
+Program: ../outputs/raxml_customizado.sh
+
+
+
+➡️  stderr de execução de sbatch:
+
+
+

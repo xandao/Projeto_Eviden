@@ -24,8 +24,11 @@ def read_configs(verbose=False):
   system_config = ReadSystemConfig(verbose).read_system_config(system_config_file_path)
 
   # Lê os parâmetros da aplicação
-  application_configs_dir_path = configs_file_path / 'applications'
-  applications_configs = ReadApplicationsConfigs(verbose).read_applications_config(application_configs_dir_path)
+  if system_config is None:
+    applications_configs = None
+  else:    
+    applications_configs_dir_path = configs_file_path / system_config['applications_path']
+    applications_configs = ReadApplicationsConfigs(verbose).read_applications_config(applications_configs_dir_path)
 
   # Lê as configurações do script do usuário
   user_config_file_path = configs_file_path / 'user_config.json'
@@ -52,7 +55,7 @@ def process_script_args():
   opcoes.add_argument("-s", "--script", type=str, default=None, help="Salva o script gerado em um arquivo.")
   opcoes.add_argument("-S", "--suggestion", action="store_true", default=False, 
                       help="Somente mostra a sugestão para os parâmetros do script.")
-  opcoes.add_argument("-n", "--nodes", type=str, nargs="*", default=None, 
+  opcoes.add_argument("-n", "--nodes", type=str, nargs="+", default=None, 
                       help=textwrap.dedent('''Lista com os possíveis números de nós, se a aplicação usa mulltiplos nós.
 Usada conjuntamente com as opções -p e -t que terão os valores default se não usadas.
 Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo.  
@@ -62,7 +65,7 @@ Exemplos: -n 1 2:10:2 -> Nós: 1, 2, 4, 6, 8, 10.
           -n :10:2    -> Nós: 1, 3, 5, 7, 9.
           -n 1:5      -> Nós: 1, 2, 3, 4, 5.                                                                 
                       '''))                      
-  opcoes.add_argument("-p", "--process", type=str, nargs="*", default=None, 
+  opcoes.add_argument("-p", "--process", type=str, nargs="+", default=None, 
                       help=textwrap.dedent('''Lista com os possíveis números de nós, se a aplicação usa mulltiplos nós.
 Usada conjuntamente com as opções -n e -t que terão os valores default se não usadas.
 Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo. 
@@ -72,7 +75,7 @@ Exemplos: -p 1 2:      -> Processos: 1, 2.
           -n 1 :3:1    -> Processos: 1, 2, 3.
           -n :3 6:12:3 -> Processos: 1, 2, 3, 6, 9, 12                                                                  
                       '''))
-  opcoes.add_argument("-t", "--threads", type=str, nargs="*", default=None, 
+  opcoes.add_argument("-t", "--threads", type=str, nargs="+", default=None, 
                       help=textwrap.dedent('''Lista com os possíveis números de nós, se a aplicação usa mulltiplos nós.
 Usada conjuntamente com as opções -n e -p que terão os valores default se não usadas.
 Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo.  

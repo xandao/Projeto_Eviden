@@ -19,8 +19,11 @@ def read_configs(verbose=False):
   system_config = ReadSystemConfig(verbose).read_system_config(system_config_file_path)
 
   # Lê os parâmetros da aplicação
-  application_configs_dir_path = configs_file_path / 'applications'
-  applications_configs = ReadApplicationsConfigs(verbose).read_applications_config(application_configs_dir_path)
+  if system_config is None:
+    applications_configs = None
+  else:    
+    applications_configs_dir_path = configs_file_path / system_config['applications_path']
+    applications_configs = ReadApplicationsConfigs(verbose).read_applications_config(applications_configs_dir_path)
 
   # Lê os parâmetros dos modelos escolhidos para avaliação;
   training_config_file_path = configs_file_path / 'training_config.json'

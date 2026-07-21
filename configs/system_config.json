@@ -2,5 +2,6 @@
   "predictors_path": "predictors",
   "templates_path": "templates",
   "dataset_path": "data",
+  "applications_path": "applications",
   "predictors_info_config_filename": "predictors_info.json"
 }

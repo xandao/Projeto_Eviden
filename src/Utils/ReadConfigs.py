@@ -18,9 +18,7 @@ class ReadSystemConfig:
     verbose (bool): Habilita/desabilita informações de verbosidade.                   
 """
   
-  # ---------------------------------------------------------------------
   # Esquema de validação para o arquivo de configuração do sistema.
-  # ---------------------------------------------------------------------
   esquema_json = {
     "$schema": "https://json-schema.org",
     "type": "object",
@@ -28,12 +26,14 @@ class ReadSystemConfig:
         "predictors_path", 
         "templates_path", 
         "dataset_path", 
+        "applications_path",
         "predictors_info_config_filename"
     ],
     "properties": {
         "predictors_path": {"type": "string"},
         "templates_path": {"type": "string"},
         "dataset_path": {"type": "string"},
+        "applications_path": {"type": "string"},
         "predictors_info_config_filename": {"type": "string"}
     }
   }
@@ -44,6 +44,7 @@ class ReadSystemConfig:
     Parâmetros:
       verbose: Habilita/desabilita informações de verbosidade.      
     """
+    # Inicializa as variáveis internas da classe.
     self.system_config_path = None  
     self.system_config = None
     self.verbose = verbose
@@ -63,7 +64,7 @@ class ReadSystemConfig:
                    ao ler ou verificar a sintaxe do arquivo ou a conformidade 
                    do JSON do arquivo com o esquema esquema_json.                                     
     """
-    # Armazena o camainho do arquivo.
+    # Armazena o camainho do arquivo de configuração do sistema.
     self.system_config_path = system_config_path
     
     # Tenta abrir o arquivo e processá-lo se o caminho existir e for um arquivo.
@@ -80,7 +81,7 @@ class ReadSystemConfig:
       if self.verbose:
         print(f"✅ Arquivo {system_config_path.name} é um arquivo válido de configuração do sistema e foi carregado com sucesso!")
 
-      # Retorna a confihuração do sistema lida convertida para um dicionário.  
+      # Retorna a configuração do sistema lida e econvertida para um dicionário.  
       return self.system_config 
         
     except ValidationError as e:
@@ -110,28 +111,33 @@ class ReadSystemConfig:
       print(f"❌ Erro de I/O ao ler o arquivo {system_config_path.name}!")
       print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+      return None
+    except Exception as e:
+      print(f"❌ Erro desconhecido ao processar o arquivo {system_config_path.name}!")
+      print(f"❌ Parâmetros do erro: {e.args}!")
+      print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+      return None
 class ReadTrainingConfig:
   """
   Classe para ler as configurações de treinamento, usada pelo script de 
   treinamento ao treinar cada modelo. Tem as configurações de cada 
   modelo de aprendizado de máquina considerado, incluindo os 
-  hiperparâmetros que otimizamos, parâmetros fixos (por exemplo, 
-  randomstate=42) e outras informação como o nome do modelo e como ele
-  ẽ acessado no python (o import).
+  hiperparâmetros que otimizaremos, parâmetros fixos (por exemplo, 
+  randomstate=42) e outras informações como o nome do modelo e como ele
+  ẽ acessado no python (para o import dinâmico).
 
   Atributos:
     training_config_path (Path | None): Caminho completo para o arquivo de
-                                        configuração do script de treinamento.
+                                        configuração dos modelos a serem 
+                                        treinados.
     training_config (dict | None): Dicionário com o arquivo de configuração de
                                    treinamento convertido do formato JSON.
     esquema_json (dict): Esquema de validação para o script de treinamento.                            
     verbose (bool): Habilita/desabilita informações de verbosidade.                   
   """
   
-  # ---------------------------------------------------------------------
   # Esquema de validação para o script com as configurações usadas em 
   # cada treinamento.
-  # ---------------------------------------------------------------------
   esquema_json = {
     "$schema": "https://json-schema.org",
     "type": "object",
@@ -168,7 +174,8 @@ class ReadTrainingConfig:
       verbose: Habilita/desabilita informações de verbosidade.
   
     """
-    self.training_config_path = None  
+    # Inicializa as variáveis internas da classe.
+    self.training_config_path = None 
     self.training_config = None
     self.verbose = verbose
 
@@ -186,38 +193,57 @@ class ReadTrainingConfig:
                    para um dicionário, ou None se algum erro ocorreu ao ler ou varificar a 
                    sintaxe do arquvo.                                     
     """
+    # Armazena o camainho do arquivo de configuração do tteinamento,
     self.training_config_path = training_config_path
+
+    # Tenta abrir o arquivo e processá-lo se o caminho existir e for um arquivo.
     try:
+      # Tenta comverter o JSON, verificando a sintaxe do formato.
       with open(training_config_path, 'r') as file:
         self.training_config = json.load(file)
 
+      # Verifica se o arquivo JSON, com a sintaxe correta, está em conformidade
+      # com o esquema esquema_json.
       validate(instance=self.training_config, schema=ReadTrainingConfig.esquema_json)
+
+      # Imprime a informação de sucesso se a verbosidade estiver habilitada.
       if self.verbose:
         print(f"✅ Arquivo {training_config_path.name} é um arquivo válido de configuração de treinamento e foi carregado com sucesso!")
+
+      # Retorna a configuração do treinamento lida e convertida para um dicionário.  
       return self.training_config 
         
     except ValidationError as e:
-    # Quando falha no 'oneOf', ele avisa que não bateu com nenhum molde
+      # Ocorreu um erro ao validar o esquema do arquivo JSON lido
       print(f"❌ Erro ao validar o JSON do arquivo de treinamento {training_config_path.name}!")
       print(f"❌ Detalhes do erro: {e.message}")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except json.JSONDecodeError as e:
+      # Ocorreu um erro de sintaxe ao ler o arquivo JSON.
       print(f"❌ O arquivo {training_config_path.name} não pode ser lido como um arquivo JSON válido! Erro de sintaxe!")
       print(f"❌ Detalhes do erro: {e.msg} at line {e.lineno}, column {e.colno}!")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except FileNotFoundError:
+      # O arquivo não foi encontradp.
       print(f"❌ O arquivo {training_config_path.name} não foi encontrado!")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except PermissionError as e:
+      # O usuário que executou o script não tem permissão para acessar o arquivo.
       print(f"❌ Erro de permissão ao acessar o arquivo {training_config_path.name}!")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except IOError as e:
+      # Ocorreu um erro de I/O ao acessar o arquivo.
       print(f"❌ Erro de I/O ao ler o arquivo {training_config_path.name}!")
       print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
+      print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+      return None
+    except Exception as e:
+      print(f"❌ Erro desconhecido ao processar o arquivo {training_config_path.name}!")
+      print(f"❌ Parâmetros do erro: {e.args}!")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
 
@@ -399,6 +425,11 @@ class ReadApplicationsConfigs:
         print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
         print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
         return None
+      except Exception as e:
+        print(f"❌ Erro desconhecido ao processar o arquivo {file.name}!")
+        print(f"❌ Parâmetros do erro: {e.args}!")
+        print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+        return None
     else:
       if applications_config_dir.is_dir():
         print(f"❌ O diretório {applications_config_dir} está vazio ou não tem arquivos no formato JSON!")
@@ -524,6 +555,11 @@ class ReadUserConfig:
       print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
+    except Exception as e:
+      print(f"❌ Erro desconhecido ao processar o arquivo {user_config_path.name}!")
+      print(f"❌ Parâmetros do erro: {e.args}!")
+      print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+      return None
 class PredictorsInfoConfig:
   """
   Classe para ler as configurações que mapeiam cada apluicação ao seu 
@@ -615,6 +651,11 @@ class PredictorsInfoConfig:
     except IOError as e:
       print(f"❌ Erro de I/O ao ler o arquivo {predictors_info_config_path.name}!")
       print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
+      print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+      return None
+    except Exception as e:
+      print(f"❌ Erro desconhecido ao processar o arquivo {predictors_info_config_path.name}!")
+      print(f"❌ Parâmetros do erro: {e.args}!")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     
