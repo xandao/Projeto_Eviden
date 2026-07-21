@@ -89,8 +89,8 @@ Já o segundo campo, $\color{blue}\text{\textbf{models}}$, tem as informações 
 - $\color{blue}\text{\textbf{fixed\\\_parms}}$: Hiperparâmetros fixos do modelo É um objeto em que cada entrada é o hiperparâmetro do modelo, como usado quando o modelo é inicializado no Python, e o valor da entrada é o valor para o hiperparâmetro. Por exemplo, para o modelo $\color{green}\text{\textbf{ExtraTreesRegressor}}$:
   - $\color{blue}\text{\textbf{random\\\_state}}$: Fixa a semente randômica. Durante o processamento do modelo, escolhas randômicas são feitas, como definido pelo [algoritmo do modelo][1]. O valor fixo, no caso 42, garante que ao treinar o modelo sempre pobteremos o mesmo estimador.
 
-- $\color{blue}\text{\textbf{name}}$: Nome alternativo para o modelo. No caso do modelo $\color{green}\text{\textbf{ExtraTreesRegressor}}$, o nome é ``ETR''.
-- $\color{blue}\text{\textbf{import\\\_path}}$: Caminho completo de importação dinâmica do modelo no Python, ou seja, se a importaçaõ for `from model_library import model` o valor do campo será $``model\\\_library.model''$. Por exemplo, para o modelo $\color{green}\text{\textbf{ExtraTreesRegressor}}$, o caminho é $``sklearn.ensemble.ExtraTreesRegressor''$, porque o comando usado ao importar o modelo no Python é `from sklearn.ensemble import ExtraTreesRegressor`
+- $\color{blue}\text{\textbf{name}}$: Nome alternativo para o modelo. No caso do modelo $\color{green}\text{\textbf{ExtraTreesRegressor}}$, o nome é $\color{gray}\text{\textbf{ETR}}$.
+- $\color{blue}\text{\textbf{import\\\_path}}$: Caminho completo de importação dinâmica do modelo no Python, ou seja, se a importação for `from model_library import model` o valor do campo será $\color{gray}\text{\textbf{model\\\_library.model}}$. Por exemplo, para o modelo $\color{green}\text{\textbf{ExtraTreesRegressor}}$, o caminho é $\color{gray}\text{\textbf{sklearn.ensemble.ExtraTreesRegressor}}$, porque o comando usado ao importar o modelo no Python é `from sklearn.ensemble import ExtraTreesRegressor`
 
 ## Arquivo de configuração da aplicação
 
