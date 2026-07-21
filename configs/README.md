@@ -1,6 +1,6 @@
 # Guia dos arquivos de configuração
 
-## Exemplo do arquivo de configuração $\color{red}\text{\textbf{system\_config.json}}$
+## Exemplo do arquivo de configuração $\color{red}\text{\textbf{system\\\_config.json}}$
 
 ```jsonv
 {
@@ -14,14 +14,14 @@
 
 Campos (os caminhos relativo são em relação ao diretório preincipal em que estão o treinadir e o otimizador) do objeto do sistema:
 
-- $\color{blue}\text{\textbf{predictors\_path}}$: Caminho relativo em que são armazenados os preditores gerados pelo treinador e usados pelo otimizador.
-- $\color{blue}\text{\textbf{templates\_path}}$: Caminho relativo em que são armazenados os arquivos com os templates dos scripts de submissão de cada aplicação.
-- $\color{blue}\text{\textbf{dataset\_path}}$: Caminho relativo em que são armazenadas as bases de dados usadas nos treinamentos.
+- $\color{blue}\text{\textbf{predictors\\\_path}}$: Caminho relativo em que são armazenados os preditores gerados pelo treinador e usados pelo otimizador.
+- $\color{blue}\text{\textbf{templates\\\_path}}$: Caminho relativo em que são armazenados os arquivos com os templates dos scripts de submissão de cada aplicação.
+- $\color{blue}\text{\textbf{dataset\\\_path}}$: Caminho relativo em que são armazenadas as bases de dados usadas nos treinamentos.
   - $\color{red}\text{\textbf{TODO}}$: Será que deveríamos ter um diretório para cada aplicação ao invés de colocar todos os arquivos em um mesmo diretório? Poderíamos usar o nome da aplicação como o nome do diretório.
-- $\color{blue}\text{\textbf{applcations\_path}}$: Caminho relativo em que são armazenados os arquivos de configuração das aplicações.
-- $\color{blue}\text{\textbf{predictors\_info\_config\_filename}}$: Nome do arquivo de configuração JSON relacionando cada aplicação ao arquivo com o seu preditor treinado, usando o nome da aplicação como chave para descobrir o preditor correto.
+- $\color{blue}\text{\textbf{applcations\\\_path}}$: Caminho relativo em que são armazenados os arquivos de configuração das aplicações.
+- $\color{blue}\text{\textbf{predictors\\\_info\\\_config\\\_filename}}$: Nome do arquivo de configuração JSON relacionando cada aplicação ao arquivo com o seu preditor treinado, usando o nome da aplicação como chave para descobrir o preditor correto.
 
-## Exemplo do arquivo de configuração $\color{red}\text{\textbf{training\_config.json}}$
+## Exemplo do arquivo de configuração $\color{red}\text{\textbf{training\\\_config.json}}$
 
 ```json
 {
@@ -78,23 +78,23 @@ Campos (os caminhos relativo são em relação ao diretório preincipal em que e
 
 Existem dois campos principais, $\color{blue}\text{\textbf{filter}}$ e $\color{blue}\text{\textbf{models}}$. O primeiro campo, $\color{blue}\text{\textbf{filter}}$, tem as informações para a parte do treinamento em que ocorre a filtragem da base de dados usada ao treinar o modelo:
 
-- $\color{blue}{\text{\textbf{outlier\_limit}}}$: Valor real indicando como a faixa de exclusão para uma das características da base de dados é usada, sendo a faixa para a variável igual a $[m_a-outlier\_limit,m_a+outlier\_limit]$ onde $m_a$ é a mediana absoluta da couluna associada à característica na base de dados. As colunas usadas para a filtragrem dependerão da aplicação cujo modelo estamos treinando.
+- $\color{blue}{\text{\textbf{outlier\\\_limit}}}$: Valor real indicando como a faixa de exclusão para uma das características da base de dados é usada, sendo a faixa para a variável igual a $[m_a-outlier\\\_limit,m_a+outlier\\\_limit]$ onde $m_a$ é a mediana absoluta da couluna associada à característica na base de dados. As colunas usadas para a filtragrem dependerão da aplicação cujo modelo estamos treinando.
 
 Já o segundo campo, $\color{blue}\text{\textbf{models}}$, tem as informações para cada modelo treinado, sendo este modelo idenficidado por um campo, o seu nome, no objeto JSON definido pelo campo $\color{blue}\text{\textbf{models}}$. Todos os modelos tem a mesma entrada, também um objeto, cujos os campos são os seguintes:
 
-- $\color{blue}\text{\textbf{grid\_search\_parms}}$: Hiperparâmetros do modelo usados pela fase de otimização dos hiperparâmertros do modelo. É um objeto em que cada entrada é o hiperparâmetro do modelo, como usado quando o modelo é inicializado no Python, e o valor da entrada é um vetor com todos os valores a serem avaliados do hiperparâmetro. Por exemplo, para o modelo $\color{green}\text{\textbf{ExtraTreesRegressor}}$:
-  - $\color{blue}\text{\textbf{max\_depth}}$: Profundidade de cada árvore da floresta gerada pelo modelo. Os possíveis valores são 5, 10, 15 ou ilimitado ($\color{gray}\text{\textbf{null}}$).
-  - $\color{blue}\text{\textbf{n\_estimators}}$: Número de estimadores, ou seja, de árvores na floresta gerada pelo modelo. Os possíveis valores são 10, 20, 50, 100, 120 e 150.
+- $\color{blue}\text{\textbf{grid\\\_search\\\_parms}}$: Hiperparâmetros do modelo usados pela fase de otimização dos hiperparâmertros do modelo. É um objeto em que cada entrada é o hiperparâmetro do modelo, como usado quando o modelo é inicializado no Python, e o valor da entrada é um vetor com todos os valores a serem avaliados do hiperparâmetro. Por exemplo, para o modelo $\color{green}\text{\textbf{ExtraTreesRegressor}}$:
+  - $\color{blue}\text{\textbf{max\\\_depth}}$: Profundidade de cada árvore da floresta gerada pelo modelo. Os possíveis valores são 5, 10, 15 ou ilimitado ($\color{gray}\text{\textbf{null}}$).
+  - $\color{blue}\text{\textbf{n\\\_estimators}}$: Número de estimadores, ou seja, de árvores na floresta gerada pelo modelo. Os possíveis valores são 10, 20, 50, 100, 120 e 150.
 
-- $\color{blue}\text{\textbf{fixed\_parms}}$: Hiperparâmetros fixos do modelo É um objeto em que cada entrada é o hiperparâmetro do modelo, como usado quando o modelo é inicializado no Python, e o valor da entrada é o valor para o hiperparâmetro. Por exemplo, para o modelo $\color{green}\text{\textbf{ExtraTreesRegressor}}$:
-  - $\color{blue}\text{\textbf{random\_state}}$: Fixa a semente randômica. Durante o processamento do modelo, escolhas randômicas são feitas, como definido pelo [algoritmo do modelo][1]. O valor fixo, no caso 42, garante que ao treinar o modelo sempre pobteremos o mesmo estimador.
+- $\color{blue}\text{\textbf{fixed\\\_parms}}$: Hiperparâmetros fixos do modelo É um objeto em que cada entrada é o hiperparâmetro do modelo, como usado quando o modelo é inicializado no Python, e o valor da entrada é o valor para o hiperparâmetro. Por exemplo, para o modelo $\color{green}\text{\textbf{ExtraTreesRegressor}}$:
+  - $\color{blue}\text{\textbf{random\\\_state}}$: Fixa a semente randômica. Durante o processamento do modelo, escolhas randômicas são feitas, como definido pelo [algoritmo do modelo][1]. O valor fixo, no caso 42, garante que ao treinar o modelo sempre pobteremos o mesmo estimador.
 
 - $\color{blue}\text{\textbf{name}}$: Nome alternativo para o modelo. No caso do modelo $\color{green}\text{\textbf{ExtraTreesRegressor}}$, o nome é ``ETR''.
-- $\color{blue}\text{\textbf{import\_path}}$: Caminho completo de importação dinâmica do modelo no Python, ou seja, se a importaçaõ for `from model_library import model` o valor do campo será $``model\_library.model''$. Por exemplo, para o modelo $\color{green}\text{\textbf{ExtraTreesRegressor}}$, o caminho é $``sklearn.ensemble.ExtraTreesRegressor''$, porque o comando usado ao importar o modelo no Python é `from sklearn.ensemble import ExtraTreesRegressor`
+- $\color{blue}\text{\textbf{import\\\_path}}$: Caminho completo de importação dinâmica do modelo no Python, ou seja, se a importaçaõ for `from model_library import model` o valor do campo será $``model\\\_library.model''$. Por exemplo, para o modelo $\color{green}\text{\textbf{ExtraTreesRegressor}}$, o caminho é $``sklearn.ensemble.ExtraTreesRegressor''$, porque o comando usado ao importar o modelo no Python é `from sklearn.ensemble import ExtraTreesRegressor`
 
 ## Arquivo de configuração da aplicação
 
-Existe um arquivo de configuração da aplicação para cada aplicação para a qual treinaremos um modelo. Os arquivos ficam no diretório $\color{darkgray}\text{\textbf{applications}}$. Por exemplo, para a aplicação RAxML, o arquivo de configuração é o $\color{red}\text{\textbf{raxml\_config.json}}$, descrito a seguir
+Existe um arquivo de configuração da aplicação para cada aplicação para a qual treinaremos um modelo. Os arquivos ficam no diretório $\color{darkgray}\text{\textbf{applications}}$. Por exemplo, para a aplicação RAxML, o arquivo de configuração é o $\color{red}\text{\textbf{raxml\\\_config.json}}$, descrito a seguir
 
 ```json
 {
