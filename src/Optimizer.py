@@ -304,7 +304,7 @@ def generate_submission_script(template_file_path, template_params):
 # se o job já terminou e, em caso, positivo, adicionar as informações relevantes obtidas pelo sacct aos
 # dados do job.
 
-def submission_log():
+def submission_log(application_name, system_args, user_args, suggestion_params, all_user_params):
   pass  
 
 def optimize_application(configs_file_path, system_config, applications_config, user_config, 

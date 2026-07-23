@@ -160,4 +160,6 @@ Existe um arquivo de configuração da aplicação para cada aplicação para a 
 }
 ```
 
+No arquivo de configuração de cada aplicação, existem seis campos principais, $\color{blue}\text{\textbf{suggestions\\\_parameters}}$, $\color{blue}\text{\textbf{application\\\_parameter}}$, $\color{blue}\text{\textbf{name}}$, $\color{blue}\text{\textbf{estimated\\\_parameters}}$, $\color{blue}\text{\textbf{training}}$ e $\color{blue}\text{\textbf{user}}$. A seguir descrevemos cada um desses campos.
+
 [1]: https://doi.org/10.1007/s10994-006-6226-1

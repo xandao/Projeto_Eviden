@@ -5,6 +5,7 @@ ENV/
 env/
 predictors/
 outputs/
+logs/
 
 # Python cache (compiled bytecode)
 **/__pycache__/

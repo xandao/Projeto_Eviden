@@ -4,6 +4,7 @@
   "users_activity": {
     "enable": true,
     "data_file_prefix": "executed_jobs_data",
+    "data_file_dir": "logs",
     "data_file_type": "csv"
   },
   "slurm": {

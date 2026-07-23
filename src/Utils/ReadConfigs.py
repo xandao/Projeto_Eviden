@@ -477,10 +477,11 @@ class ReadUserConfig:
         },
         "users_activity": {
             "type": "object", 
-            "required": ["enable", "data_file_prefix", "data_file_type"],
+            "required": ["enable", "data_file_prefix", "data_file_dir", "data_file_type"],
             "properties": {
                 "enable": {"type": "boolean"},
                 "data_file_prefix": {"type": "string"},
+                "data_file_dir": {"type": "string"},
                 "data_file_type": {"type": "string"}
             }
         },
