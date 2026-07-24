@@ -165,7 +165,15 @@ def convert_user_params(required_applicaion_params, conversions, application_con
     return getattr(required_applicaion_params, args[0])
 
   def filesize_func(*args):
-    return Path(getattr(required_applicaion_params, args[0])).stat().st_size
+    file_path = Path(getattr(required_applicaion_params, args[0]))
+    if file_path.is_file():
+      return file_path.stat().st_size
+    elif file_path.is_dir():
+      print(f"Path {file_path.resolve()} is a directory!")
+      return None
+    else:
+      print(f"Path {file_path.resolve()} does not exists!")
+      return None
 
   def map_func(user_arg_name, *args):
     # O primeiro parâmetro é o nome do arquivo com o datafraame com os mapeamentos.
@@ -193,9 +201,21 @@ def convert_user_params(required_applicaion_params, conversions, application_con
 
     str_search = ' and '.join(list_search)
 
-    result_df = df_map.query(str_search)
-    mapped_value = result_df.loc[0, user_arg_name]
-    
+    result_df = df_map.query(str_search).reset_index(drop=True)
+    if result_df.empty:
+      list_erros = []
+      for user_option in args[1:]:
+        option_value = getattr(required_applicaion_params, user_option)
+        if option_value not in df_map[user_option].values:
+          list_erros.append(f"{user_option} = {option_value}")
+      if len(list_erros) == 1:    
+        print(f"Valor inválido dado para a opção: {list_erros[0]}")
+      else:                
+        print(f"Valores inválidos dados para as opções: {', '.join(list_erros)}")
+      mapped_value = None
+    else:  
+      mapped_value = result_df.loc[0, user_arg_name]  
+        
     return mapped_value
   try:
     converted_user_params = {}
@@ -209,7 +229,10 @@ def convert_user_params(required_applicaion_params, conversions, application_con
         'map':  partial(map_func, variable, *conversion_args),
       }
 
-      converted_user_params[variable] = conversion_types[conversion_type]()
+      converted_value = conversion_types[conversion_type]()
+      if converted_value is None:
+        return None
+      converted_user_params[variable] = converted_value
 
     return converted_user_params
   except FileNotFoundError as e:
@@ -226,7 +249,7 @@ def convert_user_params(required_applicaion_params, conversions, application_con
     print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
     return None
   except KeyError as e:
-    print(f"❌ Erro interno ao processar o valor da opção {', '.join(e.args)}.")
+    print(f"❌ Erro interno ao processar o valor da opção {e.args}.")
     print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
     return None
   except Exception as e:
@@ -340,8 +363,7 @@ def optimize_application(configs_file_path, system_config, applications_config, 
     names_application_partitioms = {partition['partition'] for partition in application_partitios_list}
 
     # Processa os parâmetros da aplicação.
-    parser_application = argparse.ArgumentParser(description="Parser responsável pelos parâmetros da aplicação.", prog=application_name,
-                                                 usage="Alo!")
+    parser_application = argparse.ArgumentParser(description="Parser responsável pelos parâmetros da aplicação.", prog=application_name)
     applicatiom_params = applications_config[application_id]['user']['user_options']
     for param in applicatiom_params.keys():
       parser_application.add_argument(*applicatiom_params[param]['params'], required=True, help=applicatiom_params[param]['help'], 
@@ -571,5 +593,5 @@ if system_config is None or applications_configs is None or user_config is None 
 status = optimize_application(configs_file_path, system_config, applications_configs, user_config, application_args, 
                               predictors_info_config, user_args)
 if not status:
-#  parser.print_help()
+  print("Erro ao otimizar o script!")
   exit(-1)
