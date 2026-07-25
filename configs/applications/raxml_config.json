@@ -23,12 +23,12 @@
       "Bootstrap": {
         "params": ["-N", "-#"],
         "type": "integer",
-        "help": "Bootstrap number."
+        "help": "Valor do bootstrap."
       },
       "Arquivo": {
         "params": ["-s"],
         "type": "string",
-        "help": "Input file."
+        "help": "Arquivo de entrada com as sequências."
       }
     },
     "conversions": {

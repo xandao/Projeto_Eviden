@@ -38,12 +38,12 @@
       "Benchmark": {
         "params": ["-b"],
         "type": "string",
-        "help": "Benchmark name."
+        "help": "Nome do benchmark."
       },
       "Classe": {
         "params": ["-c"],
         "type": "string",
-        "help": "Class name."
+        "help": "Nome da classe do benchmark."
       }
     },
     "conversions": {
