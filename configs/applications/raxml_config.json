@@ -41,7 +41,7 @@
         "max_time": 1200,
         "max_memory": 367001600,
         "exclusive": true,
-        "default": true,
+        "default": false,
         "nodes": 4,
         "process": 2,
         "threads": 48
@@ -51,7 +51,7 @@
         "max_time": 3600,
         "max_memory": 367001600,
         "exclusive": true,
-        "default": false,
+        "default": true,
         "nodes": 20,
         "process": 2,
         "threads": 48
