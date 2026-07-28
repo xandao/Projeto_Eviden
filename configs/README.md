@@ -328,27 +328,6 @@ O arquivo de configuração do usuário é composto pelos segintes campos descri
   - $\color{blue}\text{\textbf{data\\\_file\\\_path}}$: Diretório em que serão armazenados os logs, como os outros diretórios, é relativo ao diretório principal em que todos os arquivos foram armazenados. No caso da configuração de exemplo, o diretório é $\color{gray}\text{\textbf{logs}}$.
 - $\color{blue}\text{\textbf{slurm}}$: Objeto com as informações sobre como o script deve ser submetido. Tem os seguintes campos:
   - $\color{blue}\text{\textbf{submission\\\_program}}$: Nome do aplicatioo usdo para submeter os trabalhos no supercomputador. No exemplo do arquivo de configuração, o aplicativo é o $\color{gray}\text{\textbf{sbatch}}$.
-  - $\color{blue}\text{\textbf{submission\\\_message}}$: Expressão regular que define como o ID do job deve ser extraído da mensagem gerada pelo programa de submissão no stdout. No exemplo do arquivo de configuração, a espressão regular, para capturar o ID do job na saída do sbatch é $\color{gray}\text{\textbf{.*Submitted batch job (\\d+).*}}$. -$\color{blue}\text{\textbf{suggestions\\\_names}}$: Nomes dados as sugestões quando apresentadas pelos usuários. Mapeia cada nome dado no campo do campo da aplicação para a lista dada
-
-<!--
-
-"collect_consumed_energy": false,
-  "": "script.sh",
-  "": {
-    "enable": true,
-    "data_file_prefix": "executed_jobs_data",
-    "data_file_dir": "logs",
-    "data_file_type": "csv"
-  },
-  "slurm": {
-    "submission_program": "sbatch",
-    "submission_message": ".*Submitted batch job (\\d+).*"
-  },
-  "suggestions_names": ["nodes", "process", "threads"]
-}
-
-Existem dois campos principais, $\color{blue}\text{\textbf{filter}}$ e $\color{blue}\text{\textbf{models}}$. O primeiro campo, $\color{blue}\text{\textbf{filter}}$, tem as informações para a parte do treinamento em que ocorre a filtragem da base de dados usada ao treinar o modelo:
--->
 
 [1]: https://doi.org/10.1007/s10994-006-6226-1
 [2]: https://doi.org/10.5753/sscad.2025.16760

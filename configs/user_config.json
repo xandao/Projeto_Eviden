@@ -9,6 +9,5 @@
   "slurm": {
     "submission_program": "sbatch",
     "submission_message": ".*Submitted batch job (\\d+).*"
-  },
-  "suggestions_names": ["nodes", "process", "threads"]
+  }
 }

@@ -11,7 +11,7 @@ class ReadSystemConfig:
     system_config_path (Path | None): Caminho completo para o arquivo de
                                       configuração dos scripts de treinamento 
                                       e do usuário.
-    system_config (dict | None): Dicionário com o arquivo de configuração 
+    system_conig (dict | None): Dicionário com o arquivo de configuração 
                                  convertido do formato JSON.
                                                                     
     esquema_json (dict): Esquema de validação para o script do sistema.         
@@ -504,8 +504,7 @@ class ReadUserConfig:
         "collect_consumed_energy", 
         "default_script_name", 
         "users_activity", 
-        "slurm", 
-        "suggestions_names"
+        "slurm" 
     ],
     "properties": {
         "collect_consumed_energy": {"type": "boolean"}, 
@@ -523,7 +522,6 @@ class ReadUserConfig:
                 "data_file_dir": {"type": "string"},
             }
         },
-        
         "slurm": {
             "type": "object", 
             "required": ["submission_program", "submission_message"],

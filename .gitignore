@@ -8,9 +8,12 @@ outputs/
 logs/
 
 # Python cache (compiled bytecode)
-**/__pycache__/
-*.py[cod]
-*$py.class
+src/__pycache__/
+src/Utils/__pycache__/
+src/*.py[cod]
+src/*$py.class
+src/Utils/*.py[cod]
+src/Utils/*$py.class
 
 # VS Code specific settings (optional)
 .vscode/
