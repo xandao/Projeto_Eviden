@@ -313,8 +313,7 @@ No arquivo de configuração de cada aplicação, existem seis campos principais
   "slurm": {
     "submission_program": "sbatch",
     "submission_message": ".*Submitted batch job (\\d+).*"
-  },
-  "suggestions_names": ["nodes", "process", "threads"]
+  }
 }
 ```
 
