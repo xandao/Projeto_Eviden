@@ -2,7 +2,7 @@
 
 ## Exemplo do arquivo de configuração $\color{red}\text{\textbf{system\\\_config.json}}$
 
-```jsonv
+```json
 {
   "predictors_path": "predictors",
   "templates_path": "templates",
@@ -288,15 +288,67 @@ No arquivo de configuração de cada aplicação, existem seis campos principais
     - $\color{blue}\text{\textbf{c: [``copy'', p]}}$: O valor da característica $\color{blue}\text{\textbf{c}}$ é uma cópia do parâmetro $\color{blue}\text{\textbf{p}}$ passado pelo usuário. No exemplo do RAxML, a característica $\color{gray}\text{\textbf{Bootstrap}}$ é igual ao valor do parâmetro $\color{gray}\text{\textbf{Bootstrap}}$.
     - $\color{blue}\text{\textbf{c: [``filsesize'', p]}}$. O valor da característica $\color{blue}\text{\textbf{c}}$ é o tamanho do arquivo cujo caminho foi definido pelo parâmetro $\color{blue}\text{\textbf{p}}$ passado pelo usuário. No exemplo do RAxML, a característica $\color{gray}\text{\textbf{Tamanho}}$ é igual ao tamanho do arquivo dado pelo caminho do parâmetro $\color{gray}\text{\textbf{Arquivo}}$.
     - $\color{blue}\text{\textbf{c: [``map'', arquivo\\\_mapeamento, p}}_1$,$\color{blue}\text{\textbf{p}}_2, \ldots, \text{\textbf{p}}_n\text{\textbf{]}}$: O valor da característica $\color{blue}\text{\textbf{c}}$ é dado pelo valor da característica na tabela do arquivo $\color{blue}\text{\textbf{arquivo\\\_mapeamento}}$, definido pelos valores dos parâmetros $\color{blue}\text{\textbf{p}}_1,\text{\textbf{p}}_2, \ldots, \text{\textbf{p}}_n$. O arquivo de mapeamento é uma tabela no formato CVS, com uma coluna para a característica $\color{blue}\text{\textbf{c}}$ e uma coluna para cada propriedade em $\color{blue}\text{\textbf{p}}_i, 1\leq i\leq n$. No arquivo de configuração do ntb (benckmarks do NAS), tem seis mapeamentos, usando a tabela dada em $\color{gray}\text{\textbf{ntb\\\_map\\\_table.cvs}}$ e os parâmetros $\color{gray}\text{\textbf{Benchmark}}$ e $\color{gray}\text{\textbf{Classe}}$ passados pelo usuário. Por exemplo, no arquivo de configuração do NTB, a configuração $\color{gray}\text{\textbf{``Zone X'': [``map'', ``ntb\\\_map\\\_table.cvs'',}}$ $\color{gray}\text{\textbf{``Benchmark'', ``Classe'']}}$, vai escolher o valor para a característica $\color{gray}\text{\textbf{``Zone X''}}$ usando o valor definido pelos parâmetros $\color{gray}\text{\textbf{Benchmark}}$ e $\color{gray}\text{\textbf{Classe}}$ da tabela (a tabela é dada antes do arquivo de configuração do NTB).
-  - $\color{blue}\text{\textbf{slurm}}$: Lista com os objetos que definem as possíveis partições que podem ser uadas ao submeter a aplicação. A partição escolhida será a com o tempo predito mais próximo do tempo máximo da partição, sendo que somente serão consideradas as partição que possa executar a sugestão feita pelo script de otimização do usuário. Para cada partição, o objeto tem os seguintes campos:
+  - $\color{blue}\text{\textbf{slurm}}$: Lista com os objetos que definem as possíveis esquemas que podem ser uadas ao submeter a aplicação, sendo cada esquema composto por una partição e as suas configurações. A partição escolhida pel script executado pelo usuário será aquela tempo máximo da partição mais próximo do que o tempo predito para a configuração escolhida pelo script, sendo que somente serão consideradas as partição que possam executar essa sugestão feita. Para cada partição, o objeto tem os seguintes campos:
     - $\color{blue}\text{\textbf{partition}}$: Nome da partição, que é o mesmo usado ao submeter os trabalhos. No arquivo de configuração do RAxMl e do NTB, o nome da primeira partição da lista é $\color{gray}\text{\textbf{sequana\\\_cpu\\\_dev}}$, a partição de mesmo nome do Santos Dumont.
     - $\color{blue}\text{\textbf{max\\\_time}}$: Tempo máximo de execução da partição, em segundos. Para a partição $\color{gray}\text{\textbf{sequana\\\_cpu\\\_dev}}$, o tempo máximo é de $\color{gray}\text{\textbf{1200}}$ (20 minutos).
     - $\color{blue}\text{\textbf{max\\\_memory}}$: Tamanho máximo da memória em KB. Aqui, foi usado o tamanho máximo que usamos nos testes do NAS (NTB), $\color{gray}\text{\textbf{367001600}}$ (350GB).
     - $\color{blue}\text{\textbf{exclusive}}$: Se a execução do aplicativo na particão será de uso exclusivo ($\color{gray}\text{\textbf{true}}$) ou não ($\color{gray}\text{\textbf{false}}$). Nos arquivos de configuração do RAxML e do NAS, a partição será de uso exclusivo ($\color{gray}\text{\textbf{true}}$) porque executamos os testes com usu exclusivo.
     - $\color{blue}\text{\textbf{default}}$: Se a partição é a default ($\color{gray}\text{\textbf{true}}$) ou não ($\color{gray}\text{\textbf{false}}$), usada quando não for possível escolher uma partição que permita executar a aplciação no tempo predito para a sugestão. Neste caso, um aviso será mostrado ao usuário, indicando que não foi possível para executar a aplicação dentro do tempo predito. Somente uma partição da lista deve ser a default e deve sempre existir uma partição default. Nos arquivos de configuração do RAxML e do NAS, a partição default é a $\color{gray}\text{\textbf{sequana\\\_cpu}}$.
-    - $\color{blue}\text{\textbf{nodes}}$: 4,
-    - $\color{blue}\text{\textbf{process}}$: 2,
-    - $\color{blue}\text{\textbf{threads}}$: 48
+    - $\color{blue}\text{\textbf{nodes}}$: Número máximo de nós para o esquema. Não é necessáriamente igual ao número de nós máximo da partição, mas não pode ser maior do que o máximo de nós da partição: No esquema que usa a partição $\color{gray}\text{\textbf{sequana\\\_cpu\\\_dev}}$, o número máximo é $\color{gray}\text{\textbf{4}}$ (igual ao máximo da partição).
+    - $\color{blue}\text{\textbf{process}}$: Número máximo de processos que podem ser executados em cada nó. Para os dois esquemas da lista, que usam, respectivamente, as partições $\color{gray}\text{\textbf{sequana\\\_cpu\\\_dev}}$ e $\color{gray}\text{\textbf{sequana\\\_cpu}}$, o valor é é $\color{gray}\text{\textbf{2}}$, porque cada nó, em ambas as partições, tem dois processadores físicos, implicando que podemos no máximo ter dois processos, cada um ligado a um processador diferente, caso tenham sido pedidos dois processos por nó.
+    - $\color{blue}\text{\textbf{threads}}$: Número máximo de threads que podem ser executados em cada processo. Para os dois esquemas da lista, que usam, respectivamente, as partições $\color{gray}\text{\textbf{sequana\\\_cpu\\\_dev}}$ e $\color{gray}\text{\textbf{sequana\\\_cpu}}$, o valor é $\color{gray}\text{\textbf{48}}$, pois cada processador tem $\color{gray}\text{\textbf{24}}$ núcleos de processamento, e quando somente temos um processo por nó, caso em que não é necessário ligar um processo a um processador, podemos ter 48 threads no máximo, com cada processador executando 24 threads (1 thread para cada núcleo).
+
+## Exemplo do arquivo de configuração $\color{red}\text{\textbf{user\\\_config.json}}$
+
+```json
+{
+  "collect_consumed_energy": false,
+  "default_script_name": "script.sh",
+  "users_activity": {
+    "enable": true,
+    "data_file_prefix": "executed_jobs_data",
+    "data_file_dir": "logs",
+    "data_file_type": "csv"
+  },
+  "slurm": {
+    "submission_program": "sbatch",
+    "submission_message": ".*Submitted batch job (\\d+).*"
+  },
+  "suggestions_names": ["nodes", "process", "threads"]
+}
+```
+
+O arquivo de configuração do usuário é composto pelos segintes campos descritos a seguir (precisamos ver se todos os campos serão mantidos):
+
+- $\color{blue}\text{\textbf{collect\\\_consumed\\\_energy}}$: Este é um campo que não sei se é necessário. Seria no caso de não ser possível configurar p Sentos Dumont para coletar energia e introduziríamos isso de algum modo no script submetido para o usuário. O valor atual é $\color{gray}\text{\textbf{false}}$, mas o script do usuário está no momento ignorando o campo.
+- $\color{blue}\text{\textbf{default\\\_script\\\_name}}$: Nome default para o script de submissão se o usuário não fornecer um nome pela opção -s do script de otimização usado pelo usário e se nçao pedir para submeter o script (opção -r). No caso de pedir para submeter, se a opção -s não for passada, o script será criado em um arquivo temporário que será removido após a submissão. O nome default é $\color{gray}\text{\textbf{script.sh}}$
+- $\color{blue}\text{\textbf{users\\\_activity}}$: Objeto que define como será armazenado os dados das aplicações otimizadas pelo usuário. Para cada aplicação, o arquivo que armazenará os dados será dado pelo nome no campo $\color{blue}\text{\textbf{data\\\_file\\\_prefix}}$, sendo salvo no diretório definido pelo campo $\color{blue}\text{\textbf{data\\\_file\\\_dir}}$. Para cada aplicação, será armazenado o ID do Job, o nome do job dado pelo usuário, as sugestões (no momento, número de nós, processos por nó e threads por processo), os parâmetros da aplicação passados pelo usuário e usado no treinamento dos modelos, os parâmetros convertidos obtidos dos parâmetros passados pelo usuados e usados no treinamento dos modelos, o tempo predito para a sugestão, e a pontuação da sugestão (no momento é a variável predita definida pelo campo $\color{blue}\text{\textbf{suggestion}}$ do objeto definido pelo campo $\color{blue}\text{\textbf{estimated\\\_parameters}}$ definido no arquivo de configuração de cada aplicação, para o RAxML e o NTB, é o valor predito para o EDP). Por enquanto, o script ignora este objeto, mas vou em breve implementar o salvamento dos logs e usar o objeto. Os campos são os seguintes:
+  - $\color{blue}\text{\textbf{users\\\_activity}}$: Define se deve ser habilidada ($\color{gray}\text{\textbf{true}}$) ou não ($\color{gray}\text{\textbf{false}}$) o log da execução de um aplicação por um usuário.
+  - $\color{blue}\text{\textbf{data\\\_file\\\_prefix}}$: Prefixo do nome do arquivo do log. O nome será este prefixo mais um sublinhado ($``\\\_''$), mais o nome do aplicativo, mas a extensão ($``.csv''$). No caso da configuração de exemplo, o prefixo é $\color{gray}\text{\textbf{executed\\\_jobs\\\_data}}$.
+  - $\color{blue}\text{\textbf{data\\\_file\\\_path}}$: Diretório em que serão armazenados os logs, como os outros diretórios, é relativo ao diretório principal em que todos os arquivos foram armazenados. No caso da configuração de exemplo, o diretório é $\color{gray}\text{\textbf{logs}}$.
+- $\color{blue}\text{\textbf{slurm}}$: Objeto com as informações sobre como o script deve ser submetido. Tem os seguintes campos:
+  - $\color{blue}\text{\textbf{submission\\\_program}}$: Nome do aplicatioo usdo para submeter os trabalhos no supercomputador. No exemplo do arquivo de configuração, o aplicativo é o $\color{gray}\text{\textbf{sbatch}}$.
+  - $\color{blue}\text{\textbf{submission\\\_message}}$: Expressão regular que define como o ID do job deve ser extraído da mensagem gerada pelo programa de submissão no stdout. No exemplo do arquivo de configuração, a espressão regular, para capturar o ID do job na saída do sbatch é $\color{gray}\text{\textbf{.*Submitted batch job (\\d+).*}}$. -$\color{blue}\text{\textbf{suggestions\\\_names}}$: Nomes dados as sugestões quando apresentadas pelos usuários. Mapeia cada nome dado no campo do campo da aplicação para a lista dada
+
+<!--
+
+"collect_consumed_energy": false,
+  "": "script.sh",
+  "": {
+    "enable": true,
+    "data_file_prefix": "executed_jobs_data",
+    "data_file_dir": "logs",
+    "data_file_type": "csv"
+  },
+  "slurm": {
+    "submission_program": "sbatch",
+    "submission_message": ".*Submitted batch job (\\d+).*"
+  },
+  "suggestions_names": ["nodes", "process", "threads"]
+}
+
+Existem dois campos principais, $\color{blue}\text{\textbf{filter}}$ e $\color{blue}\text{\textbf{models}}$. O primeiro campo, $\color{blue}\text{\textbf{filter}}$, tem as informações para a parte do treinamento em que ocorre a filtragem da base de dados usada ao treinar o modelo:
+-->
 
 [1]: https://doi.org/10.1007/s10994-006-6226-1
 [2]: https://doi.org/10.5753/sscad.2025.16760
