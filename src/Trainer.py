@@ -4,9 +4,10 @@ from Utils.ReadConfigs import ReadSystemConfig, ReadApplicationsConfigs, ReadTra
 import importlib
 import argparse
 import sys
+import textwrap
 from pathlib import Path
 from functools import partial
-from Utils.Common import base_files_path_env_name, base_files_path, configs_files_dir, debug_code
+from Utils.Common import base_files_path_env_name, base_files_path, configs_files_dir, debug_code, CustomFormatter
 
 def read_configs(verbose=False):
   # Lê os as variáveis gerais.
@@ -34,13 +35,27 @@ def read_configs(verbose=False):
 def process_script_args():
   # Inicializa o parser para verificar parâ,etros de aplicação
   parser = argparse.ArgumentParser(description="Script para teinar os modelos para todos os aplicativos que vamos otimizar o uso.", 
-                                   add_help=False)
+                                   usage="trainer [opções] Command [Parâmetros]", add_help=False, 
+                                   formatter_class=CustomFormatter)
 
   # Adiciona as opções do script de treinamento.
   opcoes = parser.add_argument_group("Opções principais")
   ajuda = parser.add_argument_group("Ajuda")
+  opcoes.add_argument("command", type=str, nargs='*', help=textwrap.dedent('''Comando a ser executado. Pode ser um dos seguintes comandos:
+
+applications: lista todas as aplicações que podemos treinar os modelos.
+
+models: lista os modelos que são avaliados quando os preditores forem gerados.
+
+train app1, app2, ..., appn -> Faz todo o processo de treinamento, da filtragem dos dados, otimização dos
+hiperparâmetros dos modelos, escolja do melhor modelo e treinamento deste melhor modelo com todos os
+dados, sendo gerado um modelo para auxiliar a geração das sugestões e outro para predizer o tempo.
+
+Cada aplicação da lista é considerada na ordem dada e os treinamentos são idependentes, ou seja,
+passar a lista é equivalente a executar o script com o comando para cada aplicação isoladamemte.
+
+'''))
   opcoes.add_argument("-v", "--verbose", action="store_true", default=False, help="Habilita a verbosidade do script.")
-  opcoes.add_argument("command", type=str, nargs='*', help="Command: can be applications, to list allaplications, models to list the models, or train to generete the best model for a selected application")
   ajuda.add_argument("-h", "--help", action="help", help="Mostra esta mensagem de ajuda e sai")
 
   # Processa os parâmetros da linha de comando
@@ -182,7 +197,7 @@ def train_command(applications_name, applications_config, training_config, syste
       if verbose and importances_df is not None:
         print('---> Dataframe com as importâncias do modelo:')
         print("\n", importances_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
-      else:  
+      elif verbose:
         print("---> O modelo não avalia as importâncias das características.")
       
       # Salva o arquivo do preditor no formato .pickle.
@@ -209,7 +224,10 @@ def execute_commands(command, applications_configs, training_config, system_conf
    commands_dict[command[0]]()
    return True
  else:  
-  print("Comando {command[0]} inválido!")
+  if command:
+    print(f"Comando {command[0]} inválido!")
+  else:  
+    print(f"O comando necessário não foi fornecido!")
   return False
     
 # Processa os parâmetros do script.

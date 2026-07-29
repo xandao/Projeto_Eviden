@@ -628,10 +628,8 @@ class PredictorsInfoConfig:
     esquema_json (dict): Esquema de validação para o .                            
     verbose (bool): Habilita/desabilita informações de verbosidade.                   
   """
-  # ---------------------------------------------------------------------
   # Esquema de validação para as informações sobre os  preditores para 
   # cada modelo treinado.
-  # ---------------------------------------------------------------------
   esquema_json = {
       "type": "object",
       "patternProperties": {
@@ -649,6 +647,7 @@ class PredictorsInfoConfig:
     Parâmetros:
       verbose: Habilita/desabilita informações de verbosidade.
     """
+    # Inicializa as variáveis internas da classe.
     self.predictors_info_config_path = None  
     self.predictors_info_config = None
     self.verbose = verbose
@@ -667,45 +666,68 @@ class PredictorsInfoConfig:
                    convertido para um dicionário, ou None se algum erro ocorreu
                    ao ler ou varificar a sintaxe do arquvo.                                     
     """
+    # Armazena o camainho do arquivo de cinfiguração dos preditores..
     self.predictors_info_config_path = predictors_info_config_path
+
+    # Tenta abrir o arquivo e processá-lo se o caminho existir e for um arquivo.
     try:
+      # Tenta converter o JSON, verificando a sintaxe do formato, e salva o JSON
+      # convertido para dicionário em self.predictors_info_config.
       if predictors_info_config_path.is_file():
         with open(predictors_info_config_path, 'r') as file:
           self.predictors_info_config = json.load(file)
+
+        # Verifica se o arquivo JSON, com a sintaxe correta, está em conformidade
+        # com o esquema esquema_json.
         validate(instance=self.predictors_info_config, schema=PredictorsInfoConfig.esquema_json)
+
+        # Imprime a informação de sucesso se a verbosidade estiver habilitada.
         if self.verbose:
           print(f"✅ Arquivo {predictors_info_config_path.name} é um arquivo válido de configuração dos preditores e foi carregado com sucesso!")
       else:  
+        # O arquivo somente pode não existir se ainda não treinamos nenhum modelo para
+        # nenhuma aplicação, ou seja, somente pode ocorrer no script de treinamento. No
+        # script de otimização, o arquivo sempre deve existir.
         if self.verbose:
           print(f"⚠️  O arquivo {predictors_info_config_path.name} não existe, mas não tem problema se o erro for gerado pelo script de treinamento!")
+
+        # Inicializa o dicionário de configurações como vazio, pois no primeiro treinamento não
+        # teremos ainda um preditor para uma aplicação.
         self.predictors_info_config = {}
+
+      # Retorna a configuração dos preditores lida e e convertida para um dicionário.  
       return self.predictors_info_config
 
     except ValidationError as e:
-    # Quando falha no 'oneOf', ele avisa que não bateu com nenhum molde
+      # Ocorreu um erro ao validar o esquema do arquivo JSON lido
       print(f"❌ Erro ao validar o JSON do arquivo do script do usuário {predictors_info_config_path.name}!")
       print(f"❌ Detalhes do erro: {e.message}")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except json.JSONDecodeError as e:
+      # Ocorreu um erro de sintaxe ao ler o arquivo JSON.
       print(f"❌ O arquivo {predictors_info_config_path.name} não pode ser lido como um arquivo JSON válido! Erro de sintaxe!")
       print(f"❌ Detalhes do erro: {e.msg} at line {e.lineno}, column {e.colno}!")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except FileNotFoundError:
+      # O arquivo não foi encontrado.
       print(f"❌ O arquivo {predictors_info_config_path.name} não foi encontrado!")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except PermissionError as e:
+      # O usuário que executou o script não tem permissão para acessar o arquivo.
       print(f"❌ Erro de permissão ao acessar o arquivo {predictors_info_config_path.name}!")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except IOError as e:
+      # Ocorreu um erro de I/O ao acessar o arquivo.
       print(f"❌ Erro de I/O ao ler o arquivo {predictors_info_config_path.name}!")
       print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except Exception as e:
+      # Ocorreu alguma outra exceção, inesperada.
       print(f"❌ Erro desconhecido ao processar o arquivo {predictors_info_config_path.name}!")
       print(f"❌ Parâmetros do erro: {e.args}!")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
@@ -719,7 +741,8 @@ class PredictorsInfoConfig:
   
     Parâmetros:
       predictors_info_config_path (Path): Caminho completo do arquivo de 
-                                          configuração com os mapeamentos.
+                                          configuração com os mapeamentos
+                                          atualizada.
 
     Retorna:
       Sem retorno.                 
@@ -729,7 +752,17 @@ class PredictorsInfoConfig:
     #       backup altes de atualizar o arquivo (quando o arquivo já existia)
     #       para uma maior confiabilidade?
     
-    self.predictors_info_config = predictors_info_config
-    with open(self.predictors_info_config_path, 'w') as file:
-      json.dump(self.predictors_info_config, file, indent="\t")
+    # Verifica se self.predictors_info_config_path foi inicializado, ou seja,
+    # se a função read_predictors_info_config foi chamada.
+    if self.predictors_info_config_path is None:
+      print(f"⚠️ Não foi lida a configuração dos preditores! O arquivo não será salvo!")
+    else:
+      # Atualiza o dicionário das configurações dos preditores com a nova versão
+      # das configurações.
+      self.predictors_info_config = predictors_info_config
+
+      # Converte o dicionário para JSON e atualiza o arquivo originalmente lido
+      # pela função self.predictors_info_config_path.
+      with open(self.predictors_info_config_path, 'w') as file:
+        json.dump(self.predictors_info_config, file, indent="\t")
     

@@ -8,7 +8,7 @@ from pathlib import Path
 import os
 from functools import partial
 import subprocess
-from Utils.Common import base_files_path_env_name, base_files_path, configs_files_dir, debug_code
+from Utils.Common import base_files_path_env_name, base_files_path, configs_files_dir, debug_code, CustomFormatter
 import textwrap
 import tempfile
 import re
@@ -45,13 +45,13 @@ def read_configs(verbose=False):
 
 def process_script_args():
   parser = argparse.ArgumentParser(description="Script para escolher a melhor configuração para aplicações selecionadas.",
-                                   usage="%(prog)s [opções] -- [executável da aplicação] [-h] [opções obrigatórias da aplicação] [outras opções da aplicação]",
-                                   add_help=False, formatter_class=argparse.RawTextHelpFormatter)
+                                   usage="optimizer [opções] -- [executável da aplicação] [-h] [opções obrigatórias da aplicação] [outras opções da aplicação]",
+                                   add_help=False, formatter_class=CustomFormatter)
 
   opcoes = parser.add_argument_group("Opções principais")
   ajuda = parser.add_argument_group("Ajuda")
   opcoes.add_argument("-r", "--run", action="store_true", default=False, help="Submete o script com a melhor configuração de execução.")
-  opcoes.add_argument("-j", "--jobname", type=str, default=None, help="Nome do trabalho registrado no sistema de submissão")
+  opcoes.add_argument("-j", "--jobname", type=str, default=None, help="Nome do trabalho registrado no sistema de submissão.")
   opcoes.add_argument("-s", "--script", type=str, default=None, help="Salva o script gerado em um arquivo.")
   opcoes.add_argument("-S", "--suggestion", action="store_true", default=False, 
                       help="Somente mostra a sugestão para os parâmetros do script.")
@@ -363,7 +363,8 @@ def optimize_application(configs_file_path, system_config, applications_config, 
     names_application_partitioms = {partition['partition'] for partition in application_partitios_list}
 
     # Processa os parâmetros da aplicação.
-    parser_application = argparse.ArgumentParser(description="Parser responsável pelos parâmetros da aplicação.", prog=application_name)
+    parser_application = argparse.ArgumentParser(description="Parser responsável pelos parâmetros da aplicação.", prog=application_name,
+                                                 formatter_class=CustomFormatter)
     applicatiom_params = applications_config[application_id]['user']['user_options']
     for param in applicatiom_params.keys():
       parser_application.add_argument(*applicatiom_params[param]['params'], required=True, help=applicatiom_params[param]['help'], 
