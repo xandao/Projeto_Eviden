@@ -1,6 +1,10 @@
-#/bin/bash
+#!/bin/bash
 
 bin_dir=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
-script_dir=$(dirname $bin_dir)/src
+base_dir=$(dirname $bin_dir)
+python_dir=$base_dir/.venv/bin
+script_dir=$base_dir/src
 
-python3.9 $script_dir/Optimizer.py "$@"
+export PYTHONNOUSERSITE=1
+$python_dir/python3.9 $script_dir/Optimizer.py "$@"
+
