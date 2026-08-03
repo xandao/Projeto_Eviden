@@ -12,7 +12,7 @@
     "dataset_files": ["raxml.csv"]
   },
   "user": {
-    "executable_names": ["raxmlHPC-PTHREADS-AVX-omp", "raxml"],
+    "executable_names": ["raxmlHPC-HYBRID-AVX", "raxml"],
     "script_template_name": "raxml_template.sh",
     "suggestions_map": {
       "nodes": "NNodes",
