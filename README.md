@@ -26,7 +26,7 @@ module load trainer
 Depois, basta usar a aplicação trainer, que é um _wrapper_ para executar o script Trainer.py no diretório src. A ajuda de uso do script é a seguinte:
 
 ```bash
-usage: Trainer.py [opções] Command [Parâmetros]
+uso: Trainer.py [opções] Command [Parâmetros]
 
 Script para teinar os modelos para todos os aplicativos que vamos otimizar o uso.
 
@@ -95,8 +95,8 @@ module load optimizer
 
 Depois, basta usar a aplicação otimizer, que é um _wrapper_ para executar o script Optimizer.py no diretório src. A ajuda de uso do script é a seguinte:
 
-```bash
-usage: Optimizer.py [opções] -- [executável da aplicação] [-h] [opções obrigatórias da aplicação] [outras opções da aplicação]
+````bash
+uso: optimizer [opções] -- [executável da aplicação] [-h] [opções obrigatórias da aplicação] [outras opções da aplicação]
 
 Script para escolher a melhor configuração para aplicações selecionadas.
 
@@ -108,7 +108,7 @@ Opções principais:
                         Salva o script gerado em um arquivo.
   -S, --suggestion      Somente mostra a sugestão para os parâmetros do script.
   -n NODES [NODES ...], --nodes NODES [NODES ...]
-                        Lista com os possíveis números de nós, se a aplicação usa mulltiplos nós.
+                        Lista com os possíveis números de nós, se a aplicação usa múltiplos nós.
                         Usada conjuntamente com as opções -p e -t que terão os valores default se não usadas.
                         Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo.
                         Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o s, que será igual a 1.
@@ -117,35 +117,34 @@ Opções principais:
                                   -n :10:2    -> Nós: 1, 3, 5, 7, 9.
                                   -n 1:5      -> Nós: 1, 2, 3, 4, 5.
   -p PROCESS [PROCESS ...], --process PROCESS [PROCESS ...]
-                        Lista com os possíveis números de nós, se a aplicação usa mulltiplos nós.
+                        Lista com os possíveis números de processos, se a aplicação usa múltiplos processos por nó.
                         Usada conjuntamente com as opções -n e -t que terão os valores default se não usadas.
                         Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo.
                         Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o s, que será igual a 1.
                         Default 1:1.
                         Exemplos: -p 1 2:      -> Processos: 1, 2.
-                                  -n 1 :3:1    -> Processos: 1, 2, 3.
-                                  -n :3 6:12:3 -> Processos: 1, 2, 3, 6, 9, 12
+                                  -p 1 :3:1    -> Processos: 1, 2, 3.
+                                  -p :3 6:12:3 -> Processos: 1, 2, 3, 6, 9, 12
   -t THREADS [THREADS ...], --threads THREADS [THREADS ...]
-                        Lista com os possíveis números de nós, se a aplicação usa mulltiplos nós.
+                        Lista com os possíveis números de threads, se a aplicação usa múltiplas threads por processo.
                         Usada conjuntamente com as opções -n e -p que terão os valores default se não usadas.
                         Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo.
                         Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o s, que será igual a 1.
                         Default 1:1.
-                        Exemplos: -n 1 2:24:2 -> Threads: 1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24
-                                  -n 2 :24:8  -> Threads: 2, 24, 32, 40, 48.
-                                  -n 2 24 48  -> Threads: 2, 24, 48.
+                        Exemplos: -t 1 2:24:2 -> Threads: 1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24
+                                  -t 2 :24:8  -> Threads: 2, 24, 32, 40, 48.
+                                  -t 2 24 48  -> Threads: 2, 24, 48.
   -v, --verbose         Habilita a verbosidade do script.
   -l, --list            Lista as aplicações cujas execuções podem ser otimizadas pelo script.
 
 Ajuda:
-  -h, --help            Mostra esta mensagem de ajuda e sai
-```
+  -h, --help            Mostra esta mensagem de ajuda e sai```
 
 O formato do comando é:
 
 ```bash
 optimizer <opções_do_otimizador> -- <executável_aplicação> <parâmetros_da_aplicação>
-```
+````
 
 As opções do otimziador são as seguintes:
 
