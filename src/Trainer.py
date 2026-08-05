@@ -4,6 +4,7 @@ from Utils.ReadConfigs import ReadSystemConfig, ReadApplicationsConfigs, ReadTra
 import importlib
 import argparse
 import sys
+import os
 import textwrap
 from pathlib import Path
 from functools import partial
@@ -199,6 +200,14 @@ def train_command(applications_name, applications_config, training_config, syste
         print("\n", importances_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
       elif verbose:
         print("---> O modelo não avalia as importâncias das características.")
+
+      # Removendo o arquivo anterior do preditor da aplicação, se existir.
+      if application_key in predictors_info_config:
+        old_preditor_file_name = predictors_info_config[application_key]
+        old_preditor_file_path = predictors_file_path / f"{old_preditor_file_name}"
+        if verbose:
+          print(f'--> Removendo o preditor antigo {old_preditor_file_name}')  
+        old_preditor_file_path.unlink(missing_ok=True)
       
       # Salva o arquivo do preditor no formato .pickle.
       print(f'--> Salvando o preditor treinado como o modelo {best_model_name} (nome {model_name}) no arquivo {preditor_file_name}.')
