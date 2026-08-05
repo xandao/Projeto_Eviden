@@ -1,0 +1,8 @@
+{
+  "dataset_files": [
+    "../data/raxml.csv",
+    "../data/com_edp-1a4n.csv",
+    "../data/saida-final-edp_raxml_isa_sem_5nos.csv",
+    "../data/saida-final-edp_raxml_mica_sem_5nos.csv"
+  ]
+}
