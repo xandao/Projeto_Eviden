@@ -9,7 +9,12 @@
   "training": {
     "group_parameters": ["Bootstrap", "Tamanho"],
     "filter_parameters": ["ElapsedRaw", "Consumo de Energia Total (J)", "EDP"],
-    "dataset_files": ["raxml.csv"]
+    "dataset_files": [
+      "raxml.csv",
+      "com_edp-1a4n.csv",
+      "saida-final-edp_raxml_isa_sem_5nos.csv",
+      "saida-final-edp_raxml_mica_sem_5nos.csv"
+    ]
   },
   "user": {
     "executable_names": ["raxmlHPC-HYBRID-AVX", "raxml"],
