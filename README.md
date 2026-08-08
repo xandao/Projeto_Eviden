@@ -23,10 +23,10 @@ O script de treinamento será usado pelos administradores do sistema, quando des
 module load trainer
 ```
 
-Depois, basta usar a aplicação trainer, que é um _wrapper_ para executar o script Trainer.py no diretório src. A ajuda de uso do script é a seguinte:
+Depois, basta usar a aplicação *trainer*, que é um _wrapper_ para executar o script Trainer.py no diretório src. A ajuda de uso do script é a seguinte:
 
 ```bash
-uso: Trainer.py [opções] Command [Parâmetros]
+uso: trainer [opções] Command [Parâmetros]
 
 Script para treinar os modelos para todos os aplicativos que vamos otimizar o uso.
 
@@ -87,13 +87,13 @@ Opções do script:
 
 ## Script de otimização
 
-O script de otimização será usado pelo usuário para obter as melhores configurações (no momento, número de nós, de processos por nó e de therads por processo) para obter um script de submissão que pode, se o usuário desejar, ser automaticamente submetido. ara usar o script de treinamento, primeiramente é necessário carregar o módulo do script, com o seguinte comando:
+O script de otimização será usado pelo usuário para obter as melhores configurações (no momento, número de nós, de processos por nó e de therads por processo) para gerar o script de submissão que pode, se o usuário desejar, ser automaticamente submetido. Para usar o script de treinamento, primeiramente é necessário carregar o módulo do script, com o seguinte comando:
 
 ```bash
 module load optimizer
 ```
 
-Depois, basta usar a aplicação otimizer, que é um _wrapper_ para executar o script Optimizer.py no diretório src. A ajuda de uso do script é a seguinte:
+Depois, basta usar a aplicação *otimizer*, que é um _wrapper_ para executar o script Optimizer.py no diretório src. A ajuda de uso do script é a seguinte:
 
 ````bash
 uso: optimizer [opções] -- [executável da aplicação] [-h] [opções obrigatórias da aplicação] [outras opções da aplicação]
@@ -160,20 +160,20 @@ user$ optimizer --list
 
 - $\color{blue}\text{\textbf{-v ou --verbose}}$: Habilita a verbosidade.
 - $\color{blue}\text{\textbf{-h ou --help}}$: Mostra a ajuda mostrada anteriormente.
-- Os parâmetros $\color{blue}\text{\textbf{-n ou --nodes}}$, $\color{blue}\text{\textbf{-p ou --process}}$ e $\color{blue}\text{\textbf{-t ou --threads}}$ são usados conjuntamente para definir uam faixa customizada de números de nós, números de processos por nó, e números de threads a serem usadas ao avaliar a melhor sugestão para executar a aplicação que o usuário deseja otimizar. Como onbservado na ajuda, cada opção efetivamente define uma lista de valores. Se uma opção deixar de ser fornecida, será considerado o valor default 1. Se nenhuma opção for definida, as sugestões serão baseadas em todas as combinações feitas quando os dados de treinamento, usados para treinar os modelos da aplicação. Valores inadequados para o número de nós, processos e threads serão desconsiderados, com um aviso sendo emitido na tela. Exemplo de uso das opções:
+- Os parâmetros $\color{blue}\text{\textbf{-n ou --nodes}}$, $\color{blue}\text{\textbf{-p ou --process}}$ e $\color{blue}\text{\textbf{-t ou --threads}}$ são usados conjuntamente para definir uam faixa customizada de números de nós, números de processos por nó, e números de threads a serem usadas ao avaliar a melhor sugestão para executar a aplicação que o usuário deseja otimizar. Como observado na ajuda, cada opção efetivamente define uma lista de valores. Se uma opção deixar de ser fornecida, será considerado o valor default 1. Se nenhuma opção for definida, as sugestões serão baseadas em todas as combinações feitas quando os dados de treinamento, usados para treinar os modelos da aplicação. Valores inadequados para o número de nós, processos e threads serão desconsiderados, com um aviso sendo emitido na tela. Exemplo de uso das opções:
 
 ```bash
 user$ python Optimizer.py -r -s script.sh -j teste-customizado -n 1:10 -p 1 2 4 -t 2 4 8 16 3
 2 64 -- raxml -N 100 -s ~xandao/Downloads/DENV_3-colombia-BVBRC_genome_sequence.mafft
-⚠️  Descantando todos os valores para a opção process maiores do que 2 permitidos pelas possíveis partições sequana_cpu_dev, sequana_cpu da aplicação raxml!
-⚠️  Descantando todos os valores para a opção threads maiores do que 48 permitidos pelas possíveis partições sequana_cpu_dev, sequana_cpu da aplicação raxml!
+⚠️  Descartando todos os valores para a opção process maiores do que 2 permitidos pelas possíveis partições sequana_cpu_dev, sequana_cpu da aplicação raxml!
+⚠️  Descartando todos os valores para a opção threads maiores do que 48 permitidos pelas possíveis partições sequana_cpu_dev, sequana_cpu da aplicação raxml!
 ➡️  Script de submissão script.sh criado com sucesso!
 ➡️  Script de submissão submetido com sucesso!
 ➡️  O trabalho foi submetido com o identificador 386804.
 ```
 
 - $\color{blue}\text{\textbf{-j ou --jobname}}$: Nome do trabalho associado à aplicação quando ela for executada.
-- $\color{blue}\text{\textbf{-r ou --run}}$: Submete para execução o script gerado com a sugestão otimizada. A seguir está um exemplo diferente dado na desrição das opções anteriores, quando nçao sçao defindas opções customizadas para as sugestões a serem avaliadas:
+- $\color{blue}\text{\textbf{-r ou --run}}$: Submete para execução o script gerado com a sugestão otimizada. A seguir está um exemplo diferente dado na descrição das opções anteriores, quando não são defindas opções customizadas para as sugestões a serem avaliadas:
 
 ```bash
 user$ python Optimizer.py -r -s script.sh -j teste -- raxml -N 100 -s ~xandao/Downloads/DENV_3-colombia-BVBRC_genome_sequence.mafft
@@ -190,7 +190,7 @@ user$ otimizer -S -j teste -- raxml -N 100 -s ~xandao/Downloads/DENV_3-colombia-
 ➡️  Sugestão: nodes=4, process=2, threads=8
 ```
 
-Quando o otimizador for usado com uma aplicação, existem opções desta apicação que devem ser obrigatoriamente definidas. Para saber as opções, use o comando -h para a aplicação como mostrado a seguir:
+Quando o otimizador for usado com uma aplicação, existem opções desta aplicação que devem ser obrigatoriamente definidas. Para saber as opções, use o comando -h para a aplicação como mostrado a seguir:
 
 ```bash
 user$ python Optimizer.py -- raxml -h
@@ -198,9 +198,10 @@ uso: raxml [-h] -N BOOTSTRAP -s ARQUIVO
 
 Parser responsável pelos parâmetros da aplicação.
 
-options:
-  -h, --help            show this help message and exit
+Opções principais:
   -N BOOTSTRAP, -# BOOTSTRAP
                         Valor do bootstrap.
   -s ARQUIVO            Arquivo de entrada com as sequências.
-```
+
+Ajuda:
+  -h, --help            Mostra esta mensagem de ajuda e sai.```
