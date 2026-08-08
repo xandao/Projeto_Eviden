@@ -28,7 +28,7 @@ Depois, basta usar a aplicação trainer, que é um _wrapper_ para executar o sc
 ```bash
 uso: Trainer.py [opções] Command [Parâmetros]
 
-Script para teinar os modelos para todos os aplicativos que vamos otimizar o uso.
+Script para treinar os modelos para todos os aplicativos que vamos otimizar o uso.
 
 Opções principais:
   command        Comando a ser executado. Pode ser um dos seguintes comandos:
@@ -38,16 +38,16 @@ Opções principais:
                  models: lista os modelos que são avaliados quando os preditores forem gerados.
 
                  train app1, app2, ..., appn -> Faz todo o processo de treinamento, da filtragem dos dados, otimização dos
-                 hiperparâmetros dos modelos, escolja do melhor modelo e treinamento deste melhor modelo com todos os
+                 hiperparâmetros dos modelos, escolha do melhor modelo e treinamento deste melhor modelo com todos os
                  dados, sendo gerado um modelo para auxiliar a geração das sugestões e outro para predizer o tempo.
 
-                 Cada aplicação da lista é considerada na ordem dada e os treinamentos são idependentes, ou seja,
-                 passar a lista é equivalente a executar o script com o comando para cada aplicação isoladamemte.
+                 Cada aplicação da lista é considerada na ordem dada e os treinamentos são independentes, ou seja,
+                 passar a lista é equivalente a executar o script com o comando para cada aplicação isoladamente.
 
   -v, --verbose  Habilita a verbosidade do script.
 
 Ajuda:
-  -h, --help     Mostra esta mensagem de ajuda e sai
+  -h, --help     Mostra esta mensagem de ajuda e sai.
 ```
 
 Os possíveis comandos são:
@@ -138,7 +138,7 @@ Opções principais:
   -l, --list            Lista as aplicações cujas execuções podem ser otimizadas pelo script.
 
 Ajuda:
-  -h, --help            Mostra esta mensagem de ajuda e sai```
+  -h, --help            Mostra esta mensagem de ajuda e sai.```
 
 O formato do comando é:
 
