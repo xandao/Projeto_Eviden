@@ -34,7 +34,7 @@ def read_configs(verbose=False):
 
 def process_script_args():
   # Inicializa o parser para verificar parâ,etros de aplicação
-  parser = argparse.ArgumentParser(description="Script para teinar os modelos para todos os aplicativos que vamos otimizar o uso.", 
+  parser = argparse.ArgumentParser(description="Script para treinar os modelos para todos os aplicativos que vamos otimizar o uso.", 
                                    usage="trainer [opções] Command [Parâmetros]", add_help=False, 
                                    formatter_class=CustomFormatter)
 
@@ -48,15 +48,15 @@ applications: lista todas as aplicações que podemos treinar os modelos.
 models: lista os modelos que são avaliados quando os preditores forem gerados.
 
 train app1, app2, ..., appn -> Faz todo o processo de treinamento, da filtragem dos dados, otimização dos
-hiperparâmetros dos modelos, escolja do melhor modelo e treinamento deste melhor modelo com todos os
+hiperparâmetros dos modelos, escolha do melhor modelo e treinamento deste melhor modelo com todos os
 dados, sendo gerado um modelo para auxiliar a geração das sugestões e outro para predizer o tempo.
 
-Cada aplicação da lista é considerada na ordem dada e os treinamentos são idependentes, ou seja,
-passar a lista é equivalente a executar o script com o comando para cada aplicação isoladamemte.
+Cada aplicação da lista é considerada na ordem dada e os treinamentos são independentes, ou seja,
+passar a lista é equivalente a executar o script com o comando para cada aplicação isoladamente.
 
 '''))
   opcoes.add_argument("-v", "--verbose", action="store_true", default=False, help="Habilita a verbosidade do script.")
-  ajuda.add_argument("-h", "--help", action="help", help="Mostra esta mensagem de ajuda e sai")
+  ajuda.add_argument("-h", "--help", action="help", help="Mostra esta mensagem de ajuda e sai.")
 
   # Processa os parâmetros da linha de comando
   args = parser.parse_args()

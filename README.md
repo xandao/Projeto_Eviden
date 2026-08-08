@@ -28,7 +28,7 @@ Depois, basta usar a aplicação trainer, que é um _wrapper_ para executar o sc
 ```bash
 uso: Trainer.py [opções] Command [Parâmetros]
 
-Script para teinar os modelos para todos os aplicativos que vamos otimizar o uso.
+Script para treinar os modelos para todos os aplicativos que vamos otimizar o uso.
 
 Opções principais:
   command        Comando a ser executado. Pode ser um dos seguintes comandos:
@@ -38,11 +38,11 @@ Opções principais:
                  models: lista os modelos que são avaliados quando os preditores forem gerados.
 
                  train app1, app2, ..., appn -> Faz todo o processo de treinamento, da filtragem dos dados, otimização dos
-                 hiperparâmetros dos modelos, escolja do melhor modelo e treinamento deste melhor modelo com todos os
+                 hiperparâmetros dos modelos, escolha do melhor modelo e treinamento deste melhor modelo com todos os
                  dados, sendo gerado um modelo para auxiliar a geração das sugestões e outro para predizer o tempo.
 
-                 Cada aplicação da lista é considerada na ordem dada e os treinamentos são idependentes, ou seja,
-                 passar a lista é equivalente a executar o script com o comando para cada aplicação isoladamemte.
+                 Cada aplicação da lista é considerada na ordem dada e os treinamentos são independentes, ou seja,
+                 passar a lista é equivalente a executar o script com o comando para cada aplicação isoladamente.
 
   -v, --verbose  Habilita a verbosidade do script.
 
@@ -72,11 +72,11 @@ RandomForestRegressor
 DecisionTreeRegressor
 ```
 
-- $\color{blue}\text{\textbf{train lista\\\_nomes\\\_modelos}}$: para fazer os treinamentos que irão gerar o preditor para a aplicação identificada pelo nome $\color{blue}\text{\textbf{lista\\\_nomes\\\_modelos}}$. Cada nome da lista precisa ser um dos nomes dados nos campos $\color{blue}\text{\textbf{name}}$ dos arquivos de configurações das aplicações. A saída gerada pelos treinamentos feitos ao gerar o preditor para o modelo, dependerá da verbosidade estar ou não ativada. Se a verbosidade estiver habilitada, recomento fazer o treinamento de cada modelo com execuççoes separadas do trainer, porque todos os logs de todos os trainemtnos de todas as aplicações seriam gerados em sequência Exemplo, em que supomos que a clonagem do repositório foi feita no diretório raiz do usuário $\color{gray}\text{\textbf{user}}$:
+- $\color{blue}\text{\textbf{train lista\\\_nomes\\\_modelos}}$: para fazer os treinamentos que irão gerar o preditor para cadaa aplicação identificada por um nome em $\color{blue}\text{\textbf{lista\\\_nomes\\\_modelos}}$. Cada nome da lista precisa ser um dos nomes dados nos campos $\color{blue}\text{\textbf{name}}$ dos arquivos de configurações das aplicações. A saída gerada pelos treinamentos feitos ao gerar o preditor para o modelo, dependerá da verbosidade estar ou não ativada. Se a verbosidade estiver habilitada, recomento fazer o treinamento de cada modelo com execuççoes separadas do trainer, porque todos os logs de todos os trainemtnos de todas as aplicações seriam gerados em sequência Exemplo, em que supomos que a clonagem do repositório foi feita no diretório raiz do usuário $\color{gray}\text{\textbf{user}}$:
 
 ```bash
 user$ trainer train raxml
---> Salvando o preditor treinado como o modelo ExtraTreesRegressor (nome ETR) no arquivo /home/user/Projero_Evidem/predictors/raxml_ETR_EDP.pickle.
+--> Salvando o preditor treinado como o modelo ExtraTreesRegressor (nome ETR) no arquivo /home/user/Projeto_Eviden/predictors/raxml_ETR_EDP.pickle.
 
 ```
 
@@ -138,7 +138,7 @@ Opções principais:
   -l, --list            Lista as aplicações cujas execuções podem ser otimizadas pelo script.
 
 Ajuda:
-  -h, --help            Mostra esta mensagem de ajuda e sai```
+  -h, --help            Mostra esta mensagem de ajuda e sai.```
 
 O formato do comando é:
 
