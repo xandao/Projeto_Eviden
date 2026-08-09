@@ -51,7 +51,7 @@ train app1, app2, ..., appn -> Faz todo o processo de treinamento, da filtragem 
 hiperparâmetros dos modelos, escolha do melhor modelo e treinamento deste melhor modelo com todos os
 dados, sendo gerado um modelo para auxiliar a geração das sugestões e outro para predizer o tempo.
 
-Cada aplicação da lista é considerada na ordem dada e os treinamentos são independentes, ou seja,
+Cada aplicação da lista é considerada na ordem dada e os treinamentos são idependentes, ou seja,
 passar a lista é equivalente a executar o script com o comando para cada aplicação isoladamente.
 
 '''))
@@ -199,6 +199,14 @@ def train_command(applications_name, applications_config, training_config, syste
         print("\n", importances_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
       elif verbose:
         print("---> O modelo não avalia as importâncias das características.")
+
+      # Removendo o arquivo anterior do preditor da aplicação, se existir.
+      if application_key in predictors_info_config:
+        old_preditor_file_name = predictors_info_config[application_key]
+        old_preditor_file_path = predictors_file_path / f"{old_preditor_file_name}"
+        if verbose:
+          print(f'--> Removendo o preditor antigo {old_preditor_file_name}')  
+        old_preditor_file_path.unlink(missing_ok=True)
       
       # Removendo o arquivo anterior do preditor da aplicação, se existir.
       if application_key in predictors_info_config:

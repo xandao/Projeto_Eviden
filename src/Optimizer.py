@@ -87,7 +87,7 @@ Exemplos: -t 1 2:24:2 -> Threads: 1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24
                       '''))
   opcoes.add_argument("-v", "--verbose", action="store_true", default=False, help="Habilita a verbosidade do script.")
   opcoes.add_argument("-l", "--list", action="store_true", default=False, help="Lista as aplicações cujas execuções podem ser otimizadas pelo script.")
-  ajuda.add_argument("-h", "--help", action="help", help="Mostra esta mensagem de ajuda e sai")
+  ajuda.add_argument("-h", "--help", action="help", help="Mostra esta mensagem de ajuda e sai.")
   # Divide os parâmetros do script e da aplicação (separados por "--").
   application_param_separator = '--'
 
@@ -364,11 +364,14 @@ def optimize_application(configs_file_path, system_config, applications_config, 
 
     # Processa os parâmetros da aplicação.
     parser_application = argparse.ArgumentParser(description="Parser responsável pelos parâmetros da aplicação.", prog=application_name,
-                                                 formatter_class=CustomFormatter)
+                                                 add_help=False, formatter_class=CustomFormatter)
     applicatiom_params = applications_config[application_id]['user']['user_options']
+    opcoes = parser_application.add_argument_group("Opções principais")
+    ajuda = parser_application.add_argument_group("Ajuda")
+    ajuda.add_argument("-h", "--help", action="help", help="Mostra esta mensagem de ajuda e sai.")
     for param in applicatiom_params.keys():
-      parser_application.add_argument(*applicatiom_params[param]['params'], required=True, help=applicatiom_params[param]['help'], 
-                                      type=get_type(applicatiom_params[param]['type']), dest=param)
+      opcoes.add_argument(*applicatiom_params[param]['params'], required=True, help=applicatiom_params[param]['help'], 
+                          type=get_type(applicatiom_params[param]['type']), dest=param)
 
     # Converte os argumentos da aplicação para o dicionário a ser usado pela função de predição.                                  
     required_applicaion_params, other_applicatios_params = parser_application.parse_known_args(application_args[1:])
@@ -397,7 +400,7 @@ def optimize_application(configs_file_path, system_config, applications_config, 
         max_value_custom_params = max(custom_params)
         max_possible_value = max([partition[suggestion_name] for partition in application_partitios_list])
         if max_value_custom_params > max_possible_value:
-          print(f"⚠️  Descantando todos os valores para a opção \033[31m{suggestion_name}\033[0m maiores do que {max_possible_value} "
+          print(f"⚠️  Descartando todos os valores para a opção \033[31m{suggestion_name}\033[0m maiores do que {max_possible_value} "
                 f"permitidos pelas possíveis partições \033[1;34m{', '.join(names_application_partitioms)}\033[0m da aplicação "
                 f"{application_name}!")
           custom_params = [custom_value for custom_value in custom_params if custom_value <= max_possible_value]                 
