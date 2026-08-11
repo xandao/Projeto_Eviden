@@ -17,7 +17,7 @@ ulimit -s unlimited
 ulimit -c unlimited
 ulimit -v unlimited
 
-EXEC="ntb.sh"
+EXEC="npb.sh"
 
 PARAMS="<<application_params>>"
 

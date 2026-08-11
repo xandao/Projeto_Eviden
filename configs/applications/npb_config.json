@@ -8,7 +8,7 @@
     "Grid Y",
     "Grid Z"
   ],
-  "name": "ntb",
+  "name": "npb",
   "estimated_parameters": {
     "suggestion": "EDP",
     "time": "ElapsedRaw"
@@ -17,18 +17,18 @@
     "group_parameters": ["Benchmark", "Classe"],
     "filter_parameters": ["ElapsedRaw", "Consumo de Energia Total (J)", "EDP"],
     "dataset_files": [
-      "ntb_1.csv",
-      "ntb_2.csv",
-      "ntb_3.csv",
-      "ntb_4.csv",
-      "ntb_5.csv",
-      "ntb_6.csv"
+      "npb_1.csv",
+      "npb_2.csv",
+      "npb_3.csv",
+      "npb_4.csv",
+      "npb_5.csv",
+      "npb_6.csv"
     ]
   },
   "user": {
-    "executable_names": ["ntb.sh"],
-    "script_template_name": "ntb_template.sh",
-    "predictor_name": "ntb",
+    "executable_names": ["npb.sh"],
+    "script_template_name": "npb_template.sh",
+    "predictor_name": "npb",
     "suggestions_map": {
       "nodes": "NNodes",
       "process": "Processo p/ no",
@@ -47,12 +47,12 @@
       }
     },
     "conversions": {
-      "Zone X": ["map", "ntb_map_table.cvs", "Benchmark", "Classe"],
-      "Zone Y": ["map", "ntb_map_table.cvs", "Benchmark", "Classe"],
-      "Iterações": ["map", "ntb_map_table.cvs", "Benchmark", "Classe"],
-      "Grid X": ["map", "ntb_map_table.cvs", "Benchmark", "Classe"],
-      "Grid Y": ["map", "ntb_map_table.cvs", "Benchmark", "Classe"],
-      "Grid Z": ["map", "ntb_map_table.cvs", "Benchmark", "Classe"]
+      "Zone X": ["map", "npb_map_table.cvs", "Benchmark", "Classe"],
+      "Zone Y": ["map", "npb_map_table.cvs", "Benchmark", "Classe"],
+      "Iterações": ["map", "npb_map_table.cvs", "Benchmark", "Classe"],
+      "Grid X": ["map", "npb_map_table.cvs", "Benchmark", "Classe"],
+      "Grid Y": ["map", "npb_map_table.cvs", "Benchmark", "Classe"],
+      "Grid Z": ["map", "npb_map_table.cvs", "Benchmark", "Classe"]
     },
     "slurm": [
       {
