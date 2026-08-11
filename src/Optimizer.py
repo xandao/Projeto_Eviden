@@ -45,7 +45,7 @@ def read_configs(verbose=False):
 
 def process_script_args():
   parser = argparse.ArgumentParser(description="Script para escolher a melhor configuração para aplicações selecionadas.",
-                                   usage="optimizer [opções] -- [executável da aplicação] [-h] [opções obrigatórias da aplicação] [outras opções da aplicação]",
+                                   usage="script_optimizer [opções] -- [executável da aplicação] [-h] [opções obrigatórias da aplicação] [outras opções da aplicação]",
                                    add_help=False, formatter_class=CustomFormatter)
 
   opcoes = parser.add_argument_group("Opções principais")

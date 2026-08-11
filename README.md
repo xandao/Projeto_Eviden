@@ -23,7 +23,7 @@ O script de treinamento será usado pelos administradores do sistema, quando des
 module load trainer
 ```
 
-Depois, basta usar a aplicação *trainer*, que é um _wrapper_ para executar o script Trainer.py no diretório src. A ajuda de uso do script é a seguinte:
+Depois, basta usar a aplicação _trainer_, que é um _wrapper_ para executar o script Trainer.py no diretório src. A ajuda de uso do script é a seguinte:
 
 ```bash
 uso: trainer [opções] Command [Parâmetros]
@@ -90,13 +90,13 @@ Opções do script:
 O script de otimização será usado pelo usuário para obter as melhores configurações (no momento, número de nós, de processos por nó e de therads por processo) para gerar o script de submissão que pode, se o usuário desejar, ser automaticamente submetido. Para usar o script de treinamento, primeiramente é necessário carregar o módulo do script, com o seguinte comando:
 
 ```bash
-module load optimizer
+module load script_optimizer
 ```
 
-Depois, basta usar a aplicação *otimizer*, que é um _wrapper_ para executar o script Optimizer.py no diretório src. A ajuda de uso do script é a seguinte:
+Depois, basta usar a aplicação _otimizer_, que é um _wrapper_ para executar o script Optimizer.py no diretório src. A ajuda de uso do script é a seguinte:
 
 ````bash
-uso: optimizer [opções] -- [executável da aplicação] [-h] [opções obrigatórias da aplicação] [outras opções da aplicação]
+uso: script_optimizer [opções] -- [executável da aplicação] [-h] [opções obrigatórias da aplicação] [outras opções da aplicação]
 
 Script para escolher a melhor configuração para aplicações selecionadas.
 
@@ -164,7 +164,7 @@ user$ optimizer --list
 
 ```bash
 user$ python Optimizer.py -r -s script.sh -j teste-customizado -n 1:10 -p 1 2 4 -t 2 4 8 16 3
-2 64 -- raxml -N 100 -s ~xandao/Downloads/DENV_3-colombia-BVBRC_genome_sequence.mafft
+2 64 -- raxml -N 100 -s DENV_3-colombia-BVBRC_genome_sequence.mafft -m GTRGAMMA -p 112233 -b 223344 -n teste_raxml.phylip_tree2.raxml -c 4 -f d
 ⚠️  Descartando todos os valores para a opção process maiores do que 2 permitidos pelas possíveis partições sequana_cpu_dev, sequana_cpu da aplicação raxml!
 ⚠️  Descartando todos os valores para a opção threads maiores do que 48 permitidos pelas possíveis partições sequana_cpu_dev, sequana_cpu da aplicação raxml!
 ➡️  Script de submissão script.sh criado com sucesso!
@@ -176,7 +176,7 @@ user$ python Optimizer.py -r -s script.sh -j teste-customizado -n 1:10 -p 1 2 4 
 - $\color{blue}\text{\textbf{-r ou --run}}$: Submete para execução o script gerado com a sugestão otimizada. A seguir está um exemplo diferente dado na descrição das opções anteriores, quando não são defindas opções customizadas para as sugestões a serem avaliadas:
 
 ```bash
-user$ python Optimizer.py -r -s script.sh -j teste -- raxml -N 100 -s ~xandao/Downloads/DENV_3-colombia-BVBRC_genome_sequence.mafft
+user$ python Optimizer.py -r -s script.sh -j teste -- raxml -N 100 -s DENV_3-colombia-BVBRC_genome_sequence.mafft -m GTRGAMMA -p 112233 -b 223344 -n teste_raxml.phylip_tree2.raxml -c 4 -f d
 ➡️  Script de submissão script.sh criado com sucesso!
 ➡️  Script de submissão submetido com sucesso!
 ➡️  O trabalho foi submetido com o identificador 493412.
@@ -192,7 +192,7 @@ user$ otimizer -S -j teste -- raxml -N 100 -s ~xandao/Downloads/DENV_3-colombia-
 
 Quando o otimizador for usado com uma aplicação, existem opções desta aplicação que devem ser obrigatoriamente definidas. Para saber as opções, use o comando -h para a aplicação como mostrado a seguir:
 
-```bash
+````bash
 user$ python Optimizer.py -- raxml -h
 uso: raxml [-h] -N BOOTSTRAP -s ARQUIVO
 
@@ -205,3 +205,4 @@ Opções principais:
 
 Ajuda:
   -h, --help            Mostra esta mensagem de ajuda e sai.```
+````
