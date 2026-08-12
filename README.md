@@ -23,12 +23,12 @@ O script de treinamento será usado pelos administradores do sistema, quando des
 module load trainer
 ```
 
-Depois, basta usar a aplicação _trainer_, que é um _wrapper_ para executar o script Trainer.py no diretório src. A ajuda de uso do script é a seguinte:
+Depois, basta usar o _script_ _trainer_, que é um _wrapper_ para executar o script Trainer.py no diretório src. A ajuda de uso do script é a seguinte:
 
 ```bash
 uso: trainer [opções] Command [Parâmetros]
 
-Script para treinar os modelos para todos os aplicativos que vamos otimizar o uso.
+Script para treinar os modelos para todas as aplicações cujo uso será otimizado.
 
 Opções principais:
   command        Comando a ser executado. Pode ser um dos seguintes comandos:
@@ -91,12 +91,12 @@ O script de otimização será usado pelo usuário para obter as melhores config
 module load script_optimizer
 ```
 
-Depois, basta usar a aplicação _script_otimizer_, que é um _wrapper_ para executar o script Optimizer.py no diretório src. A ajuda de uso do script é a seguinte:
+Depois, basta usar o _script_ _script_otimizer_, que é um _wrapper_ para executar o script Optimizer.py no diretório src. A ajuda de uso do script é a seguinte:
 
 ````bash
 uso: script_optimizer [opções] -- [executável da aplicação] [-h] [opções obrigatórias da aplicação] [outras opções da aplicação]
 
-Script para escolher a melhor configuração para aplicações selecionadas.
+Script para escolher a melhor configuração para as aplicações selecionadas.
 
 Opções principais:
   -r, --run             Submete o script com a melhor configuração de execução.
@@ -104,10 +104,10 @@ Opções principais:
                         Nome do trabalho registrado no sistema de submissão.
   -s SCRIPT, --script SCRIPT
                         Salva o script gerado em um arquivo.
-  -S, --suggestion      Somente mostra a sugestão para os parâmetros do script.
+  -S, --suggestion      Mostra somente a sugestão para os parâmetros do script.
   -n NODES [NODES ...], --nodes NODES [NODES ...]
                         Lista com os possíveis números de nós, se a aplicação usa múltiplos nós.
-                        Usada conjuntamente com as opções -p e -t que terão os valores default se não usadas.
+                        Usada conjuntamente com as opções -p e -t, que terão os valores padrão se não forem usadas.
                         Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo.
                         Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o s, que será igual a 1.
                         Default 1:1.
@@ -116,7 +116,7 @@ Opções principais:
                                   -n 1:5      -> Nós: 1, 2, 3, 4, 5.
   -p PROCESS [PROCESS ...], --process PROCESS [PROCESS ...]
                         Lista com os possíveis números de processos, se a aplicação usa múltiplos processos por nó.
-                        Usada conjuntamente com as opções -n e -t que terão os valores default se não usadas.
+                        Usada conjuntamente com as opções -n e -t, que terão os valores padrão se não forem usadas.
                         Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo.
                         Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o s, que será igual a 1.
                         Default 1:1.
@@ -125,7 +125,7 @@ Opções principais:
                                   -p :3 6:12:3 -> Processos: 1, 2, 3, 6, 9, 12
   -t THREADS [THREADS ...], --threads THREADS [THREADS ...]
                         Lista com os possíveis números de threads, se a aplicação usa múltiplas threads por processo.
-                        Usada conjuntamente com as opções -n e -p que terão os valores default se não usadas.
+                        Usada conjuntamente com as opções -n e -p, que terão os valores padrão se não forem usadas.
                         Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo.
                         Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o s, que será igual a 1.
                         Default 1:1.
@@ -188,7 +188,7 @@ user$ script_optimizer -r -s script.sh -j teste -- raxml -N 100 -s DENV_3-colomb
 - $\color{blue}\text{\textbf{-S ou --suggestion}}$: Somente mostra a sugestão na tela do usuário, como mostrado no exemplo a seguir:
 
 ```bash
-user$ script_otimizer -S -j teste -- raxml -N 100 -s DENV_3-colombia-BVBRC_genome_sequence.mafft
+user$ script_optimizer -S -j teste -- raxml -N 100 -s DENV_3-colombia-BVBRC_genome_sequence.mafft
 ➡️  Sugestão: nodes=4, process=2, threads=8
 ```
 
@@ -198,7 +198,7 @@ Quando o otimizador for usado com uma aplicação, existem opções desta aplica
 user$ script_optimizer -- raxml -h
 uso: raxml [-h] -N BOOTSTRAP -s ARQUIVO
 
-Parser responsável pelos parâmetros da aplicação.
+Esta ajuda descreve os parâmetros da aplicação que precisam ser obrigatoriamente definidos
 
 Opções principais:
   -N BOOTSTRAP, -# BOOTSTRAP

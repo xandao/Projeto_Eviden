@@ -44,7 +44,7 @@ def read_configs(verbose=False):
   return configs_file_path, system_config, applications_configs, user_config, predictors_info_config
 
 def process_script_args():
-  parser = argparse.ArgumentParser(description="Script para escolher a melhor configuração para aplicações selecionadas.",
+  parser = argparse.ArgumentParser(description="Script para escolher a melhor configuração para as aplicações selecionadas.",
                                    usage="script_optimizer [opções] -- [executável da aplicação] [-h] [opções obrigatórias da aplicação] [outras opções da aplicação]",
                                    add_help=False, formatter_class=CustomFormatter)
 
@@ -54,10 +54,10 @@ def process_script_args():
   opcoes.add_argument("-j", "--jobname", type=str, default=None, help="Nome do trabalho registrado no sistema de submissão.")
   opcoes.add_argument("-s", "--script", type=str, default=None, help="Salva o script gerado em um arquivo.")
   opcoes.add_argument("-S", "--suggestion", action="store_true", default=False, 
-                      help="Somente mostra a sugestão para os parâmetros do script.")
+                      help="Mostra somente a sugestão para os parâmetros do script.")
   opcoes.add_argument("-n", "--nodes", type=str, nargs="+", default=None, 
                       help=textwrap.dedent('''Lista com os possíveis números de nós, se a aplicação usa múltiplos nós.
-Usada conjuntamente com as opções -p e -t que terão os valores default se não usadas.
+Usada conjuntamente com as opções -p e -t, que terão os valores padrão se não forem usadas.
 Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo.  
 Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o s, que será igual a 1.
 Default 1:1.
@@ -67,7 +67,7 @@ Exemplos: -n 1 2:10:2 -> Nós: 1, 2, 4, 6, 8, 10.
                       '''))                      
   opcoes.add_argument("-p", "--process", type=str, nargs="+", default=None, 
                       help=textwrap.dedent('''Lista com os possíveis números de processos, se a aplicação usa múltiplos processos por nó.
-Usada conjuntamente com as opções -n e -t que terão os valores default se não usadas.
+Usada conjuntamente com as opções -n e -t, que terão os valores padrão se não forem usadas.
 Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo. 
 Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o s, que será igual a 1.
 Default 1:1.
@@ -77,7 +77,7 @@ Exemplos: -p 1 2:      -> Processos: 1, 2.
                       '''))
   opcoes.add_argument("-t", "--threads", type=str, nargs="+", default=None, 
                       help=textwrap.dedent('''Lista com os possíveis números de threads, se a aplicação usa múltiplas threads por processo.
-Usada conjuntamente com as opções -n e -p que terão os valores default se não usadas.
+Usada conjuntamente com as opções -n e -p, que terão os valores padrão se não forem usadas.
 Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo.  
 Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o s, que será igual a 1.
 Default 1:1.
@@ -363,7 +363,7 @@ def optimize_application(configs_file_path, system_config, applications_config, 
     names_application_partitioms = {partition['partition'] for partition in application_partitios_list}
 
     # Processa os parâmetros da aplicação.
-    parser_application = argparse.ArgumentParser(description="Parser responsável pelos parâmetros da aplicação.", prog=application_name,
+    parser_application = argparse.ArgumentParser(description="Esta ajuda descreve os parâmetros da aplicação que precisam ser obrigatoriamente definidos.", prog=application_name,
                                                  add_help=False, formatter_class=CustomFormatter)
     applicatiom_params = applications_config[application_id]['user']['user_options']
     opcoes = parser_application.add_argument_group("Opções principais")

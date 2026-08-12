@@ -34,7 +34,7 @@ def read_configs(verbose=False):
 
 def process_script_args():
   # Inicializa o parser para verificar parâ,etros de aplicação
-  parser = argparse.ArgumentParser(description="Script para treinar os modelos para todos os aplicativos que vamos otimizar o uso.", 
+  parser = argparse.ArgumentParser(description="Script para treinar os modelos para todas as aplicações cujo uso será otimizado.", 
                                    usage="trainer [opções] Command [Parâmetros]", add_help=False, 
                                    formatter_class=CustomFormatter)
 
