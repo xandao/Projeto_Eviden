@@ -148,9 +148,15 @@ As opções do otimziador são as seguintes:
 
 - $\color{blue}\text{\textbf{-l ou --list}}$: Lista as aplicações disponíveis para serem otimizadas. Um exemplo de saída é o seguinte, onde é mostrado, para cada aplicação que pode ser otimizada, o identificador da aplicação e os possíveis executáveis que podem ser usados no otimizador após o separador ''$\color{blue}\text{\textbf{--}}$'' que separa os parâmetros do otimizador dos parâmetros da aplicação:
 
+<!-- ```bash -->
+<!-- user$ script_optimizer --list -->
+<!-- ➡️  Aplicação ntb, possíveis nomes para os executáveis: ntb.sh -->
+<!-- ➡️  Aplicação raxml, possíveis nomes para os executáveis: raxmlHPC-PTHREADS-AVX-omp, raxml -->
+<!-- ``` -->
+<!--  -->
+
 ```bash
 user$ script_optimizer --list
-➡️  Aplicação ntb, possíveis nomes para os executáveis: ntb.sh
 ➡️  Aplicação raxml, possíveis nomes para os executáveis: raxmlHPC-PTHREADS-AVX-omp, raxml
 ```
 
