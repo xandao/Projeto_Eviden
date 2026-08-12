@@ -340,7 +340,7 @@ def optimize_application(configs_file_path, system_config, applications_config, 
   else:
     # Caso não deseje listar as aplucações, precisamos fornecer uma aplicaçao, pois o usuário deseja otimizar o uso dos reursos.
     if not application_args:
-      print("❌ Não foi fornecido o nome da aplicação a ser otimizada e os seus parâm,etros de execução.")
+      print("❌ Não foi fornecido o nome da aplicação a ser otimizada e os seus parâmetros de execução.")
       return False
     
     # Diretorio dos arquivos de configuração das aplicações.
