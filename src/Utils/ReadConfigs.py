@@ -94,7 +94,7 @@ class ReadSystemConfig:
     except json.JSONDecodeError as e:
       # Ocorreu um erro de sintaxe ao ler o arquivo JSON.
       print(f"❌ O arquivo {system_config_path.name} não pode ser lido como um arquivo JSON válido! Erro de sintaxe!")
-      print(f"❌ Detalhes do erro: {e.msg} at line {e.lineno}, column {e.colno}!")
+      print(f"❌ Detalhes do erro: {e.msg} na linha {e.lineno} e coluna {e.colno}!")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except FileNotFoundError:
@@ -225,7 +225,7 @@ class ReadTrainingConfig:
     except json.JSONDecodeError as e:
       # Ocorreu um erro de sintaxe ao ler o arquivo JSON.
       print(f"❌ O arquivo {training_config_path.name} não pode ser lido como um arquivo JSON válido! Erro de sintaxe!")
-      print(f"❌ Detalhes do erro: {e.msg} at line {e.lineno}, column {e.colno}!")
+      print(f"❌ Detalhes do erro: {e.msg} na linha {e.lineno} e coluna {e.colno}!")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except FileNotFoundError:
@@ -427,7 +427,7 @@ class ReadApplicationsConfigs:
 
         # Imprime a informação de sucesso se a verbosidade estiver habilitada.    
         if self.verbose:
-          print(f"✅ Todos os arquicos {applications_config_dir.name} do diretório com as confugurações das aplicações são válidos e foram lidos!")
+          print(f"✅ Todos os arquivos {applications_config_dir.name} do diretório com as confugurações das aplicações são válidos e foram lidos!")
 
         # Retorna as configurações das aplicações lidas e econvertidas para um 
         # dicionário, em que cada chaveé um dicionário com as conigurações convertidas
@@ -443,7 +443,7 @@ class ReadApplicationsConfigs:
       except json.JSONDecodeError as e:
         # Ocorreu um erro de sintaxe ao ler o arquivo JSON.
         print(f"❌ O arquivo {file.name} não pode ser lido como um arquivo JSON válido! Erro de sintaxe!")
-        print(f"❌ Detalhes do erro: {e.msg} at line {e.lineno}, column {e.colno}!")
+        print(f"❌ Detalhes do erro: {e.msg} na linha {e.lineno} e coluna {e.colno}!")
         print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
         return None
       except FileNotFoundError:
@@ -475,9 +475,12 @@ class ReadApplicationsConfigs:
         print(f"❌ O diretório {applications_config_dir} está vazio ou não tem arquivos no formato JSON!")
         print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       else:  
-        # Se nçao for um diretório, então applications_config_dir não é um caminho válido
+        # Se não for um diretório, então applications_config_dir não é um caminho válido
         # (por exemplo, pode ser um arquivo).
-        print(f"❌ O caminho {applications_config_dir} não é de um diretório ou não existe!")
+        if applications_config_dir.is_file():
+          print(f"❌ O caminho {applications_config_dir} é de um arquivo e não de um diretório!")
+        else:  
+          print(f"❌ O caminho {applications_config_dir} não é de um diretório ou não existe!")
         print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
 
@@ -587,7 +590,7 @@ class ReadUserConfig:
     except json.JSONDecodeError as e:
       # Ocorreu um erro de sintaxe ao ler o arquivo JSON.
       print(f"❌ O arquivo {user_config_path.name} não pode ser lido como um arquivo JSON válido! Erro de sintaxe!")
-      print(f"❌ Detalhes do erro: {e.msg} at line {e.lineno}, column {e.colno}!")
+      print(f"❌ Detalhes do erro: {e.msg} na linha {e.lineno} e coluna {e.colno}!")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except FileNotFoundError:
@@ -700,14 +703,14 @@ class PredictorsInfoConfig:
 
     except ValidationError as e:
       # Ocorreu um erro ao validar o esquema do arquivo JSON lido
-      print(f"❌ Erro ao validar o JSON do arquivo do script do usuário {predictors_info_config_path.name}!")
+      print(f"❌ Erro ao validar o JSON do arquivo do script dos preditores {predictors_info_config_path.name}!")
       print(f"❌ Detalhes do erro: {e.message}")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except json.JSONDecodeError as e:
       # Ocorreu um erro de sintaxe ao ler o arquivo JSON.
       print(f"❌ O arquivo {predictors_info_config_path.name} não pode ser lido como um arquivo JSON válido! Erro de sintaxe!")
-      print(f"❌ Detalhes do erro: {e.msg} at line {e.lineno}, column {e.colno}!")
+      print(f"❌ Detalhes do erro: {e.msg} na linha {e.lineno} e coluna {e.colno}!")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except FileNotFoundError:
