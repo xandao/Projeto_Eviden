@@ -15,38 +15,53 @@ from Utils.Common import debug_code
 # Item 1: Diferença entre o EDP esperado da configuração sugerida e o EDP esperado da configuração do oráculo dividida pela EDP esperado da configuração do oráculo.
 def min_edp_config_diff(y_true, y_pred):
 	"""
-	Função para calcular diferença pondenrada entre o valor mínimo em y_true e o valor 
-	real associado ao menor valor predito em y_true.
+	Função para calcular diferença pondenrada entre o valor mínimo em y_true e o valor real associado 
+	ao menor valor predito em y_true.
 
 	Parâmetros:
 
 	  y_true : array_like(float)
-        Vetor de entreda com os valores reais das medidas.
+        Vetor de entrada com os valores reais das medidas.
     y_pred : array_like(float)
-        Vetor de entreda com os valores preditos das medidas.
+        Vetor de entrada com os valores preditos das medidas.
         
   Retorna:
 
 	  float
         A diferença ponderada entre o menor valor real e o valor real associado ao menor valor predito.
 	"""
+
+	# Obtém o menor valor real da variável alvo.
 	y_true_min = y_true.min()
+
+	# Obtém o menor valor predito da variáel alvo
 	y_pred_min_pos = y_pred.argmin()
+
+	# Obtém o valor real associado ao menor valor predito, ou seja, o valor real que idealmente seria
+	# o predito.
 	y_expected_min = y_true[y_pred_min_pos]
 
+  # Retorna a diferençao ponderada entre o valor real do valor predito e o menor valor real.
+	#
+	#  [valor real para o valor predito] y_expected_min - y_true_min [menor valor real] 
+  #	                                   ---------------------------
+	#                                            y_true_min  
+	#
 	return (y_expected_min - y_true_min) / y_true_min
 
 def train_min_edp_config_diff(trained_estimator, X_test, y_test):
 	"""
-	Função para fazer a predição e depois calcular diferença pondenrada entre o valor mínimo em y_true e o valor 
-	real associado ao menor valor predito em y_true usando a função min_edp_config_diff.
+	Função para fazer a predição para um dos grupos das variáveis da aplicação compposto por um possível
+	conjunto de valores para essas variáveis, e depois calcular diferença pondenrada entre o valor mínimo 
+	em y_true e o valor real associado ao menor valor predito em y_true usando a função 
+	min_edp_config_diff.
 
 	Parâmetros:
 
-	  trained_estimator: BaseEstimator
+	  trained_estimator: BaseEstimator (estimador base do scikit-learn).
 		    Estimador usado para fazer a predição. O estimador precisa seguir a interface do scikit-learn
 				para os estimadores.
-	  X_test : Pandas dataframe
+	  X_test : DataFrame (pandas dataframe)
         Dataframe do Pandas com as características.
     y_pred : array_like(float)
         Series do Pandas com os valores reais da variável alvo da predição.
@@ -56,14 +71,56 @@ def train_min_edp_config_diff(trained_estimator, X_test, y_test):
 	  float
         A diferença ponderada entre o menor valor real e o valor real associado ao menor valor predito.
 	"""
+	# Recria o dataframe original juntando X e y, sendo o valor da variável alvo das execuções para um 
+	# mesmo conjunto de valores das variáveis de sugestão de configuração e das variáveis da aplicação, 
+	# execuções essas que existem para mitigar a variabilidade da execução compartilhada em um 
+	# supercomputador, será a mediana dos valores de todas essas execuções.
 	df_test_mean_EDP = pd.concat((X_test, y_test), axis=1).groupby(list(X_test.columns))[y_test.name].median().reset_index()
+
+	# Determina o X_test de teste usado na predição (é um dos possíveis grupos definidos pelas possíveis 
+	# combinações de parâmetros para as variáveis da aplicação).
 	X_test = df_test_mean_EDP[X_test.columns]
+
+	# Determina o y_test de teste a ser predito, sendo como observamos os valores sendo as mediadas das 
+	# execuções repetidas (a variável alvo).
 	y_test = df_test_mean_EDP[y_test.name]
+
+	# Utiliza o modelo para fazer a predição para o  X_test, retornada em y_pred.
 	y_pred = trained_estimator.predict(X_test)
 
+  # Agora que temos os valores y_test (mediana dos valores reais da variável alvo para cada execução em X),
+	# usamos a função min_edp_config_diff para calculcar a pontuação de diferença.
 	return min_edp_config_diff(y_test, y_pred)
 
 def neg_train_min_edp_config_diff(trained_estimator, X_test, y_test):
+	"""
+	Função para fazer a predição para um dos grupos das variáveis da aplicação compposto por um possível
+	conjunto de valores para essas variáveis, e depois calcular diferença pondenrada entre o valor mínimo 
+	em y_true e o valor real associado ao menor valor predito em y_true usando a função 
+	min_edp_config_diff.
+
+	Parâmetros:
+
+	  trained_estimator: BaseEstimator (estimador base do scikit-learn).
+		    Estimador usado para fazer a predição. O estimador precisa seguir a interface do scikit-learn
+				para os estimadores.
+	  X_test : DataFrame (pandas dataframe)
+        Dataframe do Pandas com as características.
+    y_pred : array_like(float)
+        Series do Pandas com os valores reais da variável alvo da predição.
+        
+  Retorna:
+
+	  float
+        O negativo da diferença ponderada entre o menor valor real e o valor real associado ao menor valor 
+				predito.
+	"""
+
+	# Usa a função train_min_edp_config_diff para calcular a pontuação da diferença e retorna o negativo, ou
+	# simétrico, da pontuação da diferença. Isso é necessário porque a pontuação de diferença é uma pontuação
+	# em que o mínimo é o melhor (0 o ideal), enquanto que as funções que usamos na busca em grade (para  
+	# determinar os melhores hiperparâmetros) e valodação cruzada precisam de uma função que o menor valor
+	# seja o pior e o maior valor possível o menhor de todos).
 	return -train_min_edp_config_diff(trained_estimator, X_test, y_test)
 
 # Item 5: Frequência em que a configuração sugerida e a configuração do oráculo coincidem: os tais 80%.
