@@ -12,11 +12,11 @@ class ReadSystemConfig:
                                       configuração dos scripts de treinamento 
                                       e do usuário.
     system_conig (dict | None): Dicionário com o arquivo de configuração 
-                                 convertido do formato JSON.
+                                convertido do formato JSON.
                                                                     
     esquema_json (dict): Esquema de validação para o script do sistema.         
     verbose (bool): Habilita/desabilita informações de verbosidade.                   
-"""
+  """
   
   # Esquema de validação para o arquivo de configuração do sistema.
   esquema_json = {
@@ -37,13 +37,15 @@ class ReadSystemConfig:
         "predictors_info_config_filename": {"type": "string"}
     }
   }
+
   def __init__(self, verbose=False):
     """
     Função de inicialização da classe ReadSystemConfig.
 
     Parâmetros:
-      verbose: Habilita/desabilita informações de verbosidade.      
+      verbose (bool): Habilita/desabilita informações de verbosidade.      
     """
+
     # Inicializa as variáveis internas da classe.
     self.system_config_path = None  
     self.system_config = None
@@ -64,6 +66,7 @@ class ReadSystemConfig:
                    ao ler ou verificar a sintaxe do arquivo ou a conformidade 
                    do JSON do arquivo com o esquema esquema_json.                                     
     """
+
     # Armazena o camainho do arquivo de configuração do sistema.
     self.system_config_path = system_config_path
     
@@ -173,9 +176,10 @@ class ReadTrainingConfig:
     Função de inicialização da classe ReadTrainingConfig.
 
     Parâmetros:
-      verbose: Habilita/desabilita informações de verbosidade.
+      verbose (bool): Habilita/desabilita informações de verbosidade.
   
     """
+
     # Inicializa as variáveis internas da classe.
     self.training_config_path = None 
     self.training_config = None
@@ -195,6 +199,7 @@ class ReadTrainingConfig:
                    para um dicionário, ou None se algum erro ocorreu ao ler ou varificar a 
                    sintaxe do arquvo.                                     
     """
+
     # Armazena o camainho do arquivo de configuração do treinamento,
     self.training_config_path = training_config_path
 
@@ -360,8 +365,9 @@ class ReadApplicationsConfigs:
     Função de inicialização da classe ReadApplicationsConfigs.
 
     Parâmetros:
-      verbose: Habilita/desabilita informações de verbosidade.
+      verbose (bool): Habilita/desabilita informações de verbosidade.
     """
+
     # Inicializa as variáveis internas da classe.
     self.applications_config_dir = None  
     self.applications_config = None
@@ -382,6 +388,7 @@ class ReadApplicationsConfigs:
                    JSON desta aplicação convertido para um dicionário, ou None se algum erro 
                    ocorreu ao ler ou varificar a sintaxe do arquvo.                                    
     """
+
     # Armazena o caminho para o diretório com os arquivos de configuração das aplicações.
     self.applications_config_dir = applications_config_dir  
 
@@ -492,11 +499,11 @@ class ReadUserConfig:
     user_config_path (Path | None): Caminho completo para o arquivo de
                                     configuração do scripts do usuário.
     user_config (dict | None): Dicionário com o arquivo de configuração do
-                              script do usuário convertido do formato JSON.
+                               script do usuário convertido do formato JSON.
                                                                     
     esquema_json (dict): Esquema de validação para o script do usuário.                            
     verbose (bool): Habilita/desabilita informações de verbosidade.                   
-"""
+  """
 
   # Esquema de validação para a configuração do script de otimização usado 
   # pelo usuário do sistema.
@@ -541,8 +548,9 @@ class ReadUserConfig:
     Função de inicialização da classe ReadUserConfig.
 
     Parâmetros:
-      verbose: Habilita/desabilita informações de verbosidade.
+      verbose (bool): Habilita/desabilita informações de verbosidade.
     """
+
     # Inicializa as variáveis internas da classe.
     self.user_config_path = None  
     self.user_config = None
@@ -562,6 +570,7 @@ class ReadUserConfig:
                    para um dicionário, ou None se algum erro ocorreu ao ler ou varificar 
                    a sintaxe do arquvo.                                     
     """
+
     # Armazena o camainho do arquivo de configuração do usuário.
     self.user_config_path = user_config_path
     try:
@@ -631,6 +640,7 @@ class PredictorsInfoConfig:
     esquema_json (dict): Esquema de validação para o .                            
     verbose (bool): Habilita/desabilita informações de verbosidade.                   
   """
+
   # Esquema de validação para as informações sobre os  preditores para 
   # cada modelo treinado.
   esquema_json = {
@@ -648,8 +658,9 @@ class PredictorsInfoConfig:
     Função de inicialização da classe PredictorsInfoConfig.
 
     Parâmetros:
-      verbose: Habilita/desabilita informações de verbosidade.
+      verbose (bool): Habilita/desabilita informações de verbosidade.
     """
+
     # Inicializa as variáveis internas da classe.
     self.predictors_info_config_path = None  
     self.predictors_info_config = None
@@ -669,6 +680,7 @@ class PredictorsInfoConfig:
                    convertido para um dicionário, ou None se algum erro ocorreu
                    ao ler ou varificar a sintaxe do arquvo.                                     
     """
+
     # Armazena o camainho do arquivo de cinfiguração dos preditores..
     self.predictors_info_config_path = predictors_info_config_path
 
