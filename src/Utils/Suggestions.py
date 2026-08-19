@@ -14,16 +14,18 @@ from Utils.Common import debug_code
 
 def min_edp_config_diff(y_true, y_pred):
 	"""
-	Função para calcular diferença pondenrada entre o valor mínimo em y_true e o valor real 
-	associado ao menor valor predito em y_true.
+	Função para calcular diferença pondenrada entre o valor mínimo em y_true e o 
+	valor real associado ao menor valor predito em y_true.
 
 	Parâmetros:
-  	y_true (array_like[float]): Vetor de entrada com os valores reais das medidas.
-	  y_pred (array_like[float]): Vetor de entrada com os valores preditos das medidas.
+  	y_true (array_like[float]): vetor de entrada com os valores reais das 
+																medidas.
+	  y_pred (array_like[float]): vetor de entrada com os valores preditos das 
+																medidas.
         
 	Retorna:
-	  float: A diferença ponderada entre o menor valor real e o valor real associado ao menor 
-	         valor predito.
+	  float: A diferença ponderada entre o menor valor real e o valor real 
+					 associado ao menor valor predito.
 	"""
 
 	# Obtém o menor valor real da variável alvo.
@@ -32,111 +34,125 @@ def min_edp_config_diff(y_true, y_pred):
 	# Obtém a posição do menor valor predito da variável alvo.
 	y_pred_min_pos = y_pred.argmin()
 
-	# Obtém o valor real associado ao menor valor predito, ou seja, o valor real que idealmente 
-  # seria o predito.
+	# Obtém o valor real associado ao menor valor predito, ou seja, o valor real 
+	# que idealmente seria o predito.
 	y_expected_min = y_true[y_pred_min_pos]
 
-	# Retorna a diferençao ponderada entre o valor real do valor predito e o menor valor real.
-	#
-	#  [valor real para o valor predito] y_expected_min - y_true_min [menor valor real] 
-	#	                                   ---------------------------
-	#                                            y_true_min  
+	# Retorna a diferençao ponderada entre o valor real do valor predito e o 
+	# menor valor real. Na equação a seguir, para calcular a diferença:
+  #
+  # y_expected_min -> valor real associado ao menor valor predito
+	# y_true_min -> menor valor real, ou seja, o valor do oráculo.
+	# 
+	#  y_expected_min - y_true_min
+	#	 ---------------------------
+	# 				 y_true_min  
 	#
 	return (y_expected_min - y_true_min) / y_true_min
 
 def train_min_edp_config_diff(trained_estimator, X_test, y_test):
 	"""
-	Função para fazer a predição para um dos grupos das variáveis da aplicação compposto por um 
-	possível conjunto de valores para essas variáveis, e depois calcular diferença pondenrada 
-	entre o valor mínimo em y_true e o valor real associado ao menor valor predito em y_true 
-	usando a função min_edp_config_diff.
+	Função para fazer a predição para um dos grupos das variáveis da aplicação 
+	compposto por um possível conjunto de valores para essas variáveis, e depois 
+	calcular diferença pondenrada entre o valor mínimo em y_true e o valor real 
+	associado ao menor valor predito em y_true usando a função min_edp_config_diff.
 
 	Parâmetros:
-  	trained_estimator (BaseEstimator): Estimador usado para fazer a predição. O estimador 
-	                                     precisa seguir a interface do scikit-learn para os 
-		  																 estimadores.
-	  X_test (DataFrame): Um objeto Dataframe do Pandas com as variáveis das sugestões de 
-	                      configuração.
-  	y_test (Series): Um objeto Series do Pandas com os valores reais da variável alvo da 
-	                   predição.
+  	trained_estimator (BaseEstimator): Estimador usado para fazer a predição. O 
+																			 estimador precisa seguir a interface do 
+																			 scikit-learn para os  estimadores.
+	  X_test (DataFrame): Um objeto Dataframe do Pandas com as variáveis das 
+												sugestões de configuração.
+  	y_test (Series): Um objeto Series do Pandas com os valores reais da 
+										 variável alvo da predição.
         
 	Retorna:
-  	float: A diferença ponderada entre o menor valor real e o valor real associado ao menor 
-	  	     valor predito.
+  	float: A diferença ponderada entre o menor valor real e o valor real 
+					 associado ao menor valor predito.
 	"""
 
-	# Recria o dataframe original juntando X e y, sendo o valor da variável alvo das execuções 
-  # para um mesmo conjunto de valores das variáveis de sugestão de configuração e das 
-  # variáveis da aplicação, execuções essas que existem para mitigar a variabilidade da 
-  # execução compartilhada em um supercomputador, será a mediana dos valores de todas essas 
-  # execuções.
-	df_test_mean_EDP = pd.concat((X_test, y_test), 
-															 axis=1).groupby(list(X_test.columns))[y_test.name].median().reset_index()
+	# Recria o dataframe original juntando X e y, sendo o valor da variável alvo 
+	# das execuções para um mesmo conjunto de valores das variáveis de sugestão 
+	# de configuração e das variáveis da aplicação, execuções essas que existem 
+	# para mitigar a variabilidade da execução compartilhada em um 
+	# supercomputador, será a mediana dos valores de todas essas execuções.
+	df_test_mean_EDP = (
+		pd.concat((X_test, y_test), axis=1)
+		.groupby(list(X_test.columns))[y_test.name]
+		.median()
+		.reset_index()
+	)
 
-	# Determina o X_test de teste usado na predição (é um dos possíveis grupos definidos pelas 
-  # possíveis combinações de parâmetros para as variáveis da aplicação).
+	# Determina o X_test de teste usado na predição (é um dos possíveis grupos 
+	# definidos pelas possíveis combinações de parâmetros para as variáveis da 
+	# aplicação).
 	X_test = df_test_mean_EDP[X_test.columns]
 
-	# Determina o y_test de teste a ser predito, sendo como observamos os valores sendo as 
-  # mediadas das execuções repetidas (a variável alvo).
+	# Determina o y_test de teste a ser predito, sendo como observamos os valores
+	# sendo as mediadas das execuções repetidas (a variável alvo).
 	y_test = df_test_mean_EDP[y_test.name]
 
 	# Utiliza o modelo para fazer a predição para o  X_test, retornada em y_pred.
 	y_pred = trained_estimator.predict(X_test)
 
-	# Agora que temos os valores y_test (mediana dos valores reais da variável alvo para cada 
-  # execução em X), usamos a função min_edp_config_diff para calculcar a pontuação de 
-  # diferença.
+	# Agora que temos os valores y_test (mediana dos valores reais da variável 
+	# alvo para cada execução em X), usamos a função min_edp_config_diff para 
+	# calculcar a pontuação de diferença.
 	return min_edp_config_diff(y_test, y_pred)
 
 def neg_train_min_edp_config_diff(trained_estimator, X_test, y_test):
 	"""
-	Função para fazer a predição para um dos grupos das variáveis da aplicação compposto por um 
-	possível conjunto de valores para essas variáveis, e depois calcular diferença pondenrada 
-	entre o valor mínimo em y_true e o valor real associado ao menor valor predito em y_true 
-	usando a função min_edp_config_diff.
+	Função para fazer a predição para um dos grupos das variáveis da aplicação 
+	compposto por um possível conjunto de valores para essas variáveis, e depois 
+	calcular diferença pondenrada entre o valor mínimo em y_true e o valor real 
+	associado ao menor valor predito em y_true usando a função 
+	min_edp_config_diff.
 
 	Parâmetros:
-    trained_estimator (BaseEstimator): Estimador usado para fazer a predição. O estimador 
-                                      precisa seguir a interface do scikit-learn para os 
-                                      estimadores.
-    X_test (DataFrame): Um objeto Dataframe do Pandas com as variáveis das sugestões de 
-                        configuração.
-    y_test (Series): Um objeto Series do Pandas com os valores reais da variável alvo da 
-                     predição.
+    trained_estimator (BaseEstimator): Estimador usado para fazer a predição. O 
+																			 estimador precisa seguir a interface do 
+																			 scikit-learn para os estimadores.
+    X_test (DataFrame): Um objeto Dataframe do Pandas com as variáveis das 
+												sugestões de configuração.
+    y_test (Series): Um objeto Series do Pandas com os valores reais da 
+										 variável alvo da predição.
         
 	Retorna:
-    float: O negativo da diferença ponderada entre o menor valor real e o valor real associado 
-          ao menor valor predito.
+    float: O negativo da diferença ponderada entre o menor valor real e o valor 
+					 real associado ao menor valor predito.
 	"""
 
-	# Usa a função train_min_edp_config_diff para calcular a pontuação da diferença e retorna o 
-  # negativo, ou simétrico, da pontuação da diferença. Isso é necessário porque a pontuação de ]
-  # diferença é uma pontuação em que o mínimo é o melhor (0 o ideal), enquanto que as funções 
-  # que usamos na busca em grade (para determinar os melhores hiperparâmetros) e valodação 
-  # cruzada precisam de uma função que o menor valor seja o pior e o maior valor possível o 
-  # menhor de todos).
+	# Usa a função train_min_edp_config_diff para calcular a pontuação da 
+	# diferença e retorna o negativo, ou simétrico, da pontuação da diferença. 
+	# Isso é necessário porque a pontuação de diferença é uma pontuação em que o 
+	# mínimo é o melhor (0 o ideal), enquanto que as funções que usamos na busca 
+	# em grade (para determinar os melhores hiperparâmetros) e valodação cruzada 
+	# precisam de uma função que o menor valor seja o pior e o maior valor 
+	# possível o menhor de todos).
 	return -train_min_edp_config_diff(trained_estimator, X_test, y_test)
 
 def min_edp_config_accuracy(X, y_true, y_pred):
 	"""
-	Função para calcular a pontuação de acurácia, que será igual a 1 se a sugestão de
-	configuração, definida pelas variáveis de X que definem o conjunto de possíveis
-	configurações de sugestão, e obtida considerando o menor valor em y_pred, com os
-	valores preditos para a variável alvo para cada configuração em X, for igual a 
-	sugestão de configuração definida pelo menor valor em y_true, ou seja, se for igual a
-	configuração definida pelo oráculo, ou 0 em caso contrário, ou seja, se a configuração
-	for diferente da configuração do oráculo.
+	Função para calcular a pontuação de acurácia, que será igual a 1 se a 
+	sugestão de configuração, definida pelas variáveis de X que definem o 
+	conjunto de possíveis configurações de sugestão, e obtida considerando o 
+	menor valor em y_pred, com os valores preditos para a variável alvo para cada
+	configuração em X, for igual a sugestão de configuração definida pelo menor 
+	valor em y_true, ou seja, se for igual a configuração definida pelo oráculo, 
+	ou 0 em caso contrário, ou seja, se a configuraçãofor diferente da 
+	configuração do oráculo.
 
 	Parâmetros:
-	  X (DataFrame): Um objeto DataFrame do Pandas com uma columa para cada variável em uma
-                   sugestão de configuração.
-	  y_true (array_like[float]): Vetor de entrada com os valores reais das medidas.
-	  y_pred (array_like[float]): Vetor de entrada com os valores preditos das medidas.
+	  X (DataFrame): Um objeto DataFrame do Pandas com uma columa para cada 
+									 variável em uma sugestão de configuração.
+	  y_true (array_like[float]): Vetor de entrada com os valores reais das 
+																medidas.
+	  y_pred (array_like[float]): Vetor de entrada com os valores preditos das 
+																medidas.
         
   Retorna:
-	  float: 1 se a sugestão de configuração definida por y_pred for igual a definida por 
-		y_real, ou seja, igual ao oráculo, ou 0 em caso contrário.
+	  float: 1 se a sugestão de configuração definida por y_pred for igual a 
+		definida por y_real, ou seja, igual ao oráculo, ou 0 em caso contrário.
 	"""
 	# Obtém a posição do menor valor real da variável alvo.
 	y_true_argmin = y_true.argmin()
@@ -144,88 +160,111 @@ def min_edp_config_accuracy(X, y_true, y_pred):
 	# Obtém a posição do menor valor predito da variável alvo.
 	y_pred_argmin = y_pred.argmin()
 
-  # Usa o pandas para verificar se todos os valores das colunas da posição em X dada por 
-  # y_pred_argmin em (ou seja, a sugestão de configuração) coincidem com os valores da
-  # posição em X dada por y_pred_argmin (ou seja, o oráculo).
+  # Usa o pandas para verificar se todos os valores das colunas da posição em 
+	# X dada por y_pred_argmin em (ou seja, a sugestão de configuração) coincidem 
+	# com os valores da posição em X dada por y_pred_argmin (ou seja, o oráculo).
 	return float((X.iloc[y_pred_argmin] == X.iloc[y_true_argmin]).all())
 
 def train_min_edp_config_accuracy(trained_estimator, X_test, y_test):
 	"""
-	Função para fazer a predição para um dos grupos das variáveis da aplicação composto por um 
-	possível conjunto de valores para essas variáveis, e depois calcular a acurácia da 
-	sugestão de configuração associada ao valor mínimo predito para a variável alvo e o
-  oráculo definido pelo menor valor em y_test. 
+	Função para fazer a predição para um dos grupos das variáveis da aplicação 
+	composto por um possível conjunto de valores para essas variáveis, e depois 
+	calcular a acurácia da sugestão de configuração associada ao valor mínimo 
+	predito para a variável alvo e o oráculo definido pelo menor valor em y_test. 
 
 	Parâmetros:
-  	trained_estimator (BaseEstimator): Estimador usado para fazer a predição. O estimador 
-	                                     precisa seguir a interface do scikit-learn para os 
-		  																 estimadores.
-	  X_test (DataFrame): Um objeto Dataframe do Pandas com as variáveis das sugestões de 
-	                      configuração.
-  	y_test (Series): Um objeto Series do Pandas com os valores reais da variável alvo da 
-	                   predição.
+  	trained_estimator (BaseEstimator): Estimador usado para fazer a predição. O 
+																			 estimador precisa seguir a interface do 
+																			 scikit-learn para os estimadores.
+	  X_test (DataFrame): Um objeto Dataframe do Pandas com as variáveis das 
+											  sugestões de configuração.
+  	y_test (Series): Um objeto Series do Pandas com os valores reais da 
+										 variável alvo da predição.
         
 	Retorna:
-  	float: 1 se a sugestão de configuração do menor valor predito for o oráculo e 0 em caso
-		contrário.
+  	float: 1 se a sugestão de configuração do menor valor predito for o oráculo 
+					 e 0 em caso contrário.
 	"""
 
-	# Recria o dataframe original juntando X e y, sendo o valor da variável alvo das execuções 
-  # para um mesmo conjunto de valores das variáveis de sugestão de configuração e das 
-  # variáveis da aplicação, execuções essas que existem para mitigar a variabilidade da 
-  # execução compartilhada em um supercomputador, será a mediana dos valores de todas essas 
-  # execuções.
-	df_test_mean_EDP = pd.concat((X_test, y_test), 
-															 axis=1).groupby(list(X_test.columns))[y_test.name].median().reset_index()
+	# Recria o dataframe original juntando X e y, sendo o valor da variável alvo 
+	# das execuções para um mesmo conjunto de valores das variáveis de sugestão 
+	# de configuração e das variáveis da aplicação, execuções essas que existem 
+	# para mitigar a variabilidade da execução compartilhada em um 
+	# supercomputador, será a mediana dos valores de todas essas execuções.
+	df_test_mean_EDP = (
+		pd.concat((X_test, y_test), axis=1)
+		.groupby(list(X_test.columns))[y_test.name]
+		.median()
+		.reset_index()
+	)
 
-	# Determina o X_test de teste usado na predição (é um dos possíveis grupos definidos pelas 
-  # possíveis combinações de parâmetros para as variáveis da aplicação).
+	# Determina o X_test de teste usado na predição (é um dos possíveis grupos 
+	# definidos pelas possíveis combinações de parâmetros para as variáveis da 
+	# aplicação).
 	X_test = df_test_mean_EDP[X_test.columns]
 
-	# Determina o y_test de teste a ser predito, sendo como observamos os valores sendo as 
-  # mediadas das execuções repetidas (a variável alvo).
+	# Determinas1 = pd.Series(["a", "b"]) o y_test de teste a ser predito, sendo 
+	# como observamos os valores sendo as mediadas das execuções repetidas (a 
+	# variável alvo).
 	y_test = df_test_mean_EDP[y_test.name]
 
 	# Utiliza o modelo para fazer a predição para o  X_test, retornada em y_pred.
 	y_pred = trained_estimator.predict(X_test)
 
-	# Agora que temos os valores y_test (mediana dos valores reais da variável alvo para cada 
-  # execução em X), usamos a função min_edp_config_accuracy para calculcar a acurária da
-	# sugestão de configuração definida pelo menor valor em y_pred.
+	# Agora que temos os valores y_test (mediana dos valores reais da variável 
+	# alvo para cada execução em X), usamos a função min_edp_config_accuracy para 
+	# calculcar a acurária da sugestão de configuração definida pelo menor valor 
+	# em y_pred.
 	return min_edp_config_accuracy(X_test, y_test, y_pred)
 
 class FilterOutliers:
 	"""
-	Classe para fazer a filtragem dos outliers da base de dados a ser usada quando os modelos 
-	forem treinados, com o objetivo de remover os valores das variáveis usadas no treinamento 
-	que sejam muito discrepantes considerando todos os valores de cada uma das variáveis 
-	escolhidas para fazer a filtragem. A filtragem, para cada uma dessas variáveis, será 
-	feita usando o desvio absoluto em relação à mediada dos valores dessa variável.
+	Classe para fazer a filtragem dos outliers da base de dados a ser usada 
+	quando os modelos forem treinados, com o objetivo de remover os valores das 
+	variáveis usadas no treinamento que sejam muito discrepantes considerando 
+	todos os valores de cada uma das variáveis escolhidas para fazer a filtragem. 
+	A filtragem, para cada uma dessas variáveis, será feita usando o desvio a
+	bsoluto em relação à mediada dos valores dessa variável.
 
 	Atributos:
-		dados (DataFrame | None): armazena a referência para o objeto do DataFrame do Pandas 
-		com o conjunto de dados original, antes da filtragem.
-		dados_limpos: (DataFrame | None): armazena a referência para o objeto do DataFrame do 
-		Pandas com o novo conjunto de dados obtido após a flitragem do conjunto original.
-		input_variables (list[str]): nomes das variáveis de entrada, ou características, usadas 
-		nos treinamentos dos modelos. Este conjunto será composto pelas variáveis associadas as
-		sugestões de configuração e as variáveis da aplicação usadas ao treinar os modelos e
-		definidas pelos usuários, e as variáveis da aplicação usadas para construir os grupos
-		da validação LOGO usada na busca em grade, na validação cruzada e no treinamento dos
-		modelos.
-		filter_variables (list[str]): variáveis usadas para fazer à filtragem do conjunto de 
-		dados original. São todas variáveis obtidas pelas informação obtidas referentes às 
-		execuções de cada teste do conjunto de dados original. A variável alvo do treinamento
-		dos diversos modelos é uma dessas variáveis.
-		outliers_limit (float): Valor de ponto flutuante com o fator multiplicador usado para 
-		definir os limites inferior e superior de acordo com o desvio mediano absoluto, 
-		sendo os limites definidos em relação à mediana. Todos os valores fora da faixa 
-		definidos por estes limites, para cada variável em filter_variables, serão considerados 
-		como outlires e serão removidos do novo conjunto de dados dados_filtrados.
-		make_range (lambda): Função anômina que, dado dos valores a (float) e b (float), cria 
-		uma tupla definindo o intervalo [a-b,a+b].
+		dados (DataFrame | None): armazena a referência para o objeto do DataFrame 
+		                          do Pandas com o conjunto de dados original, antes 
+															da filtragem.
+		dados_limpos: (DataFrame | None): armazena a referência para o objeto do 
+		                                  DataFrame do Pandas com o novo conjunto 
+																			de dados obtido após a flitragem do 
+																			conjunto original.
+		input_variables (list[str]): nomes das variáveis de entrada, ou 
+																 características, usadas nos treinamentos dos 
+																 modelos. Este conjunto será composto pelas 
+																 variáveis associadas as sugestões de 
+																 configuração e as variáveis da aplicação 
+																 usadas ao treinar os modelos e definidas pelos 
+																 usuários, e as variáveis da aplicação usadas 
+																 para construir os grupos da validação LOGO 
+																 usada na busca em grade, na validação cruzada 
+																 e no treinamento dos modelos.
+		filter_variables (list[str]): variáveis usadas para fazer à filtragem do 
+																	conjunto de dados original. São todas 
+																	variáveis obtidas pelas informação obtidas 
+																	referentes às execuções de cada teste do 
+																	conjunto de dados original. A variável alvo 
+																	do treinamento dos diversos modelos é uma 
+																	dessas variáveis.
+		outliers_limit (float): valor de ponto flutuante com o fator multiplicador 
+													  usado para definir os limites inferior e superior 
+														de acordo com o desvio mediano absoluto, sendo os 
+														limites definidos em relação à mediana. Todos os 
+														valores fora da faixa definidos por estes limites, 
+														para cada variável em filter_variables, serão 
+														considerados como outlires e serão removidos do 
+														novo conjunto de dados dados_filtrados.
+		make_range (lambda): função anômina que, dado dos valores a (float) e 
+												 b (float), cria uma tupla definindo o intervalo 
+												 [a-b,a+b].
 
 	"""
+
 	def __init__(self):
 		"""
     Função de inicialização da classe FilterOutliers.
@@ -238,161 +277,186 @@ class FilterOutliers:
 		self.dados = None
 		# Armazena uma referência para o conjunto de dados flitrado.
 		self.dados_filtrados = None
-		# Armazena uma referência para a lista com as variáveis usadas ao treinar os diversos 
-		# modelos.
+		# Armazena uma referência para a lista com as variáveis usadas ao treinar 
+		# os diversos modelos.
 		self.input_variables = None
 		# Armazena uma referência para a lista com as variáveis usadas na filtragem
 		self.filter_variables = None
-		# Armazena o valor de ponto flutuante que define o limite ao redir do desvio mediano
-		# absoluto. Os outliers estarão fora deste limite.
+		# Armazena o valor de ponto flutuante que define o limite ao redir do 
+		# desvio mediano absoluto. Os outliers estarão fora deste limite.
 		self.outliers_limit = None
-		# Define uma função anômina para, dados dois valores de ponto flutuante a e b, definir
-		# em uma tupla o intervalo (a-b,a+b).
+		# Define uma função anômina para, dados dois valores de ponto flutuante a 
+		# e b, definir em uma tupla o intervalo (a-b,a+b).
 		self.make_range = lambda a, b: (a-b, a+b)
 
 	def make_outliers_filter(self, outliers_limit, variables):
 		"""
-		Função para criar uma função de filtragem customizada do conjunto de dados a ser 
-		filtrado, usando cada variável em v para fazer a filtragem dos outliers, sendo
-		que, para cada variável em v e o desvido mediano absoluto dos valores dm em v, os
-		outliers referente a v serão os testes que, considerando todos o valor de v para
-		cada teste e a mediana m dos valores de v, serão os que estão fora do intervalo
-		[d - outliers_limit x dm,d + outliers_limit x dm], onde outliers_limit é um valor 
-		de ponto flutuante definindo a faixa de tolerância para os valores da variável v.
+		Função para criar uma função de filtragem customizada do conjunto de dados 
+		a ser filtrado, usando cada variável em v para fazer a filtragem dos o
+		utliers, sendo que, para cada variável em v e o desvido mediano absoluto 
+		dos valores dm em v, os outliers referente a v serão os testes que, 
+		considerando todos o valor de v para cada teste e a mediana m dos valores 
+		de v, serão os que estão fora do intervalo [d - outliers_limit x dm, 
+		d + outliers_limit x dm], onde outliers_limit é um valor de ponto flutuante 
+		definindo a faixa de tolerância para os valores da variável v.
 
 		Parâmetros:
 			outliers_limit (float): Valor de ponto flutuante para definir o fator de 
-			multiplicação ao definir os limites inferior e superior baseados no desvio
-			mediano absoluto e a média.
+															multiplicação ao definir os limites inferior e 
+															superior baseados no desvio mediano absoluto e a 
+															média.
 			variables (list[str]): Variáveis em que a filtragem será baseada.
 
 		Retorna:
-			func: Uma função customizada do Python com a função que define a máscara para
-			filtrar os testes do conjunto de dados com outliers.
+			func: Uma função customizada do Python com a função que define a máscara 
+						para filtrar os testes do conjunto de dados com outliers.
 		"""
 
 		def outliers_filter(df):
 			"""
-			Função para filtrar o objeto DataFrame do Pandas passado como eferência em df 
-			de acordo com os parâmetros outliers_limit e variables descrito anteriormente.
+			Função para filtrar o objeto DataFrame do Pandas passado como eferência 
+			em df de acordo com os parâmetros outliers_limit e variables descrito 
+			anteriormente.
 
 			Parâmetros:
-				df (DataFrame): Referência para o objeto DataFrame do Pandas com o conjunto de
- 												dados a ser filtrado. 
+				df (DataFrame): Referência para o objeto DataFrame do Pandas com o 
+												conjunto de dados a ser filtrado. 
 			Retorna:
-				DataFrame: Uma referência para um objeto do Pandas com uma máscara para filtrar os
-				outliers para cada variável v em variables.
+				DataFrame: Uma referência para um objeto do Pandas com uma máscara para 
+									 filtrar os outliers para cada variável v em variables.
 			"""
 
-      # Inicializa a lista com os índices, em df, dos testes para os quais existem outliers
-			# pelo menos uma das variáveis de filtragem em variables. 
+      # Inicializa a lista com os índices, em df, dos testes para os quais 
+			# existem outliers pelo menos uma das variáveis de filtragem em variables. 
 			masks = []
 
-			# Atualiza a lista dos íncides dos testes que tem outliers para cada variável v em 
-			# variables.
+			# Atualiza a lista dos íncides dos testes que tem outliers para cada 
+			# variável v em variables.
 			for v in variables:
-				# Determina os índices dos testes em df que possuem outliers para a variável v.
-				# Para fazer isso, primeiramente geramos uma referência para um objeto Series do 
-				# Pandas que, para cada teste em df, define um valor booleano (bool) True se o 
-				# valor do teste para a variável v está dentro do intervalo [m - outliers_limit 
-				# x mad, m + outliers_limit x mad], onde m e a mediana dos valores para todos os 
-				# testes em v, mad é o desvio mediano absoluto dos valores para todos os testes 
-				# em v, e False em caso contrário. Depois, basta fazer a negação booleana dos
-				# valores obtidos, pois para filtrar um DataFrame precisamos que as posições a
-				# serem escolhidas e, no caso, removidas, seja, True e não False. Finalmente,
-				# os valores com as máscaras booleanas para a variável v serão adicionadas ao
-				# vetor masks.
-				masks.append(~df[v].between(*self.make_range(df[v].median(), 
-																		outliers_limit * st.median_abs_deviation(df[v]))))
+				# Determina os índices dos testes em df que possuem outliers para a 
+				# variável v. Para fazer isso, primeiramente geramos uma referência 
+				# para um objeto Series do Pandas que, para cada teste em df, define 
+				# um valor booleano (bool) True se o valor do teste para a variável v 
+				# está dentro do intervalo [m - outliers_limit x mad, m + 
+				# outliers_limit x mad], onde m e a mediana dos valores para todos os 
+				# testes em v, mad é o desvio mediano absoluto dos valores para todos 
+				# os testes em v, e False em caso contrário. Depois, basta fazer a 
+				# negação booleana dos valores obtidos, pois para filtrar um DataFrame
+				# precisamos que as posições a serem escolhidas e, no caso, removidas, 
+				# seja, True e não False. Finalmente, os valores com as máscaras 
+				# booleanas para a variável v serão adicionadas ao vetor masks.
+				masks.append(
+					~df[v].between(
+						*self.make_range(
+							df[v].median(), outliers_limit *  st.median_abs_deviation(df[v])
+						)
+					)
+				)
 
-			# Retorna uma referência para um objeto DataFrame do Pandas com as colunas sendo
-			# as máscaras para cada teste, sendo a coluna rotulada pelo índice do teste, e os 
-			# índices das linhas sendo cada uma das variáveis em variable, implicando que una
-			# linha com índice v e coluna com rótulo t indica se o valor da linha v e da 
-			# coluna t é um outlier, se True, ou não, se False, ou seja, se True o valor do
-			# teste indexado por t para a variável v é um outlier e este teste deverá portanto
-			# ser removido.
+			# Retorna uma referência para um objeto DataFrame do Pandas com as 
+			# colunas sendo as máscaras para cada teste, sendo a coluna rotulada pelo
+			# índice do teste, e os índices das linhas sendo cada uma das variáveis 
+			# em variable, implicando que una linha com índice v e coluna com rótulo
+			# t indica se o valor da linha v e da coluna t é um outlier, se True, ou 
+			# não, se False, ou seja, se True o valor do teste indexado por t para a 
+			# variável v é um outlier e este teste deverá portanto ser removido.
 			return pd.DataFrame(masks).T
 
-		# Retorna a função que define as máscaras de exclusão dos outliers para cada 
-		# variável v em variables.
+		# Retorna a função que define as máscaras de exclusão dos outliers para 
+		# cada variável v em variables.
 		return outliers_filter
 
 	def Filter(self, dados, input_variables, filter_variables, outliers_limit):
 		"""
-		Função para fazer a filtragem dos outliers no conjunto de dados referenciado por dados,
+		Função para fazer a filtragem dos outliers no conjunto de dados.
 
 		Parâmetros:
-			dados (DataFrame): Conjunto de dados para o qual os outliers serão filtrados.
-				input_variables (list[str]): nomes das variáveis de entrada, ou características, usadas 
-																		 nos treinamentos dos modelos. 
-				filter_variables (list[str]): variáveis usadas para fazer à filtragem do conjunto de 
-																  		dados original. 
-				outliers_limit (float): valor de ponto flutuante para definir o fator multiplicador 
-																que será usado para definir os limites inferior e superior com 
-																o desvio mediano absoluto e a mediana.
-
-
+			dados (DataFrame): Conjunto de dados para o qual os outliers serão 
+												 filtrados.
+			input_variables (list[str]): nomes das variáveis de entrada, ou 
+																		características, usadas nos treinamentos 
+																		dos modelos. 
+			filter_variables (list[str]): variáveis usadas para fazer à filtragem do
+																		conjunto de dados original. 
+			outliers_limit (float): valor de ponto flutuante para definir o fator 
+															multiplicador que será usado para definir os 
+															limites inferior e superior com o desvio 
+															mediano absoluto e a mediana.
 		"""
 
     # Define a variável dados com o conjunto de dados original e não filtrado.
 		self.dados = dados
 		# Define a variável input_variables com as variáveis de entrada.
 		self.input_variables = input_variables
-		# Define a variável filter_variables com as variáveis usadas para fazer a filtragem do
-		# conjunto de dados.
+		# Define a variável filter_variables com as variáveis usadas para fazer a 
+		# filtragem do conjunto de dados.
 		self.filter_variables = filter_variables
-		# Define o valor em ponto flutuante usado para definir, conjuntamente com o desvio médio
-		# absoluto e a mediana.
+		# Define o valor em ponto flutuante usado para definir, conjuntamente com o
+		# desvio médio absoluto e a mediana.
 		self.outliers_limit = outliers_limit
 
-    # Usa a função make_outliers_filter para obter a máscara de testes do conjunto de dados 
-		# com as posições dos testes que precisarão ser removidos devido aos seus valores serem
-	  # para uma variável v serem outliers, para cada variável v em filter_variables. O 
-		# DataFrame retornado será indexado pelos nomes das variáveis em filter_variables, e
-		# os rótulos das colunas serão cada um dos possíveis índices dos testes em data, de
-		# tal modo que uma célula (v, t) deste DataFrame, se True, indicará que o valor da 
-		# variável v para o teste t é um outlier e, em caso contrário, que não é um outlier.
-		# Como desejamos remover os outliers, devemos remover cada teste t para o pelo menos
-		# para uma varíavel v o valor do teste para esta variável foi um outlier, ou seja, se
-		# existir pelo menos uma variável v para a qual a célula (v, t) tem o valor True.
+    # Usa a função make_outliers_filter para obter a máscara de testes do 
+		# conjunto de dados com as posições dos testes que precisarão ser removidos
+		# devido aos seus valores serem para uma variável v serem outliers, para 
+		# cada variável v em filter_variables. O DataFrame retornado será indexado
+		# pelos nomes das variáveis em filter_variables, e os rótulos das colunas 
+		# serão cada um dos possíveis índices dos testes em data, de tal modo que 
+		# uma célula (v, t) deste DataFrame, se True, indicará que o valor da 
+		# variável v para o teste t é um outlier e, em caso contrário, que não é um
+		# outlier. Como desejamos remover os outliers, devemos remover cada teste t
+		# para o pelo menos para uma varíavel v o valor do teste para esta variável
+		# foi um outlier, ou seja, se existir pelo menos uma variável v para a qual
+		# a célula (v, t) tem o valor True.
     #
-		# Depois da função ser chamada e retornar o DataFrame descrito anteriormente, precisamos
-		# preparar o conjunto de dados dados para a filtragem. Para isso, primeiramente agrupamos
-		# todas as colunas referentes às variáveis usadas como características nos treinamentos
-		# dos modelos, ou seja, as variáveis qie fazem parte de uma sugestão de configuração, as
-		# variáveis da aplicação definidas direta ou indiretamente pelo usuário e as variáveis
-		# usadas para definir os grupos usados pela validação LOGO, que sáo em geral as mesmas
-		# qua foram convertidas, mas podem também ser as passadas pelo usuário sem uma conversão
-		# Uma vez feito isso, as colunas restantes após o agrupamento serão somente as usadas pela
-		# filttagem, pois supomos que o DataFrame somente tem as colunas citadas anterioremente e
-		# as das variáveis usadas pela filtragem, que são as variáveis referentes à execução das
-		# aplicações obtidas pelo sacct após a execução de cada teste. Quando lemos o conjunto de
-		# dados, sempre lemos somente as variáveis usadas no treinamento (como variáveis alvo) ou 
-		# na filtragem. Com o agrupamento feito, a função apply é usada para definir para cada
-		# combinação das características e para cada variável de filtragem, o estado de cada um dos
-		# testes feitos para a combinação, que são as repetições para mitigar oscilações nos dados
-		# obtidos pelo sacct devido ao uso compartilhado do supercomputador.
-		outlier_masks = dados.groupby(input_variables).apply(self.make_outliers_filter(outliers_limit, 
-																																								   filter_variables))
+		# Depois da função ser chamada e de retornar o DataFrame descrito 
+		# anteriormente, precisamos preparar o conjunto de dados dados para a 
+		# filtragem. Para isso, primeiramente agrupamos todas as colunas referentes
+		# às variáveis usadas como características nos treinamentos dos modelos, ou
+		# seja, as variáveis qie fazem parte de uma sugestão de configuração, as
+		# variáveis da aplicação definidas direta ou indiretamente pelo usuário e
+		# as variáveis usadas para definir os grupos usados pela validação LOGO,
+		# em geral as mesmas varoáveis que foram convertidas, mas podem também ser
+		# as passadas pelo usuário sem uma conversão. Uma vez feito isso, as
+		# colunas restantes após o agrupamento serão somente as usadas pela
+		# filttagem, pois supomos que o DataFrame somente tem as colunas citadas
+		# anterioremente e as das variáveis usadas pela filtragem, que são as
+		# variáveis referentes à execução das aplicações obtidas pelo sacct após a
+		# execução de cada teste. Quando lemos o conjunto de dados, sempre lemos
+		# somente as variáveis usadas no treinamento (como variáveis alvo) ou na
+		# filtragem. Com o agrupamento feito, a função apply é usada para definir
+		# para cada combinação das características e para cada variável de
+		# filtragem, o estado de cada um dos testes feitos para a combinação, que
+		# são as repetições para mitigar oscilações nos dados obtidos pelo sacct
+		# devido ao uso compartilhado do supercomputador.
+		outlier_masks = ( 
+			dados.groupby(input_variables)
+			.apply(
+				self.make_outliers_filter(
+					outliers_limit, filter_variables
+				)
+			)
+		)
 
-    # Depois de obtido o dataframe outlier_masks anterior verificamos, para cada possível teste,
-		# se a máscara indica que existe algum outlier para pelo menos uma das variáveis usadas para
-		# a flitragem dadas em filter_variables. Depois de obter a máscara fina para cada combinação, 
-		# obtemos a negação lógica dela, pois isso tornará as posições de todos os testes em que existe
-		# pelo menos um outlier como False e as que nçao tem nenhum outlier como True, fazendo 
-		# efetivamente com que a máscara agora escolha os testes para os quais não existiram outliers
-		# para todas as variáveis em filter_variables.
+    # Depois de obtido o dataframe outlier_masks anterior verificamos, para
+		# cada possível teste, se a máscara indica que existe algum outlier para
+		# pelo menos uma das variáveis usadas para a flitragem dadas em
+		# filter_variables. Depois de obter a máscara fina para cada combinação, 
+		# obtemos a negação lógica dela, pois isso tornará as posições de todos os
+		# testes em que existe pelo menos um outlier como False e as que nçao tem
+		# nenhum outlier como True, fazendo efetivamente com que a máscara agora
+		# escolha os testes para os quais não existiram outliers para todas as
+		# variáveis em filter_variables.
 		non_outliers_mask = ~outlier_masks.any(axis=1)
 
-    # Usa a máscara para escolher somente os testes para os quais não foram encontrados outliers 
-		# em todas as variáveis em filter_variables, e armazena o conjunto de dados obtido após a
-		# filtragem, na varável dados_filtrados do objeto da classe instanciado.
+    # Usa a máscara para escolher somente os testes para os quais não foram
+		# encontrados outliers em todas as variáveis em filter_variables, e
+		# armazena o conjunto de dados obtido após a filtragem, na varável 
+		# dados_filtrados do objeto da classe instanciado.
 		self.dados_filtrados = dados[non_outliers_mask.reset_index(list(range(len(input_variables))), 
 																														   drop=True)].reset_index().copy()
 
-    # Retorna uma referência para o conjunto de dados filtrado, sem os testes com pelo menos un
-		# outlier.
+    # Retorna uma referência para o conjunto de dados filtrado, sem os testes
+		# com pelo menos un outlier.
 		return self.dados_filtrados
 		
 class BestHiperparams:

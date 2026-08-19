@@ -85,7 +85,7 @@ class ReadSystemConfig:
 
       # Imprime a informação de sucesso se a verbosidade estiver habilitada.
       if self.verbose:
-        print(f"✅ Arquivo {system_config_path.name} é um arquivo válido de",
+        print(f"✅ Arquivo {system_config_path.name} é um arquivo válido de "
                "configuração do sistema e foi carregado com sucesso!")
 
       # Retorna a configuração do sistema lida e e convertida para um 
@@ -94,16 +94,16 @@ class ReadSystemConfig:
         
     except ValidationError as e:
       # Ocorreu um erro ao validar o esquema do arquivo JSON lido
-      print("❌ Erro ao validar o JSON do arquivo de sistema",
+      print("❌ Erro ao validar o JSON do arquivo de sistema "
             f"{system_config_path.name}!")
       print(f"❌ Detalhes do erro: {e.message}")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except json.JSONDecodeError as e:
       # Ocorreu um erro de sintaxe ao ler o arquivo JSON.
-      print(f"❌ O arquivo {system_config_path.name} não pode ser lido como um",
-            "arquivo JSON válido! Erro de sintaxe!")
-      print(f"❌ Detalhes do erro: {e.msg} na linha {e.lineno} e coluna",
+      print(f"❌ O arquivo {system_config_path.name} não pode ser lido como "
+            "um arquivo JSON válido! Erro de sintaxe!")
+      print(f"❌ Detalhes do erro: {e.msg} na linha {e.lineno} e coluna "
             f"{e.colno}!")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
@@ -127,7 +127,7 @@ class ReadSystemConfig:
       return None
     except Exception as e:
       # Ocorreu alguma outra exceção, inesperada.
-      print(f"❌ Erro desconhecido ao processar o arquivo",
+      print(f"❌ Erro desconhecido ao processar o arquivo "
             f"{system_config_path.name}!")
       print(f"❌ Parâmetros do erro: {e.args}!")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
@@ -228,7 +228,7 @@ class ReadTrainingConfig:
 
       # Imprime a informação de sucesso se a verbosidade estiver habilitada.
       if self.verbose:
-        print(f"✅ Arquivo {training_config_path.name} é um arquivo válido de",
+        print(f"✅ Arquivo {training_config_path.name} é um arquivo válido de "
                "configuração de treinamento e foi carregado com sucesso!")
 
       # Retorna a configuração do treinamento lida e convertida para um 
@@ -237,16 +237,16 @@ class ReadTrainingConfig:
         
     except ValidationError as e:
       # Ocorreu um erro ao validar o esquema do arquivo JSON lido
-      print("❌ Erro ao validar o JSON do arquivo de treinamento",
+      print("❌ Erro ao validar o JSON do arquivo de treinamento "
             f"{training_config_path.name}!")
       print(f"❌ Detalhes do erro: {e.message}")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except json.JSONDecodeError as e:
       # Ocorreu um erro de sintaxe ao ler o arquivo JSON.
-      print(f"❌ O arquivo {training_config_path.name} não pode ser lido como",
+      print(f"❌ O arquivo {training_config_path.name} não pode ser lido como "
             "um arquivo JSON válido! Erro de sintaxe!")
-      print(f"❌ Detalhes do erro: {e.msg} na linha {e.lineno} e coluna",
+      print(f"❌ Detalhes do erro: {e.msg} na linha {e.lineno} e coluna "
             f"{e.colno}!")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
@@ -258,7 +258,7 @@ class ReadTrainingConfig:
     except PermissionError as e:
       # O usuário que executou o script não tem permissão para acessar o 
       # arquivo.
-      print("❌ Erro de permissão ao acessar o arquivo",
+      print("❌ Erro de permissão ao acessar o arquivo "
             f"{training_config_path.name}!")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
@@ -270,7 +270,7 @@ class ReadTrainingConfig:
       return None
     except Exception as e:
       # Ocorreu alguma outra exceção, inesperada.
-      print("❌ Erro desconhecido ao processar o arquivo",
+      print("❌ Erro desconhecido ao processar o arquivo "
             f"{training_config_path.name}!")
       print(f"❌ Parâmetros do erro: {e.args}!")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
@@ -464,21 +464,21 @@ class ReadApplicationsConfigs:
               # Imprime a informação de sucesso se a verbosidade estiver 
               # habilitada.
               if self.verbose:
-                print(f"✅ Arquivo {file.name} é um arquivo válido de",
-                       "configuração de uma aplicação e foi carregado com",
+                print(f"✅ Arquivo {file.name} é um arquivo válido de "
+                       "configuração de uma aplicação e foi carregado com "
                        "sucesso!")
             else:
               # Se file não for um arquivo, mostra uma mensagem de aviso 
               # informando sobre este erro (file sempre deveria ser um arquivo).
-              print(f"⚠️ Ignorando o caminho {file.name} que não é um arquivo",
+              print(f"⚠️ Ignorando o caminho {file.name} que não é um arquivo "
                     "válido JSON!")  
-              print("⚠️ Por favor, reporte este aviso ao adminstrador do",
+              print("⚠️ Por favor, reporte este aviso ao adminstrador do "
                     "sistema!")
 
         # Imprime a informação de sucesso se a verbosidade estiver habilitada.    
         if self.verbose:
-          print(f"✅ Todos os arquivos {applications_config_dir.name} do",
-                 "diretório com as confugurações das aplicações são válidos e",
+          print(f"✅ Todos os arquivos {applications_config_dir.name} do "
+                 "diretório com as confugurações das aplicações são válidos e "
                  "foram lidos!")
 
         # Retorna as configurações das aplicações lidas e econvertidas para um 
@@ -488,16 +488,16 @@ class ReadApplicationsConfigs:
         
       except ValidationError as e:
         # Ocorreu um erro ao validar o esquema do arquivo JSON lido
-        print("❌ Erro ao validar o JSON do arquivo da aplicação",
+        print("❌ Erro ao validar o JSON do arquivo da aplicação "
               f"{file.name}!")
         print(f"❌ Detalhes do erro: {e.message}")
         print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
         return None
       except json.JSONDecodeError as e:
         # Ocorreu um erro de sintaxe ao ler o arquivo JSON.
-        print(f"❌ O arquivo {file.name} não pode ser lido como um arquivo",
+        print(f"❌ O arquivo {file.name} não pode ser lido como um arquivo "
               "JSON válido! Erro de sintaxe!")
-        print(f"❌ Detalhes do erro: {e.msg} na linha {e.lineno} e coluna",
+        print(f"❌ Detalhes do erro: {e.msg} na linha {e.lineno} e coluna "
               f"{e.colno}!")
         print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
         return None
@@ -529,17 +529,17 @@ class ReadApplicationsConfigs:
       if applications_config_dir.is_dir():
         # Se for um diretório, então está vazio ou não tem arquivo com a 
         # extensão .json.
-        print(f"❌ O diretório {applications_config_dir} está vazio ou não",
+        print(f"❌ O diretório {applications_config_dir} está vazio ou não "
               "tem arquivos no formato JSON!")
         print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
       else:  
         # Se não for um diretório, então applications_config_dir não é um 
         # caminho válido (por exemplo, pode ser um arquivo).
         if applications_config_dir.is_file():
-          print(f"❌ O caminho {applications_config_dir} é de um arquivo e",
+          print(f"❌ O caminho {applications_config_dir} é de um arquivo e "
                 "não de um diretório!")
         else:  
-          print(f"❌ O caminho {applications_config_dir} não é de um",
+          print(f"❌ O caminho {applications_config_dir} não é de um "
                 "diretório ou não existe!")
         print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
@@ -638,7 +638,7 @@ class ReadUserConfig:
 
       # Imprime a informação de sucesso se a verbosidade estiver habilitada.
       if self.verbose:
-        print(f"✅ Arquivo {user_config_path.name} é um arquivo válido de", 
+        print(f"✅ Arquivo {user_config_path.name} é um arquivo válido de " 
               "configuração do script do usuário e foi carregado com sucesso!")
 
       # Retorna a configuração do usuário lida e e convertida para um 
@@ -647,16 +647,16 @@ class ReadUserConfig:
         
     except ValidationError as e:
       # Ocorreu um erro ao validar o esquema do arquivo JSON lido
-      print("❌ Erro ao validar o JSON do arquivo do script do usuário", 
+      print("❌ Erro ao validar o JSON do arquivo do script do usuário " 
             f"{user_config_path.name}!")
       print(f"❌ Detalhes do erro: {e.message}")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except json.JSONDecodeError as e:
       # Ocorreu um erro de sintaxe ao ler o arquivo JSON.
-      print(f"❌ O arquivo {user_config_path.name} não pode ser lido como um",
+      print(f"❌ O arquivo {user_config_path.name} não pode ser lido como um "
             "arquivo JSON válido! Erro de sintaxe!")
-      print(f"❌ Detalhes do erro: {e.msg} na linha {e.lineno} e coluna",
+      print(f"❌ Detalhes do erro: {e.msg} na linha {e.lineno} e coluna "
             f"{e.colno}!")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
@@ -667,7 +667,7 @@ class ReadUserConfig:
       return None
     except PermissionError as e:
       # O usuário que executou o script não tem permissão para acessar o arquivo.
-      print(f"❌ Erro de permissão ao acessar o arquivo",
+      print(f"❌ Erro de permissão ao acessar o arquivo "
             f"{user_config_path.name}!")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
@@ -679,7 +679,7 @@ class ReadUserConfig:
       return None
     except Exception as e:
       # Ocorreu alguma outra exceção, inesperada.
-      print(f"❌ Erro desconhecido ao processar o arquivo", 
+      print(f"❌ Erro desconhecido ao processar o arquivo "
             f"{user_config_path.name}!")
       print(f"❌ Parâmetros do erro: {e.args}!")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
@@ -760,8 +760,8 @@ class PredictorsInfoConfig:
 
         # Imprime a informação de sucesso se a verbosidade estiver habilitada.
         if self.verbose:
-          print(f"✅ Arquivo {predictors_info_config_path.name} é um arquivo", 
-                "válido de configuração dos preditores e foi carregado com", 
+          print(f"✅ Arquivo {predictors_info_config_path.name} é um arquivo "
+                "válido de configuração dos preditores e foi carregado com " 
                 "sucesso!")
       else:  
         # O arquivo somente pode não existir se ainda não treinamos nenhum 
@@ -769,8 +769,8 @@ class PredictorsInfoConfig:
         # script de treinamento. No script de otimização, o arquivo sempre deve
         # existir.
         if self.verbose:
-          print(f"⚠️  O arquivo {predictors_info_config_path.name} não foi",
-                "encontrado, mas não tem problema se o erro for gerado pelo",
+          print(f"⚠️  O arquivo {predictors_info_config_path.name} não foi "
+                "encontrado, mas não tem problema se o erro for gerado pelo "
                 "script de treinamento!")
 
         # Inicializa o dicionário de configurações como vazio, pois no 
@@ -784,42 +784,42 @@ class PredictorsInfoConfig:
 
     except ValidationError as e:
       # Ocorreu um erro ao validar o esquema do arquivo JSON lido
-      print("❌ Erro ao validar o JSON do arquivo do script dos preditores", 
+      print("❌ Erro ao validar o JSON do arquivo do script dos preditores " 
             f"{predictors_info_config_path.name}!")
       print(f"❌ Detalhes do erro: {e.message}")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except json.JSONDecodeError as e:
       # Ocorreu um erro de sintaxe ao ler o arquivo JSON.
-      print(f"❌ O arquivo {predictors_info_config_path.name} não pode ser", 
+      print(f"❌ O arquivo {predictors_info_config_path.name} não pode ser " 
             "lido como um arquivo JSON válido! Erro de sintaxe!")
-      print(f"❌ Detalhes do erro: {e.msg} na linha {e.lineno} e coluna",
+      print(f"❌ Detalhes do erro: {e.msg} na linha {e.lineno} e coluna "
             f"{e.colno}!")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except FileNotFoundError:
       # O arquivo não foi encontrado.
-      print(f"❌ O arquivo {predictors_info_config_path.name} não foi",
+      print(f"❌ O arquivo {predictors_info_config_path.name} não foi "
             "encontrado!")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except PermissionError as e:
       # O usuário que executou o script não tem permissão para acessar o 
       # arquivo.
-      print("❌ Erro de permissão ao acessar o arquivo", 
+      print("❌ Erro de permissão ao acessar o arquivo "
             f"{predictors_info_config_path.name}!")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except IOError as e:
       # Ocorreu um erro de I/O ao acessar o arquivo.
-      print("❌ Erro de I/O ao ler o arquivo",
+      print("❌ Erro de I/O ao ler o arquivo "
             f"{predictors_info_config_path.name}!")
       print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     except Exception as e:
       # Ocorreu alguma outra exceção, inesperada.
-      print("❌ Erro desconhecido ao processar o arquivo", 
+      print("❌ Erro desconhecido ao processar o arquivo "
             f"{predictors_info_config_path.name}!")
       print(f"❌ Parâmetros do erro: {e.args}!")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
@@ -847,7 +847,7 @@ class PredictorsInfoConfig:
     # Verifica se self.predictors_info_config_path foi inicializado, ou seja,
     # se a função read_predictors_info_config foi chamada.
     if self.predictors_info_config_path is None:
-      print(f"⚠️ Não foi lida a configuração dos preditores! O arquivo não", 
+      print(f"⚠️ Não foi lida a configuração dos preditores! O arquivo não " 
             "será salvo!")
     else:
       # Atualiza o dicionário das configurações dos preditores com a nova 
