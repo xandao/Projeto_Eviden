@@ -15,7 +15,7 @@ from Utils.Common import debug_code
 def min_edp_config_diff(y_true, y_pred):
 	"""
 	Função para calcular diferença pondenrada entre o valor mínimo em 
-	y_true e o valor real associado ao menor valor predito em y_true.
+	y_true e o valor real associado ao menor valor predito em y_pred.
 
 	Parâmetros:
   	y_true (array_like[float]): vetor de entrada com os valores reais
@@ -35,14 +35,14 @@ def min_edp_config_diff(y_true, y_pred):
 	y_pred_min_pos = y_pred.argmin()
 
 	# Obtém o valor real associado ao menor valor predito, ou seja, o 
-	# valor real que idealmente seria o predito.
+	# valor real que idealmente seria igual ao predito.
 	y_expected_min = y_true[y_pred_min_pos]
 
-	# Retorna a diferençao ponderada entre o valor real do valor predito
+	# Retorna a diferença ponderada entre o valor real do valor predito
 	# e o menor valor real. Na equação a seguir, para calcular a 
 	# diferença:
   #
-  # y_expected_min -> valor real associado ao menor valor predito
+  # y_expected_min -> valor real associado ao menor valor predito.
 	# y_true_min -> menor valor real, ou seja, o valor do oráculo.
 	# 
 	#  y_expected_min - y_true_min
@@ -53,19 +53,27 @@ def min_edp_config_diff(y_true, y_pred):
 
 def train_min_edp_config_diff(trained_estimator, X_test, y_test):
 	"""
-	Função para fazer a predição para um dos grupos das variáveis da 
-	aplicação composto por um possível conjunto de valores para essas
-	variáveis, e depois calcular diferença pondenrada entre o valor mínimo
-	em y_true e o valor real associado ao menor valor predito em y_true
-	usando a função min_edp_config_diff.
+	Função para fazer a predição para o conjunto de possíveis valores
+	das variáveis de configuração e da aplicação definidos em X_test,
+	sendo y_test os valores reais da variável alvo associadas às possíveis
+	combinações dos valores das variáveis. Depois, usa o y_test como 
+	y_real e o y_pred com os valores preditos para X_test, e a função 
+	min_edp_config_diff anterior para calcular a diferença ponderada.
 
 	Parâmetros:
   	trained_estimator (BaseEstimator): Estimador usado para fazer a  
 																			 predição. O estimador precisa 
 																			 seguir a interface do 
 																			 scikit-learn para os estimadores.
-	  X_test (DataFrame): Um objeto Dataframe do Pandas com as variáveis
-												das sugestões de configuração.
+	  X_test (DataFrame): Um objeto Dataframe do Pandas com todas as 
+												combinações das variáveis de configuração e da 
+												aplicação relevantes para o teste feito ao
+												chamar a função (para o LOGO, por exemplo, 
+												X_test terá todas as combinações de configuração
+												e valores fixos para os parâmetros da aplicação,
+												já que a função é chamada para cada grupo do
+												LOGO, e cada grupo é definido por um conjunto
+												fixo de valores para as variáveis da aplicação).
   	y_test (Series): Um objeto Series do Pandas com os valores reais da 
 										 variável alvo da predição.
         
@@ -74,29 +82,28 @@ def train_min_edp_config_diff(trained_estimator, X_test, y_test):
 					 associado ao menor valor predito.
 	"""
 
-	# Recria o dataframe original juntando X e y, sendo o valor da 
-	# variável alvo das execuções para um mesmo conjunto de valores das 
-	# variáveis de sugestão de configuração e das variáveis da aplicação,
-	# execuções essas que existem para mitigar a variabilidade da 
-	# execução compartilhada em um supercomputador, será a mediana dos
-	# valores de todas essas execuções.
-	df_test_mean_EDP = (
+	# Recria o dataframe original juntando X_test e y_test, sendo que
+	# calculamos, para cada combinação dos valores das variáveis de
+	# configuração e da aplicação, a mediana de todos os testes repetidos
+	# para essa combinação, sendo que esses testes existem para mitigar 
+	# a variabilidade da execução compartilhada em um supercomputador.
+	df_test_mean_alvo = (
 		pd.concat((X_test, y_test), axis=1)
 		.groupby(list(X_test.columns))[y_test.name]
 		.median()
 		.reset_index()
 	)
 
-	# Determina o X_test de teste usado na predição (é um dos possíveis 
-	# grupos definidos pelas possíveis combinações de parâmetros para as
-	# variáveis da aplicação).
-	X_test = df_test_mean_EDP[X_test.columns]
+	# Determina o X_test de teste a ser usado na predição (as combinações 
+	# das variáveis de configuração e de aplicação), mas usando a mediana
+	# dos testes repetidos ao invés de cada teste.
+	X_test = df_test_mean_alvo[X_test.columns]
 
-	# Determina o y_test de teste a ser predito, sendo como observamos os
+	# Determina o y_test do teste a ser predito, sendo como observamos os
 	# valores sendo as mediadas das execuções repetidas (a variável alvo).
-	y_test = df_test_mean_EDP[y_test.name]
+	y_test = df_test_mean_alvo[y_test.name]
 
-	# Utiliza o modelo para fazer a predição para o  X_test, retornada em
+	# Utiliza o modelo para fazer a predição para o X_test, retornada em
 	# y_pred.
 	y_pred = trained_estimator.predict(X_test)
 
