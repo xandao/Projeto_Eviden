@@ -53,12 +53,13 @@ def min_edp_config_diff(y_true, y_pred):
 
 def train_min_edp_config_diff(trained_estimator, X_test, y_test):
 	"""
-	Função para fazer a predição para o conjunto de possíveis valores
-	das variáveis de configuração e da aplicação definidos em X_test,
-	sendo y_test os valores reais da variável alvo associadas às possíveis
-	combinações dos valores das variáveis. Depois, usa o y_test como 
-	y_real e o y_pred com os valores preditos para X_test, e a função 
-	min_edp_config_diff anterior para calcular a diferença ponderada.
+	Função para inicialmente fazer a predição para o conjunto de possíveis 
+	valores das variáveis de configuração e da aplicação definidos em 
+	X_test, sendo y_test os valores reais da variável alvo associadas às 
+	possíveis combinações dos valores das variáveis. Depois, usa o y_test 
+	como y_real e o y_pred com os valores preditos para X_test, e a função 
+	train_min_edp_config_diff anterior para calcular a diferença 
+	ponderada e retornar a diferença negada. 
 
 	Parâmetros:
   	trained_estimator (BaseEstimator): Estimador usado para fazer a  
@@ -78,8 +79,8 @@ def train_min_edp_config_diff(trained_estimator, X_test, y_test):
 										 variável alvo da predição.
         
 	Retorna:
-  	float: A diferença ponderada entre o menor valor real e o valor real 
-					 associado ao menor valor predito.
+  	float: O negativo da diferença ponderada entre o menor valor real e 
+					 o valor real associado ao menor valor predito.
 	"""
 
 	# Recria o dataframe original juntando X_test e y_test, sendo que
@@ -114,25 +115,33 @@ def train_min_edp_config_diff(trained_estimator, X_test, y_test):
 
 def neg_train_min_edp_config_diff(trained_estimator, X_test, y_test):
 	"""
-	Função para fazer a predição para um dos grupos das variáveis da
-	aplicação compposto por um possível conjunto de valores para essas
-	variáveis, e depois calcular diferença pondenrada entre o valor 
-	mínimo em y_true e o valor real associado ao menor valor predito em
-	y_true usando a função min_edp_config_diff.
+	Função para fazer a predição para o conjunto de possíveis valores
+	das variáveis de configuração e da aplicação definidos em X_test,
+	sendo y_test os valores reais da variável alvo associadas às possíveis
+	combinações dos valores das variáveis. Depois, usa o y_test como 
+	y_real e o y_pred com os valores preditos para X_test, e a função 
+	min_edp_config_diff anterior para calcular a diferença ponderada.
 
 	Parâmetros:
   	trained_estimator (BaseEstimator): Estimador usado para fazer a  
 																			 predição. O estimador precisa 
 																			 seguir a interface do 
 																			 scikit-learn para os estimadores.
-	  X_test (DataFrame): Um objeto Dataframe do Pandas com as variáveis
-												das sugestões de configuração.
+	  X_test (DataFrame): Um objeto Dataframe do Pandas com todas as 
+												combinações das variáveis de configuração e da 
+												aplicação relevantes para o teste feito ao
+												chamar a função (para o LOGO, por exemplo, 
+												X_test terá todas as combinações de configuração
+												e valores fixos para os parâmetros da aplicação,
+												já que a função é chamada para cada grupo do
+												LOGO, e cada grupo é definido por um conjunto
+												fixo de valores para as variáveis da aplicação).
   	y_test (Series): Um objeto Series do Pandas com os valores reais da 
 										 variável alvo da predição.
         
 	Retorna:
-    float: O negativo da diferença ponderada entre o menor valor real e
-					 o valor real associado ao menor valor predito.
+  	float: A diferença ponderada entre o menor valor real e o valor real 
+					 associado ao menor valor predito.
 	"""
 
 	# Usa a função train_min_edp_config_diff para calcular a pontuação 
@@ -147,13 +156,11 @@ def neg_train_min_edp_config_diff(trained_estimator, X_test, y_test):
 def min_edp_config_accuracy(X, y_true, y_pred):
 	"""
 	Função para calcular a pontuação de acurácia, que será igual a 1 se a 
-	sugestão de configuração, definida pelas variáveis de X que definem o 
-	conjunto de possíveis configurações de sugestão, e obtida considerando
-	o menor valor em y_pred, com os valores preditos para a variável alvo
-	para cada configuração em X, for igual a sugestão de configuração
-	definida pelo menor valor em y_true, ou seja, se for igual a
-	configuração definida pelo oráculo, ou 0 em caso contrário, ou seja,
-	se a configuraçãofor diferente da configuração do oráculo.
+	sugestão de configuração, definida pelas variáveis em X associada a 
+	posição com o menor valor em y_pred, for igual a sugestão de 
+	configuração definida pelo menor valor em y_true, ou seja, se for 
+	igual a configuração definida pelo oráculo, ou 0 em caso contrário, ou 
+	seja, se a configuraçãofor diferente da configuração do oráculo.
 
 	Parâmetros:
 	  X (DataFrame): Um objeto DataFrame do Pandas com uma columa para 
@@ -168,45 +175,60 @@ def min_edp_config_accuracy(X, y_true, y_pred):
 					 igual a definida por y_real, ou seja, igual ao oráculo, ou 0
 					 em caso contrário.
 	"""
+
 	# Obtém a posição do menor valor real da variável alvo.
 	y_true_argmin = y_true.argmin()
 
 	# Obtém a posição do menor valor predito da variável alvo.
 	y_pred_argmin = y_pred.argmin()
 
-  # Usa o pandas para verificar se todos os valores das colunas da posição em 
-	# X dada por y_pred_argmin em (ou seja, a sugestão de configuração) coincidem 
-	# com os valores da posição em X dada por y_pred_argmin (ou seja, o oráculo).
+  # Usa o Pandas para verificar se todos os valores das colunas da 
+	# posição em X dada por y_pred_argmin em (ou seja, a sugestão de 
+	# configuração) coincidem com os valores da posição em X dada por 
+	# y_pred_argmin (ou seja, o oráculo).
 	return float((X.iloc[y_pred_argmin] == X.iloc[y_true_argmin]).all())
 
 def train_min_edp_config_accuracy(trained_estimator, X_test, y_test):
 	"""
-	Função para fazer a predição para um dos grupos das variáveis da 
-	aplicação composto por um possível conjunto de valores para essas 
-	variáveis, e depois calcular a acurácia da sugestão de configuração
-	associada ao valor mínimo predito para a variável alvo e o oráculo
-	definido pelo menor valor em y_test. 
+	Função para inicialmente fazer a predição para o conjunto de possíveis 
+	valores das variáveis de configuração e da aplicação definidos em 
+	X_test, sendo y_test os valores reais da variável alvo associadas às 
+	possíveis combinações dos valores das variáveis. Depois, calcula a 
+	pontuação de acurácia, que será igual a 1 se a sugestão de 
+	configuração, obtida considerando	o menor valor em y_pred, for igual a
+	sugestão de configuração definida pelo menor valor em y_true, ou seja, 
+	se for igual a configuração definida pelo oráculo, ou 0 em caso 
+	contrário, ou seja, se a configuraçãofor diferente da configuração do 
+	oráculo.
 
-  	trained_estimator (BaseEstimator): Estimador usado para fazer a  
+Parâmetros:
+		trained_estimator (BaseEstimator): Estimador usado para fazer a  
 																			 predição. O estimador precisa 
 																			 seguir a interface do 
 																			 scikit-learn para os estimadores.
-	  X_test (DataFrame): Um objeto Dataframe do Pandas com as variáveis
-												das sugestões de configuração.
-  	y_test (Series): Um objeto Series do Pandas com os valores reais da 
+		X_test (DataFrame): Um objeto Dataframe do Pandas com todas as 
+												combinações das variáveis de configuração e da 
+												aplicação relevantes para o teste feito ao
+												chamar a função (para o LOGO, por exemplo, 
+												X_test terá todas as combinações de configuração
+												e valores fixos para os parâmetros da aplicação,
+												já que a função é chamada para cada grupo do
+												LOGO, e cada grupo é definido por um conjunto
+												fixo de valores para as variáveis da aplicação).
+		y_test (Series): Um objeto Series do Pandas com os valores reais da 
 										 variável alvo da predição.
-        
-	Retorna:
-  	float: 1 se a sugestão de configuração do menor valor predito for o
-					 oráculo e 0 em caso contrário.
+	        
+  Retorna:
+	  float: 1 se a sugestão de configuração definida por y_pred for 
+					 igual a definida por y_real, ou seja, igual ao oráculo, ou 0
+					 em caso contrário.
 	"""
 
-	# Recria o dataframe original juntando X e y, sendo o valor da 
-	# variável alvo das execuções para um mesmo conjunto de valores das
-	# variáveis de sugestão de configuração e das variáveis da aplicação,
-	# execuções essas que existem para mitigar a variabilidade da execução
-	# compartilhada em um supercomputador, será a mediana dos valores de
-	# todas essas execuções.
+	# Recria o dataframe original juntando X_test e y_test, sendo que
+	# calculamos, para cada combinação dos valores das variáveis de
+	# configuração e da aplicação, a mediana de todos os testes repetidos
+	# para essa combinação, sendo que esses testes existem para mitigar 
+	# a variabilidade da execução compartilhada em um supercomputador.
 	df_test_mean_EDP = (
 		pd.concat((X_test, y_test), axis=1)
 		.groupby(list(X_test.columns))[y_test.name]
@@ -214,21 +236,20 @@ def train_min_edp_config_accuracy(trained_estimator, X_test, y_test):
 		.reset_index()
 	)
 
-	# Determina o X_test de teste usado na predição (é um dos possíveis 
-	# grupos definidos pelas possíveis combinações de parâmetros para as 
-	# variáveis da aplicação).
+	# Determina o X_test de teste a ser usado na predição (as combinações 
+	# das variáveis de configuração e de aplicação), mas usando a mediana
+	# dos testes repetidos ao invés de cada teste.
 	X_test = df_test_mean_EDP[X_test.columns]
 
-	# Determinas1 = pd.Series(["a", "b"]) o y_test de teste a ser predito,
-	# sendo como observamos os valores sendo as mediadas das execuções
-	# repetidas (a variável alvo).
+	# Determina o y_test do teste a ser predito, sendo como observamos os
+	# valores sendo as mediadas das execuções repetidas (a variável alvo).
 	y_test = df_test_mean_EDP[y_test.name]
 
-	# Utiliza o modelo para fazer a predição para o  X_test, retornada em
+	# Utiliza o modelo para fazer a predição para o X_test, retornada em
 	# y_pred.
 	y_pred = trained_estimator.predict(X_test)
 
-	# Agora que temos os valores y_test (mediana dos valores reais da 
+	# Agora que temos os valores y_test (mediana dos valores reais da
 	# variável alvo para cada execução em X), usamos a função 
 	# min_edp_config_accuracy para calculcar a acurária da sugestão de 
 	# configuração definida pelo menor valor em y_pred.
