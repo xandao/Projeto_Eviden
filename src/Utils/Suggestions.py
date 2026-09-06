@@ -506,7 +506,7 @@ class FilterOutliers:
 		# dados_filtrados do objeto da classe instanciado.
 		self.dados_filtrados = (
 			dados[non_outliers_mask
-				 .reset_index(drop=True)]#list(range(len(input_variables))), drop=True)]
+				 .reset_index(list(range(len(input_variables))), drop=True)]
 				 .reset_index(drop=True)
 				 .copy()
 		)
