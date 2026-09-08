@@ -259,52 +259,49 @@ class FilterOutliers:
 	"""
 	Classe para fazer a filtragem dos outliers da base de dados a ser 
 	usada quando os modelos forem treinados, com o objetivo de remover os
-	valores das variáveis usadas no treinamento que sejam muito 
-	discrepantes considerando todos os valores de cada uma das variáveis
+	testes cujos valores das variáveis usadas no treinamento sejam muito 
+	discrepantes considerando todos os valores de cada uma das variáveis 
 	escolhidas para fazer a filtragem. A filtragem, para cada uma dessas 
-	variáveis, será feita usando o desvio absoluto em relação à mediada
+	variáveis, será feita usando o desvio absoluto em relação à mediana
 	dos valores dessa variável.
 
 	Atributos:
-		dados (DataFrame | None): armazena uma referência para o objeto do  
+		dados (DataFrame | None): Armazena uma referência para o objeto do  
 		                          DataFrame do Pandas com o conjunto de 
-															dados original, antes da filtragem.
-		dados_limpos: (DataFrame | None): armazena a referência para o 
+															dados original antes da filtragem.
+		dados_limpos: (DataFrame | None): Armazena a referência para o 
 		                                  objeto do DataFrame do Pandas
 																			com o novo conjunto de dados
-																			obtido após a flitragem do 
+																			obtido após a filtragem do 
 																			conjunto original.
-		input_variables (list[str]): nomes das variáveis de entrada, ou 
-																 características, usadas 
-																 nos treinamentos dos modelos. Este
-																 conjunto será composto pelas variáveis
+		input_variables (list[str]): Nomes das variáveis de entrada, ou 
+																 características, usadas nos 
+																 treinamentos dos modelos. Este conjunto
+																 será composto pelas variáveis 
 																 associadas as sugestões de configuração
-																 e as variáveis da aplicação usadas ao 
-																 treinar os modelos e definidas pelos
-																 usuários, e as variáveis da aplicação
-																 usadas para construir os grupos da 
-																 validação LOGO usada na busca em grade,
-																 na validação cruzada e no treinamento
-																 dos modelos.
-		filter_variables (list[str]): variáveis usadas para fazer à
+																 e as variáveis da aplicação definidas 
+																 pelos usuários, e as variáveis da 
+																 aplicação usadas para construir os 
+																 grupos da validação LOGO usada na busca
+																 em grade, na validação cruzada e no 
+																 treinamento dos modelos.
+		filter_variables (list[str]): Variáveis usadas para fazer à
 																	filtragem do conjunto de dados 
-																	original. São todas variáveis obtidas
-																	pelas informação obtidas referentes às
+																	original. São todas variáveis com as
+																	informação obtidas referentes às 
 																	execuções de cada teste do conjunto de
-																	dados original. A variável alvo do
-																	treinamento dos diversos modelos é uma 
-																	dessas variáveis.
-		outliers_limit (float): valor de ponto flutuante com o fator
+																	dados original relevantes à predição 
+																	da variável alvo.
+		outliers_limit (float): Valor em ponto flutuante com o fator
 													  multiplicador usado para definir os limites
 														inferior e superior de acordo com o desvio
 														mediano absoluto, sendo os limites definidos
 														em relação à mediana. Todos os valores fora
-														da faixa definidos por estes limites, para
+														da faixa definida por estes limites, para
 														cada variável em filter_variables, serão 
-														considerados como outlires e serão
-														removidos do novo conjunto de dados dados
-														filtrados.
-		make_range (lambda): função anômina que, dado dos valores a (float) 
+														considerados como outlires e serão removidos
+														do novo conjunto de dados.
+		make_range (lambda): Função anômina que, dado dos valores a (float) 
 												 e b (float), cria uma tupla definindo o 
 												 intervalo [a-b,a+b].
 
@@ -320,7 +317,7 @@ class FilterOutliers:
 
 		# Armazena uma referência para o conjunto de dados original.
 		self.dados = None
-		# Armazena uma referência para o conjunto de dados flitrado.
+		# Armazena uma referência para o conjunto de dados filtrado.
 		self.dados_filtrados = None
 		# Armazena uma referência para a lista com as variáveis usadas ao 
 		# treinar os diversos modelos.
@@ -328,51 +325,53 @@ class FilterOutliers:
 		# Armazena uma referência para a lista com as variáveis usadas na 
 		# filtragem
 		self.filter_variables = None
-		# Armazena o valor de ponto flutuante que define o limite ao redir 
+		# Armazena o valor de ponto flutuante que define o limite ao redor 
 		# do desvio mediano absoluto. Os outliers estarão fora deste limite.
 		self.outliers_limit = None
 		# Define uma função anômina para, dados dois valores de ponto 
-		# flutuante a e b, definir em uma tupla o intervalo (a-b,a+b).
+		# flutuante a e b, definir em uma tupla o intervalo (a-b, a+b).
 		self.make_range = lambda a, b: (a-b, a+b)
 
 	def make_outliers_filter(self, outliers_limit, variables):
 		"""
 		Função para criar uma função de filtragem customizada do conjunto de
-		dados a ser filtrado, usando cada variável em v para fazer a 
-		filtragem dos o utliers, sendo que, para cada variável em v e o
-		desvido mediano absoluto dos valores dm em v, os outliers referente
-		a v serão os testes que, considerando todos o valor de v para cada
-		teste e a mediana m dos valores de v, serão os que estão fora do
-		intervalo [d - outliers_limit x dm, d + outliers_limit x dm], onde
-		outliers_limit é um valor de ponto flutuante definindo a faixa de
-		tolerância para os valores da variável v.
+		dados a ser filtrado, usando cada variável v em variables para fazer 
+		a filtragem dos outliers, sendo que, os outliers referentes a v 
+		serão os testes que, considerando a mediana mv de todos os valores
+		de v e o desvio mediano absoluto mad desses valores, estarão fora do
+		intervalo [mv - outliers_limit x mad, mv + outliers_limit x mad], 
+		onde outliers_limit é o valor em ponto flutuante definindo a faixa 
+		de tolerância dos valores de v em relação à mediana mv.
 
 		Parâmetros:
-			outliers_limit (float): Valor de ponto flutuante para definir o 
-															fator de multiplicação ao definir os 
+			outliers_limit (float): Valor em ponto flutuante definindo o 
+															fator de multiplicação usado ao definir os 
 															limites inferior e superior baseados no
-															desvio mediano absoluto e a média.
-			variables (list[str]): Variáveis em que a filtragem será baseada.
+															desvio mediano absoluto e a mediana.
+			variables (list[str]): Variáveis cujos valores serão usados para
+														 filtrar os outliers.
 
 		Retorna:
 			func: Uma função customizada do Python com a função que define a 
-						máscara para filtrar os testes do conjunto de dados com
-						outliers.
+						máscara para filtrar os testes do conjunto de dados 
+						considerados como outliers de acordo com a mediana e o 
+						desvio mediano absoulto dos valores das variáveis em
+						variables.
 		"""
 
 		def outliers_filter(df):
 			"""
-			Função para filtrar o objeto DataFrame do Pandas passado como
-			eferência em df de acordo com os parâmetros outliers_limit e 
+			Função para filtrar um objeto DataFrame do Pandas, passado como
+			referência em df, de acordo com os parâmetros outliers_limit e 
 			variables descrito anteriormente.
 
 			Parâmetros:
 				df (DataFrame): Referência para um objeto DataFrame do Pandas  
-												com oconjunto de dados a ser filtrado. 
+												com o conjunto de dados a ser filtrado. 
 			Retorna:
-				DataFrame: Uma referência para um objeto do Pandas com  
-									 máscara para filtrar os outliers para cada variável v
-									 em variables.
+				DataFrame: Uma referência para um objeto do Pandas com máscara 
+				para filtrar os outliers para cada variável v em variables do
+				DataFrame df. 
 			"""
 
       # Inicializa a lista com os índices, em df, dos testes para os
