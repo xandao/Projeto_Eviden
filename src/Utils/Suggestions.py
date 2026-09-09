@@ -258,12 +258,14 @@ Parâmetros:
 class FilterOutliers:
 	"""
 	Classe para fazer a filtragem dos outliers da base de dados a ser 
-	usada quando os modelos forem treinados, com o objetivo de remover os
-	testes cujos valores das variáveis usadas no treinamento sejam muito 
-	discrepantes considerando todos os valores de cada uma das variáveis 
-	escolhidas para fazer a filtragem. A filtragem, para cada uma dessas 
-	variáveis, será feita usando o desvio absoluto em relação à mediana
-	dos valores dessa variável.
+	usada quando os modelos forem treinados, com o objetivo de remover, 
+	para cada teste definido por uma combinação dos possíveis valores das
+	variáveis de configuração e da aplicação, as repetições deste teste
+	que sejam muito discrepantes considerando a mediana dessas repetições
+	para cada variável usada para fazer a filtragem. A filtragem, para 
+	cada uma dessas variáveis, será feita usando o desvio absoluto em 
+	relação à mediana dos valores dessa variável para as repetições do
+	teste.
 
 	Atributos:
 		dados (DataFrame | None): Armazena uma referência para o objeto do  
@@ -280,16 +282,13 @@ class FilterOutliers:
 																 será composto pelas variáveis 
 																 associadas as sugestões de configuração
 																 e as variáveis da aplicação definidas 
-																 pelos usuários, e as variáveis da 
-																 aplicação usadas para construir os 
-																 grupos da validação LOGO usada na busca
-																 em grade, na validação cruzada e no 
-																 treinamento dos modelos.
+																 pelos usuários.
 		filter_variables (list[str]): Variáveis usadas para fazer à
 																	filtragem do conjunto de dados 
 																	original. São todas variáveis com as
 																	informação obtidas referentes às 
-																	execuções de cada teste do conjunto de
+																	execuções de cada teste e cada 
+																	repetição deste teste do conjunto de
 																	dados original relevantes à predição 
 																	da variável alvo.
 		outliers_limit (float): Valor em ponto flutuante com o fator
@@ -298,13 +297,13 @@ class FilterOutliers:
 														mediano absoluto, sendo os limites definidos
 														em relação à mediana. Todos os valores fora
 														da faixa definida por estes limites, para
-														cada variável em filter_variables, serão 
-														considerados como outlires e serão removidos
-														do novo conjunto de dados.
+														cada variável em filter_variables e cada
+														repetição de um teste, serão considerados 
+														como outlires e serão removidos do novo 
+														conjunto de dados.
 		make_range (lambda): Função anômina que, dado dos valores a (float) 
 												 e b (float), cria uma tupla definindo o 
 												 intervalo [a-b,a+b].
-
 	"""
 
 	def __init__(self):
@@ -334,14 +333,12 @@ class FilterOutliers:
 
 	def make_outliers_filter(self, outliers_limit, variables):
 		"""
-		Função para criar uma função de filtragem customizada do conjunto de
-		dados a ser filtrado, usando cada variável v em variables para fazer 
-		a filtragem dos outliers, sendo que, os outliers referentes a v 
-		serão os testes que, considerando a mediana mv de todos os valores
-		de v e o desvio mediano absoluto mad desses valores, estarão fora do
-		intervalo [mv - outliers_limit x mad, mv + outliers_limit x mad], 
-		onde outliers_limit é o valor em ponto flutuante definindo a faixa 
-		de tolerância dos valores de v em relação à mediana mv.
+		Função para criar uma função de filtragem para ser usada com a 
+		função apply aplicada a um grupo do Pandas, sendo que cada grupo tem
+		um DataFrame composto por todas as repetições de um mesmo teste 
+		definido pelas possíveis combinações das variáeis de configuração e
+		da aplicação, pois o agrupamento em que a função apply será usada é
+		feito por essas variáveis.
 
 		Parâmetros:
 			outliers_limit (float): Valor em ponto flutuante definindo o 
@@ -353,68 +350,109 @@ class FilterOutliers:
 
 		Retorna:
 			func: Uma função customizada do Python com a função que define a 
-						máscara para filtrar os testes do conjunto de dados 
-						considerados como outliers de acordo com a mediana e o 
+						máscara para filtrar as repetições, de um mesmo teste, 
+						consideradas como outliers, de acordo com a mediana e o 
 						desvio mediano absoulto dos valores das variáveis em
-						variables.
+						variables para essas repetições.
 		"""
 
 		def outliers_filter(df):
 			"""
 			Função para filtrar um objeto DataFrame do Pandas, passado como
 			referência em df, de acordo com os parâmetros outliers_limit e 
-			variables descrito anteriormente.
+			variables descrito anteriormente. Como esta função será a usada no
+			apply após o agrupamento, df será um DataFrame em que as linhas
+			serão as repetições feitas para um mesmo teste, definido pelo
+			agrupamento das variáveis de configuração e da aplicação, e as
+			colunas serão as variáveis usadas na filtragem.
 
 			Parâmetros:
 				df (DataFrame): Referência para um objeto DataFrame do Pandas  
-												com o conjunto de dados a ser filtrado. 
+												com os dados das repetições de um teste.
 			Retorna:
-				DataFrame: Uma referência para um objeto do Pandas com máscara 
-				para filtrar os outliers para cada variável v em variables do
-				DataFrame df. 
+				DataFrame: Uma referência para um DataFrame do Pandas com uma
+				máscara para filtrar os outliers para cada variável v em
+				variables do DataFrame df, ou seja, indicando, para cada 
+				repetição, associada a uma linha do DataFarme, e para cada 
+				variável v de variables, se a repetição tem (True) ou não 
+				(False) um outlier para a variável v. 
 			"""
 
-      # Inicializa a lista com os índices, em df, dos testes para os
-			# quais existem outliers pelo menos uma das variáveis de filtragem
-			# em variables. 
+      # Inicializa a lista com os índices, em df, da repetições para as
+			# quais existem outliers para pelo menos uma das variáveis de 
+			# filtragem em variables. 
 			masks = []
 
-			# Atualiza a lista dos íncides dos testes que tem outliers para
-			# cada variável v em variables.
-			for v in variables:
-				# Determina os índices dos testes em df que possuem outliers 
-				# para a variável v. Para fazer isso, primeiramente geramos uma
-				# referência para um objeto Series do Pandas que, para cada
-				# teste em df, define um valor booleano (bool) True se o valor
-				# do teste para a variável v está dentro do intervalo [m -
-				# outliers_limit x mad, m + outliers_limit x mad], onde m e a
-				# mediana dos valores para todos os testes em v, mad é o desvio
-				# mediano absoluto dos valores para todos os testes em v, e 
-				# False em caso contrário. Depois, basta fazer a negação
-				# booleana dos valores obtidos, pois para filtrar um DataFrame
-				# precisamos que as posições a serem escolhidas e, no caso,
-				# removidas, seja, True e não False. Finalmente, os valores com
-				# as máscaras booleanas para a variável v serão adicionadas ao
-				# vetor masks.
-				masks.append(
-					~df[v].between(
-						*self.make_range(
-							df[v].median(), outliers_limit *  st.median_abs_deviation(df[v])
-						)
-					)
+			# Atualiza a lista dos índices das repetições que tem outliers 
+			# considerando os valores dessas repetições para cada variável v 
+			# em variables. 
+			for v in variables:				
+        # Para descobrir os outliers, primeiramente precisamos 
+				# determinar, para a variável v, o intervalo em que os valores 
+				# desta variável para o teste precisarão estar para não serem 
+				# outliers. Depois de estudos, decidimos usar um intervalo 
+				# baseado no desvido mediano absoluto, que é similar ao desvio
+				# padrão, mas avalia a distância dos valores da variável v para 
+				# as repetições do teste em relação à mediana de todos esses 
+				# valores, ao invés da média. Depois de determinada a mediana 
+				# mv e o desvio mediano absoulto mad, o intervalo que o valor de
+				# v para uma repetição deve estar para não ser um outlier, 
+				# armazendo em non_outliers_interval como uma tupla, é definido
+				# do seguinte modo, usando mv, mad e outliers_limit, usando a
+				# função do objeto make_range:
+				#
+				# [mv - outliers_limit * mad, mv + outliers_limit * mad]
+				non_outliers_interval = self.make_range(
+						df[v].median(),
+						outliers_limit * st.median_abs_deviation(df[v]),
 				)
 
-			# Retorna uma referência para um objeto DataFrame do Pandas com as 
-			# colunas sendo as máscaras para cada teste, sendo a coluna rotulada pelo
-			# índice do teste, e os índices das linhas sendo cada uma das variáveis 
-			# em variable, implicando que una linha com índice v e coluna com rótulo
-			# t indica se o valor da linha v e da coluna t é um outlier, se True, ou 
-			# não, se False, ou seja, se True o valor do teste indexado por t para a 
-			# variável v é um outlier e este teste deverá portanto ser removido.
-			return pd.DataFrame(masks).T
+        # Uma vez determinado o intervalo dos valores de v que não são
+				# outliers para todas as repetições do teste, a função between
+				# do Pandas será usada para retornar um objeto Series do Pandas
+				# no qual as linhas serão as repetições do teste e o conteúdo de
+				# cada linha indicará se o valor para v da repetição associada
+				# à linha está (True) ou não (False) dentro do intervalo 
+				# non_outliers_interval, ou seja, se não é um outlier (True) ou
+				# é um outlier (False) considerando a variável v e o teste
+				# associado à linha. Como usamos a operação between em df, os 
+				# índices das linhas em non_outliers_positions serão os
+				# mesmos índices das linhas das repetições do teste em df.
+				non_outliers_positions = df[v].between(*non_outliers_interval)
 
-		# Retorna a função que define as máscaras de exclusão dos outliers para 
-		# cada variável v em variables.
+        # Adiciona no vetor de máscaras uma nova entrada para a variável
+				# v. Como desejamos filtrar os outliers, então armazenados a 
+				# negação do objeto Series non_outliers_positions, como indicado
+				# pelo operador de negação ~. Depois da operação de negação, 
+				# agora as linhas com as repetições dos testes com outliers para
+				# a variável v conterão valores True, enquanto que as linhas com
+				# as repetições sem outliers serão False.
+				masks.append(~non_outliers_positions)
+
+			# Usa a lista masks para criar um DataFrame. Como existe uma 
+			# entrada para cada variável v em variables, pois colocamos um
+			# desses objetos para cada variável em masks, e como cada entrada 
+			# na lista masks é um objeto Series do Pandas cujo nome é a 
+			# variável v e cujas linhas são valores booleanos indicando se a 
+			# repetição do teste tem um outlier (True) ou não (False) para a 
+			# variável v, com os mesmos índices dessas repetições em df, então
+			# o DataFrame criado teria como linhas as variáveis em variables
+			# e como colunas os índices dos testes em df, o oposto do que 
+			# desejamos, que é as linhas serem os índices das repetições em
+			# df e as colunas as variáveis em variables. Logo, depois de criar
+			# o DataFrame, usamos a operação T do objeto DataFrame para fazer
+			# exatamente isso, trocar de posição as linhas com as colunas, 
+			# como ocorre em uma operação de transposição de uma matriz.
+			masks_df = pd.DataFrame(masks).T
+
+			# Retorna o DataFrame com as máscaras a serem usadas para filtrar
+			# o DataFrame, removendo as repetições do teste que possuam pelo
+			# menos um outlier para uma das variáveis em variables.
+			return masks_df
+
+		# Retorna a função que define as máscaras de exclusão dos outliers 
+		# para cada variável v em variables e para cada repetição do teste
+		# dadas no DataFrame df.
 		return outliers_filter
 
 	def Filter(self, dados, input_variables, filter_variables, outliers_limit):
@@ -424,61 +462,67 @@ class FilterOutliers:
 		Parâmetros:
 			dados (DataFrame): Conjunto de dados para o qual os outliers serão 
 												 filtrados.
-			input_variables (list[str]): nomes das variáveis de entrada, ou 
-																		características, usadas nos treinamentos 
-																		dos modelos. 
-			filter_variables (list[str]): variáveis usadas para fazer à filtragem do
-																		conjunto de dados original. 
-			outliers_limit (float): valor de ponto flutuante para definir o fator 
-															multiplicador que será usado para definir os 
-															limites inferior e superior com o desvio 
-															mediano absoluto e a mediana.
+			input_variables (list[str]): Nomes das variáveis de entrada, ou 
+																	 características, usadas nos 
+																	 treinamentos dos modelos, ou seja,
+																	 as variáveis de configuração e as
+																	 variáveis de aplicação. 
+			filter_variables (list[str]): Variáveis usadas para fazer a 
+																		filtragem do conjunto de dados 
+																		original, ou seja, para as quais
+																		iremos avaliar os testes com 
+																		outliers considerando os valores 
+																		destas variáveis.
+			outliers_limit (float): Valor de ponto flutuante para definir o 
+															fator multiplicador que será usado para 
+															definir os limites inferior e superior, 
+															conjuntamente com o desvio mediano
+															absoluto e a mediana, do intervalo de
+															com os valores que não são outliers.
 		"""
 
-    # Define a variável dados com o conjunto de dados original e não filtrado.
+    # Define a variável do objeto dados com o conjunto de dados original 
+		# e não filtrado.
 		self.dados = dados
-		# Define a variável input_variables com as variáveis de entrada.
+		# Define a variável do objeto input_variables com as variáveis de 
+		# entrada usada no treinamento dos modelos.
 		self.input_variables = input_variables
-		# Define a variável filter_variables com as variáveis usadas para fazer a 
-		# filtragem do conjunto de dados.
+		# Define a variável do objeto filter_variables com as variáveis 
+		# usadas para fazer a filtragem do conjunto de dados.
 		self.filter_variables = filter_variables
-		# Define o valor em ponto flutuante usado para definir, conjuntamente com o
-		# desvio médio absoluto e a mediana.
+		# Define a variável do objeto outliers_limit com o valor em ponto 
+		# flutuante usado para definir, conjuntamente com o desvio médio 
+		# absoluto e a mediana, do intervalo de com os valores que não são
+		# outliers.
 		self.outliers_limit = outliers_limit
 
-    # Usa a função make_outliers_filter para obter a máscara de testes do 
-		# conjunto de dados com as posições dos testes que precisarão ser removidos
-		# devido aos seus valores serem para uma variável v serem outliers, para 
-		# cada variável v em filter_variables. O DataFrame retornado será indexado
-		# pelos nomes das variáveis em filter_variables, e os rótulos das colunas 
-		# serão cada um dos possíveis índices dos testes em data, de tal modo que 
-		# uma célula (v, t) deste DataFrame, se True, indicará que o valor da 
-		# variável v para o teste t é um outlier e, em caso contrário, que não é um
-		# outlier. Como desejamos remover os outliers, devemos remover cada teste t
-		# para o pelo menos para uma varíavel v o valor do teste para esta variável
-		# foi um outlier, ou seja, se existir pelo menos uma variável v para a qual
-		# a célula (v, t) tem o valor True.
-    #
-		# Depois da função ser chamada e de retornar o DataFrame descrito 
-		# anteriormente, precisamos preparar o conjunto de dados dados para a 
-		# filtragem. Para isso, primeiramente agrupamos todas as colunas referentes
-		# às variáveis usadas como características nos treinamentos dos modelos, ou
-		# seja, as variáveis qie fazem parte de uma sugestão de configuração, as
-		# variáveis da aplicação definidas direta ou indiretamente pelo usuário e
-		# as variáveis usadas para definir os grupos usados pela validação LOGO,
-		# em geral as mesmas varoáveis que foram convertidas, mas podem também ser
-		# as passadas pelo usuário sem uma conversão. Uma vez feito isso, as
-		# colunas restantes após o agrupamento serão somente as usadas pela
-		# filttagem, pois supomos que o DataFrame somente tem as colunas citadas
-		# anterioremente e as das variáveis usadas pela filtragem, que são as
-		# variáveis referentes à execução das aplicações obtidas pelo sacct após a
-		# execução de cada teste. Quando lemos o conjunto de dados, sempre lemos
-		# somente as variáveis usadas no treinamento (como variáveis alvo) ou na
-		# filtragem. Com o agrupamento feito, a função apply é usada para definir
-		# para cada combinação das características e para cada variável de
-		# filtragem, o estado de cada um dos testes feitos para a combinação, que
-		# são as repetições para mitigar oscilações nos dados obtidos pelo sacct
-		# devido ao uso compartilhado do supercomputador.
+    # Para descobrir a máscara com os outliers, primeiramente agrupamos
+		# os dados do conjunto de dados de acordo com as variáveis de 
+		# entrada em input_variables, para separar os valores das repetições
+		# de cada teste definido pela combinação destas variáveis em um
+		# DataFrame associado ao grupo definido pelo teste. Este DataFrame
+		# terá uma linha para cada repetição, indexada pelo índice que ela
+		# originalmente tinha no conjunto de dados dados, e uma coluna para
+		# cada variável que não é uma das variáveis de entrada em 
+		# input_variables usadas para definir cada grupo. Depois, aplicamos 
+		# a função apply sobre o grupo para gerar o DataFrame final, do 
+		# seguinte modo:
+		#
+		#- Primeiramente a função, para cada DataFrame associado a um grupo
+		# descrito anteriormente, utilizando a função make_outliers_filter 
+		# passando como parâmetros outliers_limit e filter_variables, 
+		# substituirá este DataFrame por um outro DataFrame em que, para
+		# cada repetição dada por uma das linhas do DataFrame do grupo
+		# indexadas pelo mesmo índice deste DataFrame, indicará se o valor
+		# para cada variável de filtragem, nomeada pelo nome dado em
+		# filter_variables, se o valor da repetição para esta variável é
+		# (True) ou não (False) um outlier.
+		#- Depois, para cada  grupo, o seu DataFrame será concatedado ao
+		# novo DataFrame gerado pela função, inicialmente vazio, sendo que
+		# o índice de cada repetição do teste associado ao grupo será, antes
+		# da concatenação, substituído por um índice definido pelos valores
+		# das variáveis em input_variables, usadas para deifnir o grupo, e
+		# o índice dessa repetição no conjunto de dados dados.
 		outlier_masks = ( 
 			dados.groupby(input_variables)
 			.apply(
@@ -488,30 +532,53 @@ class FilterOutliers:
 			)
 		)
 
-    # Depois de obtido o dataframe outlier_masks anterior verificamos, para
-		# cada possível teste, se a máscara indica que existe algum outlier para
-		# pelo menos uma das variáveis usadas para a flitragem dadas em
-		# filter_variables. Depois de obter a máscara fina para cada combinação, 
-		# obtemos a negação lógica dela, pois isso tornará as posições de todos os
-		# testes em que existe pelo menos um outlier como False e as que nçao tem
-		# nenhum outlier como True, fazendo efetivamente com que a máscara agora
-		# escolha os testes para os quais não existiram outliers para todas as
-		# variáveis em filter_variables.
+    # Como vimos, para cada teste e uma das suas repetições, o DataFrame
+		# outlier_masks indicará se existe, para cada variável em 
+		# filter_variavbles, se o valor de uma repetição de um teste é um 
+		# outlier se o valor da sua linha e da coluna dessa variável for
+		# True. Logo, para ver se uma repetição de um teste tem algum 
+		# outlier, basta verificar se pelo menos uma coluna tem um valor 
+		# True para esta repetição e cada variável, o que podemos fazer
+		# usando a funçaõ any do Pandas aplicada a todas as colunas (axis=1)
+		# de outlier_masks, que retornará um objeto Series do Pandas que
+		# indicará, para cada teste e uma das suas repetições, se pelo menos 
+		# o valor de uma das variáveis de filtragem é (True) ou não (False)
+		# um outlier. Agora, como desejamos filtrar os outliers, e como o
+		# Pandas pernite somente filtrar as colunas que desejamos manter do
+		# DataFrame, precisamos usar o operador ~ para negar os valores em
+		# outlier_masks, de tal modo que agora uma linha com um teste e uma
+		# das suas repetições em outlier_masks será True se a repetição
+		# deste teste não tiver outliers para nenhuma das variáveis de 
+		# filtragem. O resultado desta negação, ou seja, com uma 
+		# máscara indicando (True) ou não (False) quais testes devem ser
+		# mantidos, é armazenada em non_outliers_mask.
 		non_outliers_mask = ~outlier_masks.any(axis=1)
 
-    # Usa a máscara para escolher somente os testes para os quais não foram
-		# encontrados outliers em todas as variáveis em filter_variables, e
-		# armazena o conjunto de dados obtido após a filtragem, na varável 
-		# dados_filtrados do objeto da classe instanciado.
+    # Ajusta os índices para casar com os índices do conjunto de dados
+		# em dados, usando somente o último valor do índice com multtplos
+		# níveis n objeto Series non_outliers_mask original, e depois 
+		# ordena segundo esses índices.
+		non_outliers_mask = (
+			non_outliers_mask.reset_index(
+					level=non_outliers_mask.index.names[:-1], drop=True
+			)
+			.sort_index()
+		)		
+
+    # Usa a máscara para escolher somente as repetições dos testes para 
+		# as quais não foram encontrados outliers em todas as variáveis em 
+		# filter_variables, e armazena o conjunto de dados obtido após a 
+		# filtragem, na variável dados_filtrados do objeto da classe 
+		# instanciado.
 		self.dados_filtrados = (
-			dados[non_outliers_mask
-				 .reset_index(list(range(len(input_variables))), drop=True)]
-				 .reset_index(drop=True)
-				 .copy()
+				dados[non_outliers_mask]
+				.reset_index(drop=True)
+				.copy()
 		)
 
-    # Retorna uma referência para o conjunto de dados filtrado, sem os testes
-		# com pelo menos un outlier.
+    # Retorna uma referência para o conjunto de dados filtrado, sem as 
+		# repetições dos testes com pelo menos un outlier para uma das
+		# variáveis em filter_variables.
 		return self.dados_filtrados
 		
 class BestHiperparams:
@@ -781,6 +848,7 @@ class SuggestionsPredictor:
 			print(f"➡️  Medianas da variável {self.predicted_name} para todas as repetições de cada combinação dos valores das variáveis {self.suggestion_names+self.user_names}:")
 			print("\n", df_aux.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
 		df_oracle = df_aux.groupby(self.user_names).apply(lambda x: x[x[self.predicted_name] == x[self.predicted_name].min()], include_groups=False)
+		df_oracle = df_oracle.droplevel(level=-1).reset_index()
 		if verbose:
 			print("➡️  Dataframe do oráculo:")
 			print("\n", df_oracle.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
