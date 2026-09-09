@@ -600,8 +600,8 @@ class BestHiperparams:
 		if not isinstance(data, pd.DataFrame):	
 			raise ValueError("Invalid input data provided, data is not a "
 										   "Dataframe.")
-		# Verifica se cada nome em suggestion_names é o nome de uma das variáveis
-		# de configuração definidas por uma das colunas em data.
+		# Verifica se cada nome em suggestion_names é o nome de uma das 
+		# variáveis de configuração definidas por uma das colunas em data.
 		if not pd.Index(suggestion_names).isin(data.columns).all():
 			raise KeyError("Invalid input suggestion_names provided, not all "
 									  f"{suggestion_names} suggestions params exists "
