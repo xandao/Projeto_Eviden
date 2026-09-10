@@ -479,6 +479,10 @@ class FilterOutliers:
 															conjuntamente com o desvio mediano
 															absoluto e a mediana, do intervalo de
 															com os valores que não são outliers.
+
+    Retorna:
+      DataFrame: ponteiro para o objeto DataFrame do Pandas com o 
+								 conjunto de dados filtrado.
 		"""
 
     # Define a variável do objeto dados com o conjunto de dados original 
@@ -565,7 +569,7 @@ class FilterOutliers:
 			.sort_index()
 		)		
 
-    # Usa a máscara para escolher somente as repetições dos testes para 
+		# Usa a máscara para escolher somente as repetições dos testes para 
 		# as quais não foram encontrados outliers em todas as variáveis em 
 		# filter_variables, e armazena o conjunto de dados obtido após a 
 		# filtragem, na variável dados_filtrados do objeto da classe 
@@ -582,7 +586,67 @@ class FilterOutliers:
 		return self.dados_filtrados
 		
 class BestHiperparams:
+	"""
+	Classe para fazer a busca em grade e escolher os melhores valores para
+	cada hiperparâmetro a ser otimizado para um dado estimador. Será 
+	criado um objeto para cada estimador a ser avaliado quando formos 
+	escolher o melhor estimador para ser usado, para garantir que os 
+	estimadores ao serem comparados serão configurados com os melhores
+	valores para os hiperparâmetros selecionados.
+
+	Atributos:
+		X (DataFrame): X contendo os testes usados para avaliar os melhores
+									valores dos hiperparâmetros nas linhas e as variáveis
+									de configuração e da aplicação nas colunas.
+		y (Series): Valores das variáveis alvo para cada teste em X, usado
+								ao avaliar os resultados dos testes da validação cruzada
+								LOGO usada ao avaliar cada combinação dos
+								hiperparâmetros durante a busca em grade. 
+		grid_searc_model (GridSearchCV): Objeto do scikit-leanr com o 
+																		resultado da busca em grade para o
+																		estimador, já com todas as buscas em
+																		grades feitas, tendo como atributos
+																		informações sobre todas as 
+																		combinações de hiperparâmetros 
+																		avaliadas durante a busca em grade e
+																		as suas pontuações, assim como 
+																		atributos com a melhor combinação
+																		dos	hiperparâmetros e sua pontuação.
+																		
+		group (array_like[str]): Rótulos codificados, identificando os grupos
+														que serão usados na validação LOGO quando a
+														busca em grada avaliar cada combinação 
+														possível dos valores dos hiperparâmetros. As
+														variáveis do usuário, que são as variáveis
+														da aplicação passadas pelo usuário que podem
+														ou não ser convertidas para as variáveis
+														finais da aplicação usadas no treinamento,
+														são usadas para definir cada grupo da
+														validação LOGO.
+		group_names	(array_like[str]): Armazena os rótulos de cada uma das 
+																	classes representando cada um dos 
+																	rótulos codificados.
+		n_jobs (int): Número de trabalhos paralelos criados quando a busca
+									em grade for feita. Este parâmetro é passado
+									diretamente ao objeto GridSearchCV, então o
+									significado é o mesmo, ou seja, um valor positivo
+									define o número de trabalhos paralelos, e um valor
+									negativo indica que será usado o número de unidades de
+									processamento na máquina menos o valor absoluto
+									negativo mais 1 (ou seja, o valor -1 define o uso de
+									todas as unidades de processamento).
+		verbose (bool): Habilita/desabilita as informações de verbosidade.                   
+	"""
+
 	def __init__(self, n_jobs=-1, verbose=False):
+		"""
+		Função de inicialização da classe BestHiperparams.
+
+		Parâmetros:
+			n_jobs (int): Número de trabalhos paralelos criados quando a busca
+										em grade for feita.
+			verbose (bool): Habilita/desabilita as informações de verbosidade.
+		"""
 		self.X = None
 		self.y = None
 		self.grid_search_model = None
@@ -594,7 +658,35 @@ class BestHiperparams:
 	def optimize(self, data, suggestion_names, application_names, user_names, 
 							 predicted_name, model, hiperparams_grid, 
 							 scoring=train_min_edp_config_accuracy):
+		"""
+		Função que faz a otimização dos hiperparâmetros para um estimador, 
+		usando a busca em grade, implementada pelo objeto GridSearchCV do
+		scikit-learn, sendo que a avaliação de cada possível combinação dos
+		valores dos hiperparâmetros do estimador avaliados usa a validação
+		cruzada utilizando a validação LOGO para dar uma pontuação para cada
+		combinação e escolher a melhor, que será a primeira combinação
+		avaliada com a maior pontuação segundo a validação cruzada.
 
+		Parâmetros:
+			dados (DataFrame): Conjunto de dados usado para fazer as 
+												 validações cruzadas para escolher os melhores
+												 valores dos hiperparâmetros avaliados para um
+												 estimador.
+			input_variables (list[str]): Nomes das variáveis de entrada, ou 
+																	 características, usadas nos 
+																	 treinamentos dos modelos, ou seja,
+																	 as variáveis de configuração e as
+																	 variáveis de aplicação. 
+			filter_variables (list[str]): Variáveis usadas para fazer a 
+																		filtragem do conjunto de dados 
+																		original, ou seja, para as quais
+																		iremos avaliar os testes com 
+																		outliers considerando os valores 
+																		destas variáveis.
+
+    Retorna:
+      dict | None:		
+		"""
 		# Verifica se todos os parâmetros estão corretos.
     # Verifica se data é um DataFrame do Pandas.
 		if not isinstance(data, pd.DataFrame):	
@@ -649,7 +741,7 @@ class BestHiperparams:
 
     # Otimiza os hiperparâmetros.
 		self.grid_search_model = grid_search_model.fit(self.X, self.y, 
-																								 groups=self.groups)
+													  											 groups=self.groups)
 		
 		# Retorna os resultados da otimização.
 		return (self.grid_search_model.best_params_, 
