@@ -150,7 +150,7 @@ def train_command(applications_name, applications_config, training_config, syste
         if verbose:
           print(f"---> Modelo {model_info['name']}: Melhores hiperparâmetros -> {best_params}; Melhor score -> {best_score}")
           print("----> Dataframe com a avaliação de todas as combinações dos hiperparâmetros:")         
-          hyperparams_score = best_hyper.get_hrperparams_scores() 
+          hyperparams_score = best_hyper.get_hyperparams_scores() 
           print("\n", hyperparams_score.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
       
         if model_info['fixed_params'] is not None:
