@@ -111,12 +111,12 @@ class ReadSystemConfig:
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     # O arquivo é um diretório.
-    except IsADirectoryError:
+    except IsADirectoryError as e:
       print(f"❌ O caminho {system_config_path.name} é um diretório!")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     # O arquivo não foi encontrado.
-    except FileNotFoundError:
+    except FileNotFoundError as e:
       print(f"❌ O arquivo {system_config_path.name} não foi encontrado!")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None

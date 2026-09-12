@@ -18,9 +18,9 @@ def min_edp_config_diff(y_true, y_pred):
 	y_true e o valor real associado ao menor valor predito em y_pred.
 
 	Parâmetros:
-  	y_true (array_like[float]): vetor de entrada com os valores reais
+  	y_true (array_like[float]): Vetor de entrada com os valores reais
 																das medidas.
-	  y_pred (array_like[float]): vetor de entrada com os valores preditos
+	  y_pred (array_like[float]): Vetor de entrada com os valores preditos
 																das medidas.
         
 	Retorna:
@@ -62,10 +62,10 @@ def train_min_edp_config_diff(trained_estimator, X_test, y_test):
 	ponderada e retornar a diferença negada. 
 
 	Parâmetros:
-  	trained_estimator (BaseEstimator): Estimador usado para fazer a  
-																			 predição. O estimador precisa 
-																			 seguir a interface do 
-																			 scikit-learn para os estimadores.
+  	trained_estimator (BaseEstimator): Modelo usado para fazer a  
+																			 predição. O modelo precisa seguir
+																			 a interface do scikit-learn para
+																			 os modelos.
 	  X_test (DataFrame): Um objeto Dataframe do Pandas com todas as 
 												combinações das variáveis de configuração e da 
 												aplicação relevantes para o teste feito ao
@@ -123,10 +123,10 @@ def neg_train_min_edp_config_diff(trained_estimator, X_test, y_test):
 	min_edp_config_diff anterior para calcular a diferença ponderada.
 
 	Parâmetros:
-  	trained_estimator (BaseEstimator): Estimador usado para fazer a  
-																			 predição. O estimador precisa 
-																			 seguir a interface do 
-																			 scikit-learn para os estimadores.
+  	trained_estimator (BaseEstimator): Modelo usado para fazer a 
+																			 predição. O modelo precisa seguir
+																			 a interface do scikit-learn para
+																			 os modelos.
 	  X_test (DataFrame): Um objeto Dataframe do Pandas com todas as 
 												combinações das variáveis de configuração e da 
 												aplicação relevantes para o teste feito ao
@@ -202,10 +202,10 @@ def train_min_edp_config_accuracy(trained_estimator, X_test, y_test):
 	oráculo.
 
 Parâmetros:
-		trained_estimator (BaseEstimator): Estimador usado para fazer a  
-																			 predição. O estimador precisa 
-																			 seguir a interface do 
-																			 scikit-learn para os estimadores.
+		trained_estimator (BaseEstimator): modelo usado para fazer a
+																			 predição. O modelo precisa seguir
+																			 a interface do scikit-learn para
+																			 os modelos.
 		X_test (DataFrame): Um objeto Dataframe do Pandas com todas as 
 												combinações das variáveis de configuração e da 
 												aplicação relevantes para o teste feito ao
@@ -369,6 +369,7 @@ class FilterOutliers:
 			Parâmetros:
 				df (DataFrame): Referência para um objeto DataFrame do Pandas  
 												com os dados das repetições de um teste.
+
 			Retorna:
 				DataFrame: Uma referência para um DataFrame do Pandas com uma
 				máscara para filtrar os outliers para cada variável v em
@@ -464,8 +465,8 @@ class FilterOutliers:
 												 filtrados.
 			input_variables (list[str]): Nomes das variáveis de entrada, ou 
 																	 características, usadas nos 
-																	 treinamentos dos modelos, ou seja,
-																	 as variáveis de configuração e as
+																	 treinamentos dos modelos, ou seja, as
+																	 variáveis de configuração e as
 																	 variáveis de aplicação. 
 			filter_variables (list[str]): Variáveis usadas para fazer a 
 																		filtragem do conjunto de dados 
@@ -588,44 +589,45 @@ class FilterOutliers:
 class BestHiperparams:
 	"""
 	Classe para fazer a busca em grade e escolher os melhores valores para
-	cada hiperparâmetro a ser otimizado para um dado estimador. Será 
-	criado um objeto para cada estimador a ser avaliado quando formos 
-	escolher o melhor estimador para ser usado, para garantir que os 
-	estimadores ao serem comparados serão configurados com os melhores
-	valores para os hiperparâmetros selecionados.
+	cada hiperparâmetro a ser otimizado para um dado modelo. Será criado
+	um objeto para cada modelo a ser avaliado quando formos escolher o
+	melhor modelo para ser usado, para garantir que os modelos ao serem
+	comparados serão configurados com os melhores valores para os
+	hiperparâmetros selecionados.
 
 	Atributos:
 		X (DataFrame): X contendo os testes usados para avaliar os melhores
-									valores dos hiperparâmetros nas linhas e as variáveis
-									de configuração e da aplicação nas colunas.
+									 valores dos hiperparâmetros nas linhas e as variáveis
+									 de configuração e da aplicação nas colunas.
 		y (Series): Valores das variáveis alvo para cada teste em X, usado
 								ao avaliar os resultados dos testes da validação cruzada
 								LOGO usada ao avaliar cada combinação dos
 								hiperparâmetros durante a busca em grade. 
-		grid_searc_model (GridSearchCV): Objeto do scikit-leanr com o 
-																		resultado da busca em grade para o
-																		estimador, já com todas as buscas em
-																		grades feitas, tendo como atributos
-																		informações sobre todas as 
-																		combinações de hiperparâmetros 
-																		avaliadas durante a busca em grade e
-																		as suas pontuações, assim como 
-																		atributos com a melhor combinação
-																		dos	hiperparâmetros e sua pontuação.
+		grid_searc_model (GridSearchCV): Objeto do scikit-learn com o 
+																		 resultado da busca em grade para o
+																		 modelo, já com todas as buscas em
+																		 grades feitas, tendo como atributos
+																		 informações sobre todas as
+																		 combinações de hiperparâmetros 
+																		 avaliadas durante a busca em grade
+																		 e as suas pontuações, assim como 
+																		 atributos com a melhor combinação
+																		 dos	hiperparâmetros e sua
+																		 pontuação.
 																		
-		group (array_like[str]): Rótulos codificados, identificando os grupos
-														que serão usados na validação LOGO quando a
-														busca em grada avaliar cada combinação 
-														possível dos valores dos hiperparâmetros. As
-														variáveis do usuário, que são as variáveis
-														da aplicação passadas pelo usuário que podem
-														ou não ser convertidas para as variáveis
-														finais da aplicação usadas no treinamento,
-														são usadas para definir cada grupo da
-														validação LOGO.
+		group (array_like[str]): Rótulos codificados, identificando os 
+														 grupos que serão usados na validação LOGO
+														 quando a busca em grada avaliar cada
+														 combinação possível dos valores dos
+														 hiperparâmetros. As variáveis do usuário,
+														 que são as variáveis da aplicação passadas
+														 pelo usuário que podem ou não ser
+														 convertidas para as variáveis finais da
+														 aplicação usadas no treinamento, são usadas
+														 para definir cada grupo da validação LOGO.
 		group_names	(array_like[str]): Armazena os rótulos de cada uma das 
-																	classes representando cada um dos 
-																	rótulos codificados.
+																	 classes representando cada um dos 
+																	 rótulos codificados.
 		n_jobs (int): Número de trabalhos paralelos criados quando a busca
 									em grade for feita. Este parâmetro é passado
 									diretamente ao objeto GridSearchCV, então o
@@ -659,10 +661,10 @@ class BestHiperparams:
 							 predicted_name, model, hiperparams_grid, 
 							 scoring=train_min_edp_config_accuracy):
 		"""
-		Função que faz a otimização dos hiperparâmetros para um estimador, 
+		Função que faz a otimização dos hiperparâmetros para um modelo, 
 		usando a busca em grade, implementada pelo objeto GridSearchCV do
 		scikit-learn, sendo que a avaliação de cada possível combinação dos
-		valores dos hiperparâmetros do estimador avaliados usa a validação
+		valores dos hiperparâmetros do modelo avaliados usa a validação
 		cruzada utilizando a validação LOGO para dar uma pontuação para cada
 		combinação e escolher a melhor, que será a primeira combinação
 		avaliada com a maior pontuação segundo a validação cruzada.
@@ -671,7 +673,7 @@ class BestHiperparams:
 			dados (DataFrame): Conjunto de dados usado para fazer as 
 												 validações cruzadas para escolher os melhores
 												 valores dos hiperparâmetros avaliados para um
-												 estimador.
+												 modelo.
 			suggestion_names (list[str]): Nomes das variáveis de usadas para
 																		definir as configurações dos 
 																		recursos usadas ao executar os
@@ -706,24 +708,27 @@ class BestHiperparams:
 														descoberta da melhor sugestão de 
 														configuração.
 			model (BaseEstimator): Referência para o objeto definindo o
-														 estimador (seguindo o formato da biblioteca 
+														 modelo (seguindo o formato da biblioteca 
 														 scikit-learn) para o qual iremos escolher
 														 a melhor combinação dos hiperparâmetros que
 														 iremos avaliar.
 			hiperparams_grid (dict): Dicionário em que cada chave é um dos
 															 hiperparâmetros que desejamos otimizar
-															 do estimador dado pelo objeto
-															 referenciado por model. O valor da chave
-															 é a lista dos possíveis valores que
-															 iremos avaliar para o hiperparâmetro
-															 definido pela chave.
+															 do modelo dado pelo objeto referenciado
+															 por model. O valor da chave é a lista dos
+															 possíveis valores que iremos avaliar para
+															 o hiperparâmetro definido pela chave.
 			scoring (func): Função que irá calcular as pontuações durante o
 											processo de busca em grade, no formato usado pelo
 											scikit-learn. Por default, é a função que calcula
 											a acurácia que descrevemos anteriormente neste
-											arquivo, a train_min_edp_config_accuracy.						 
+											arquivo, a train_min_edp_config_accuracy.	A busca
+											em grade supõe que é uma pontuação que desejamos
+											maximizar, ou seja, a maior pontuação de todas 
+											será a melhor.
+
     Retorna:
-      tuple: Se não ocorrerem erros, renorna uma tupla com duas 
+      tuple: Se não ocorrerem erros, retorna uma tupla com duas 
 						 referências, a primeira para um dicionário em que as chaves
 						 são os hiperparâmetros otimizados e, para cada chave, o seu
 						 valor é o melhor valor escolhido para este hiperparâmetro,
@@ -790,7 +795,7 @@ class BestHiperparams:
 		# posteriormente pasado à função que efeticamente fará a busca em
 		# grade. Os grupos serão armazenados no campo groups do objeto.
 		self.groups = lab_encoder.fit_transform(list(map(str, 
-																									 data[user_names].values)))
+																										 data[user_names].values)))
 		# Armazena os nomes internos dos grupos (chamados de classes), no
 		# campo groups_names do objeto.
 		self.groups_names = lab_encoder.classes_
@@ -799,6 +804,8 @@ class BestHiperparams:
 		# somente cria a referência para o objeto e o inicializa. A busca em
 		# grade é feita pela chamada de uma função do objeto criado, como
 		# veremos a seguir. 
+		if self.verbose:
+			print("*** Início da verbosidade da função GridSearchCV **** \n")
 		grid_search_model = skms.GridSearchCV(
 			model,
 			cv=skms.LeaveOneGroupOut(),
@@ -809,6 +816,8 @@ class BestHiperparams:
 			return_train_score=True,
 			verbose=int(self.verbose),
 		)
+		if self.verbose:
+			print("*** Fim da verbosidade da função GridSearchCV **** \n")
 		# Depois de criado e inicializado o objeto, a função fit deste 
 		# objeto será chamada para fazer a busca em grade, e retornar a
 		# referência para o objeto com todas as informações sobre a busca
@@ -830,8 +839,8 @@ class BestHiperparams:
 	def get_hyperparams_scores(self):
 		"""
 		Função para retornar as informações da busca em grade feita ao 
-		otimizar os hiperparâmetros do estimador definido após chamar a
-		função optimize descrita anteriormente.
+		otimizar os hiperparâmetros do modelo definido após chamar a função
+		optimize descrita anteriormente.
 
 		Parâmetros:
 				Não tem parâmetros.	
@@ -850,14 +859,123 @@ class BestHiperparams:
 		hiperparams_df = pd.DataFrame(self.grid_search_model.cv_results_)
 
 		# Retorna o DataFrame obtido da conversão do dicionário.
-		return hiperparams_df
-		
+		return hiperparams_df	
 class DiscoverBestModel:
+	"""
+  Descobre o melhor modelo, dentre todos os modelos passados como 
+	parâmetro ao chamar a função best_model para um objeto da classe. Para
+	cada modelo, diversas pontuações serão calculadas, sendo que o melhor
+	modelo será o que tiver a maior pontuação para a pontuação calculada
+	pela primeira função definida pelo dicionário do parâmetro 
+	scores_functions. Se dois os mais modleos tiverem a maior pontuação,
+	a segunda será a usada e o seu máximo será considerado e assim por
+	diante, para as outras pontuações, sempre com uma pontuação sendo
+	usada como critério de desempate. Para calcular as pontuações para
+	cada modelo, a validação cruzada, implementada usando um objeto da
+	classe cross_validate do scikit-learn, será usado para cada modelo, 
+	utilizando a validação LOGO. Como a validação LOGO é usada, então as
+	pontuações serão calculadas para cada grupo usado como conjunto de
+	teste, sendo que o modelo usado para as predições será o treinado com
+	os dados dos outros grupos, e esse processo será repetido para cada
+	grupo definido pela validação LOGO. Após de calculadas as pontuações
+	para cada grupo, as pomtuações finais para o modelo serão as médias
+	das pontuações de todos os testes dos grupos gerados pela validação
+	LOGO. Por default, serão usadas as pontuações de acurária, calculada e
+	descrita na função train_min_edp_config_accuracy, sendo a única função
+	de desempate o a pontuação retornada pela função
+	neg_train_min_edp_config_diff, que usa o negativo da pontuação de
+	diferença calculada e descrita na função train_min_edp_config_diff,
+	porque a pontuação de diferença é uma pontuação em que o melhor valor
+	é o menor de todos e não o maior, como é necessário.
+
+	Parâmetros:
+		X (DataFrame): X contendo os testes usados para avaliar os melhores
+									 valores dos hiperparâmetros nas linhas e as variáveis
+									 de configuração e da aplicação nas colunas.
+		y (Series): Valores das variáveis alvo para cada teste em X, usado
+								ao avaliar os resultados dos testes da validação cruzada
+								LOGO usada ao avaliar cada combinação dos
+								hiperparâmetros durante a busca em grade. 
+		cv_results (dict): Objeto do scikit-learn com os resultados da busca
+											 em grade para cada modelo avaliado. A chave do
+											 dicionário é o nome do modelo e o conteúdo é o
+											 dicionário com as informações sobre a validação
+											 cruzada para o modelo. Dentre as informações,
+											 para cada grupo do LOGO, estão as pontuações,
+											 os índices dos testes do conjunto de dados X 
+											 usados no treinamento e no teste para cada grupo,
+											 e as referências para os modelos treinados para
+											 cada grupo que foram usados para fazer as
+											 predições destes grupos.
+		results_df (DataFrame): Dataframe construído a partir do dicionário
+														cv_results, sem incluir as informações dos
+														índices e dos modelos, para permitir um
+														acesso faciliatado aos dados da validação
+														cruzada para cada modelo. Tem uma coluna
+														adicional 'Model' com o nome de cada modelo,
+														pois os resultados das validações de todos
+														os modelos são convertidos para um DataFrame
+														separadamente e depois concatenados em um
+														DataFrame final com as informações da
+														validação cruzada para todos os modelos
+														avaliados.
+		group (array_like[str]): Rótulos codificados, identificando os grupos
+														 que serão usados na validação LOGO quando a
+														 busca em grada avaliar cada combinação 
+														 possível dos valores dos hiperparâmetros. 
+														 As variáveis do usuário, que são as
+														 variáveis da aplicação passadas pelo
+														 usuário que podem ou não ser convertidas
+														 para as variáveis finais da aplicação
+														 usadas no treinamento, são usadas para
+														 definir cada grupo da validação LOGO.
+		group_names	(array_like[str]): Armazena os rótulos de cada uma das 
+														 			 classes representando cada um dos 
+													 			 	 rótulos codificados.
+		mean_scores_models_df (DataFrame): DataFrame com as pontuações 
+																			 médias das pontuações definidas
+																			 em pelo dicionário do parâmetro 
+																			 scores_functions da função 
+																			 best_model usada para avaluar os
+																			 modelos. Os índices do DataFrame
+																			 são os nomes dos modelos e as 
+																			 colunas são as pontuações. Os
+																			 modelos são ordenados no
+																			 DataFrame, de cima para baixo, do
+																			 melhor modelo segundo as
+																			 pontuações para o pior modelo.
+		best_model_name (str): Nome do melhor modelo segundo as pontuações
+													 médias calculadas pelas validações cruzadas.
+		best_model_score (dict): Dicionário com os valores das pontuações
+														 do melhor modelo. Existe uma chave para
+														 cada pontuação, sendo o valor associado à
+														 chave o valor da pontuação para o melhor
+														 modelo.
+		n_jobs (int): Número de trabalhos paralelos criados quando a busca
+									em grade for feita. Este parâmetro é passado
+									diretamente ao objeto GridSearchCV, então o
+									significado é o mesmo, ou seja, um valor positivo
+									define o número de trabalhos paralelos, e um valor
+									negativo indica que será usado o número de unidades de
+									processamento na máquina menos o valor absoluto
+									negativo mais 1 (ou seja, o valor -1 define o uso de
+									todas as unidades de processamento).
+		verbose (bool): Habilita/desabilita as informações de verbosidade.                   
+	"""
+
 	def __init__(self, n_jobs=-1, verbose=False):
-		self.results_df	= None
+		"""
+		Função de inicialização da classe DiscoverBestModel.
+
+		Parâmetros:
+			n_jobs (int): Número de trabalhos paralelos criados quando a busca
+										em grade for feita.
+			verbose (bool): Habilita/desabilita as informações de verbosidade.
+		"""
 		self.X = None
 		self.y = None
 		self.cv_results = None
+		self.results_df	= None
 		self.groups = None
 		self.group_names = None
 		self.mean_scores_models_df = None
@@ -866,26 +984,148 @@ class DiscoverBestModel:
 		self.n_jobs = n_jobs
 		self.verbose = verbose
 		
-	def best_model(self, data, suggestion_names, application_names, user_names, predicted_name, models, 
-	               scores_functions={'accuracy': train_min_edp_config_accuracy, 'difference': neg_train_min_edp_config_diff}):
-	
+	def best_model(self, data, suggestion_names, application_names, 
+			 					 user_names, predicted_name, models, 
+								 scores_functions=None):
+		"""
+		Parâmetros:
+			dados (DataFrame): Conjunto de dados usado para fazer as 
+												 validações cruzadas para escolher os melhores
+												 valores dos hiperparâmetros avaliados para um
+												 modelo.
+			suggestion_names (list[str]): Nomes das variáveis de usadas para
+																		definir as configurações dos 
+																		recursos usadas ao executar os
+																		testes. São essas configurações que
+																		serão as sugeridas pelo script de
+																		otimização usado pelo usuário.
+			application_names (list[str]): Nomes das variáveis da aplicação
+																		 usadas ao treinar os modelos, seja
+																		 na busca em grade, como nas outras
+																		 fases como a validação cruzada e o
+																		 treinamento final dos modelos.
+			user_names (list[str]): Nomes das variáveis definidas pelos 
+															usuários quando usarem o script de 
+															otimização para escolher a melhor sugestão
+															de configuração para executar a aplicação.
+															Podem ou não ser as mesmas variávis de
+															application_names, tudo dependerá de como
+															as variáveis da aplicação definidas pelo
+															usuário são convertidas em variáveis da
+															aplicação efetivamente usadas nos 
+															treinamentos. São essas variáveis que
+															são usadas para definir os grupos usados
+															pela validação LOGO durante a validação
+															cruzada ao calcular a pontuação, segundo
+															a função dada em scoring definida mais
+															embaixo, para cada possível combinação dos
+															valores dos hiperparâmetros para depois
+															escolher a primeira combinação avaliada
+															com a maior pontuação.
+			predicted_name (str): Nome da variável alvo, que será a predita
+														nos treinamentos e usada para auxiliar a
+														descoberta da melhor sugestão de 
+														configuração.
+			models (dict): Dicionário em que a chave é o nome do modelo e o
+										 valor associado à chave é uma referência para um
+										 objeto do modelo criado e inicializado, mas ainda
+										 não treinado.
+			scores_functions (dict): Dicionário com as funções com as
+															 pontuações usadas para pontuar todas as
+															 avaliações feitas durante a validação
+															 cruzada dos modelos usando a validação
+															 LOGO e a posterior escolha do melhor
+															 modelo devido a usarmos a médias das
+															 pontuações de cada grupo da validação
+															 LOGO. Se não for passado o dicionário com
+															 as funções, serão usadas as pontuações de
+															 acurácia, como a pontuação de escolha do
+															 melhor modelo e o negativo da pontuação
+															 de diferença para escolher o modelo em
+															 caso de empate na maior pontuação de
+															 acurácia.
+    
+		Retorna:
+      tuple: Se não ocorrerem erros, retorna uma tupla com duas 
+						 referências, a primeira o nome do melhor modelo segundo as
+						 pontuções definidas em scores_functions, e a segunda 
+						 referência com um dicionário com os valores das pontuações
+						 do melhor modelo. Neste dicionário, existirá uma chave para
+						 cada pontuação, sendo o valor associado à chave o valor da
+						 pontuação para o melhor modelo. Se algum erro ocorrer, gera
+						 uma exceção do Python.
+		"""
+
+		# Se não forem passadas funções de pontuação, então vamos usar as
+		# funções que definimos no projeto a que calcula a acurácia
+		# train_min_edp_config_accuracy e a que retorna o valor negativo de
+		# pontuação de diferença, calculada pela função
+		# neg_train_min_edp_config_diff.
+		if scores_functions is None:
+			scores_functions = {
+				'accuracy': train_min_edp_config_accuracy, 
+				'difference': neg_train_min_edp_config_diff
+			}
+
+		# Verifica se data é um DataFrame do Pandas.
 		if not isinstance(data, pd.DataFrame):	
-			raise ValueError("Invalid input data provided, data is not a Dataframe.")
-
+			raise ValueError("Conjunto de dados com os dados do teste em um formato"
+											 f"inválido {type(data)}! Deveria ser uma referência"
+											 "para um objeto DataFrame do Pandas.")
+		
+		# Verifica se cada nome em suggestion_names é o nome de uma das 
+		# variáveis de configuração definidas pelas colunas em data.
 		if not pd.Index(suggestion_names).isin(data.columns).all():
-			raise KeyError(f"Invalid input suggestion_names provided, not all {suggestion_names} suggestions params exists in {data.columns}.")
-		if not pd.Index(application_names).isin(data.columns).all():
-			raise KeyError(f"Invalid input application_names provided, not all {application_names} applications params exists in {data.columns}.")
-		if not pd.Index([predicted_name]).isin(data.columns).all():
-			raise KeyError(f"Invalid input predicted_name provided, predicted param {predicted_name} doesn't exists in {data.columns}.")
+			raise KeyError("Nem todas os nomes de variáveis dados na lista de "
+									  f"variáveis de configuração {suggestion_names} é uma das "
+										f"colunas {data.columns} do conjunto de dados dos testes!")
 
-        # Define X e y
+		# Verifica se cada nome em application_names é o nome de uma das 
+		# variáveis da aplicação definidas pelas colunas em data.
+		if not pd.Index(application_names).isin(data.columns).all():
+			raise KeyError("Nem todas os nomes de variáveis dados na lista de "
+									  f"variáveis de aplicação {application_names} é uma das "
+										f"colunas {data.columns} do conjunto de dados dos testes!")
+
+		# Verifica se cada nome em user_names é o nome de uma das variáveis
+		# da aplicação definidas pelas colunas em data, e usadas para
+		# definir os grupos da validação LOGO.
+		if not pd.Index(user_names).isin(data.columns).all():
+			raise KeyError("Nem todas os nomes de variáveis dados na lista de "
+									  f"variáveis de aplicação {user_names} é uma das "
+										f"colunas {data.columns} do conjunto de dados dos testes!")
+		
+		# Verifica o nome em predicted_name é o nome da variável que será a 
+		# usada como variável alvo dos modelos, que também será a variável
+		# usada ao escolher a melhor sugestão de configuração.
+		if not pd.Index([predicted_name]).isin(data.columns).all():
+			raise KeyError("Nome inválido da variável alvo a ser predita! "
+									   f"O Nome {predicted_name} não é o nome de uma das "
+										 f"variáveis em {data.columns}.")
+
+		# Define o campo X do objeto como as colunas cujos nomes estão em
+		# suggestion_names e application_names (pois estas são as variáveis
+		# usadas como características ao treinar os modelos).
 		self.X = data[suggestion_names+application_names]
+
+		# Define o campo y do objeto como a coluna da variável alvo, cujo
+		# nome é dado em predicted_name
 		self.y = data[predicted_name]
 
-        # Cria os grupos
+		# Cria os grupos usados na validação LOGO, usando as variáveis de
+		# aplicação dadas em user_names. Para criar os grupos, primeiramente 
+		# é definida uma instância do objeto LabelEncoder do scikit-learn.
 		lab_encoder = skpp.LabelEncoder()
-		self.groups = lab_encoder.fit_transform(list(map(str, data[user_names].values)))
+		# Cria efetivamente os grupos, usando a função fit_transform do
+		# objeto lab_encoder criado anteriormente, e salva uma referência
+		# para um objeto do tipo vetor contendo cada um dos grupos criados.
+		# Será este o objeto com os grupos definidos, que será 
+		# posteriormente pasado à função que efeticamente fará a busca em
+		# grade. Os grupos serão armazenados no campo groups do objeto.
+		self.groups = lab_encoder.fit_transform(list(map(str, 
+																									   data[user_names].values)))
+		# Armazena os nomes internos dos grupos (chamados de classes), no
+		# campo groups_names do objeto.
 		self.groups_names = lab_encoder.classes_
 
 		# Cria um dataframe vazio
@@ -893,9 +1133,11 @@ class DiscoverBestModel:
 		
 		self.cv_results = {}
 
-		# Avalia os modelos
+		if self.verbose:
+			print("*** Início da verbosidade da função cross_validate **** \n")
+		# Avalia os todos os modelos.
 		for name, model in models.items():
-			cv_results = skms.cross_validate(
+			cv_results_model = skms.cross_validate(
 				model,
 				data[suggestion_names+application_names],
 				data[predicted_name],
@@ -906,11 +1148,14 @@ class DiscoverBestModel:
         return_indices=True,
 				error_score='raise',
 				return_estimator=True,
-				#verbose=int(self.verbose)
+				verbose=int(self.verbose)
 			)
-			cv_results_df = pd.DataFrame({k.replace("test_", ""): cv_results[k] for k in cv_results if k not in ['indices','estimator']})
+			if self.verbose:
+				print("\n*** Fim da verbosidade da função cross_validate ****")
+				
+			cv_results_df = pd.DataFrame({k.replace("test_", ""): cv_results_model[k] for k in cv_results_model if k not in ['indices','estimator']})
 			cv_results_df['Model'] = name
-			self.cv_results[name] = { 'cv_results': cv_results, 'results_dataframe': cv_results_df}
+			self.cv_results[name] = { 'cv_results': cv_results_model, 'results_dataframe': cv_results_df}
 
 			if self.verbose:
 				print(f"➡️  Model {name} table:")
@@ -934,7 +1179,7 @@ class DiscoverBestModel:
 		
 		return (self.best_model_name, self.best_model_scores, self.results_df, self.mean_scores_models_df)
 	
-	def get_results_model(self, model_name):
+	def get_cv_results_model(self, model_name):
 		if self.cv_results is None:
 			raise ValueError("Cross-validation of the models has not yet been executed!")
 		if not model_name in self.cv_results.keys():
@@ -1069,7 +1314,7 @@ class SuggestionsPredictor:
 				print("\n", importances_df.to_markdown(tablefmt="grid", floatfmt=".2f"))
 		else:		
 			if verbose:
-				print("➡️  O estimador usado não define as importâncias das variáveis!")		
+				print("➡️  O modelo usado não define as importâncias das variáveis!")		
 			importances_df = None
 		
 		return importances_df

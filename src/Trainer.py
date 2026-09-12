@@ -70,156 +70,233 @@ def applications_command(applications_config):
   for application_name in sorted(applications_config.keys()):
     print(application_name)
 
+  return True
+
 def models_command(training_config):
-  for model_name in training_config['models'].keys():
-    print(model_name)
+  try:
+    for model_name in training_config['models'].keys():
+      print(model_name)
+  except KeyError as e:
+    print(f"❌ A chave {e.args[0]} não foi encontrada no arquivo de configuração "
+          "de treinamento, logo não foi possível listar os modelos!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+  return True
 
 def train_command(applications_name, applications_config, training_config, system_config, verbose=False):
-  # Define o caminho do diretório com os arquivos dos preditores e do arquivo de configuração.
-  predictors_file_path = base_files_path / Path(system_config['predictors_path'])
-  # Lê as configurações que associam cada preditor a aplicação correspondente,
-  predictors_info_file_path = predictors_file_path / system_config["predictors_info_config_filename"]
-  predictors_info_config_obj = PredictorsInfoConfig()
-  predictors_info_config = predictors_info_config_obj.read_predictors_info_config(predictors_info_file_path)
-  if predictors_info_config is None:
-    return False
-  
+  try:
+    # Define o caminho do diretório com os arquivos dos preditores e do arquivo de configuração.
+    predictors_file_path = base_files_path / Path(system_config['predictors_path'])
+    # Lê as configurações que associam cada preditor a aplicação correspondente,
+    predictors_info_file_path = predictors_file_path / system_config["predictors_info_config_filename"]
+    predictors_info_config_obj = PredictorsInfoConfig()
+    predictors_info_config = predictors_info_config_obj.read_predictors_info_config(predictors_info_file_path)
+    if predictors_info_config is None:
+      return False
 
-  for application_key in applications_name:
-    if application_key in applications_config.keys():
-      application_info = applications_config[application_key]
-      if verbose:
-        print(f"\n-> Treinando todos os modelos para a aplicação {application_info['name']}")	
-
-      # Variáveis usadas np programa
-      variaveis_de_entrada = list(set(application_info['suggestions_parameters']+
-                                      application_info['application_parameters']+
-                                      application_info['training']['group_parameters']))
-      variaveis_do_filtro = application_info['training']['filter_parameters']
-      variaveis_das_predicoes = application_info['estimated_parameters']
-      variavel_predita_da_suggestao = variaveis_das_predicoes['suggestion']
-
-      # Lê os dados.
-      dados = pd.DataFrame()
-
-      for nome_arquivo in application_info['training']['dataset_files']:
-        nome_arquivo_completo = base_files_path / Path(system_config['dataset_path']) / nome_arquivo
-        dados_arquivo = pd.read_csv(nome_arquivo_completo, usecols=variaveis_de_entrada+
-                                                                   variaveis_do_filtro+
-                                                                   list(variaveis_das_predicoes.values()))
-        dados = pd.concat([dados, dados_arquivo])
-      dados = dados.reset_index(drop=True)		
-
-      if verbose:
-        print("--> Conjunto de dados original da aplicação, antes da filtragem do outliers:")
-        print("\n", dados.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
-        print("--> Dados estatísticos referentes ao conjunto de dados original:")
-        print("\n", dados.describe().to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
-
-      # Filtra os dados.
-      data_filter = FilterOutliers()
-      dados_limpos = data_filter.Filter(dados, variaveis_de_entrada, variaveis_do_filtro, training_config['filter']['outlier_limit'])
-
-      if verbose:
-        print("--> Conjunto de dados da aplicação após a filtragem dos outliers:")
-        print("\n", dados_limpos.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
-        print("---> Dados estatísticos referentes ao conjunto de dados filtrado:")
-        print("\n", dados_limpos.describe().to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
-        print(f"--> Predições para a variável alvo {variavel_predita_da_suggestao}")
-
-      predictor_hiperparams = {}
-
-      for preditor_key, model_info in training_config["models"].items():
+    application_name = None
+    
+    for application_key in applications_name:
+      if application_key in applications_config.keys():
+        application_info = applications_config[application_key]
+        application_name = application_info['name']
         if verbose:
-          print(f"--> Otimizando o modelo {model_info['name']} usando os hiperparâmetros {model_info['grid_search_parms']} e a busca em grade:")
+          print(f"\n-> Treinando todos os modelos para a aplicação {application_name}")	
+
+        # Variáveis usadas np programa
+        variaveis_de_entrada = list(set(application_info['suggestions_parameters']+
+                                        application_info['application_parameters']+
+                                        application_info['training']['group_parameters']))
+        variaveis_do_filtro = application_info['training']['filter_parameters']
+        variaveis_das_predicoes = application_info['estimated_parameters']
+        variavel_predita_da_suggestao = variaveis_das_predicoes['suggestion']
+
+        # Lê os dados.
+        dados = pd.DataFrame()
+
+        for nome_arquivo in application_info['training']['dataset_files']:
+          nome_arquivo_completo = base_files_path / Path(system_config['dataset_path']) / nome_arquivo
+          dados_arquivo = pd.read_csv(nome_arquivo_completo, usecols=variaveis_de_entrada+
+                                                                    variaveis_do_filtro+
+                                                                    list(variaveis_das_predicoes.values()))
+          dados = pd.concat([dados, dados_arquivo])
+        dados = dados.reset_index(drop=True)		
+
+        if verbose:
+          print("--> Conjunto de dados original da aplicação, antes da filtragem do outliers:")
+          print("\n", dados.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
+          print("--> Dados estatísticos referentes ao conjunto de dados original:")
+          print("\n", dados.describe().to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
+
+        # Filtra os dados.
+        data_filter = FilterOutliers()
+        dados_limpos = data_filter.Filter(dados, variaveis_de_entrada, variaveis_do_filtro, training_config['filter']['outlier_limit'])
+
+        if verbose:
+          print("--> Conjunto de dados da aplicação após a filtragem dos outliers:")
+          print("\n", dados_limpos.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
+          print("---> Dados estatísticos referentes ao conjunto de dados filtrado:")
+          print("\n", dados_limpos.describe().to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
+          print(f"--> Predições para a variável alvo {variavel_predita_da_suggestao}")
+
+        initialized_models = {}
+
+        for preditor_key, model_info in training_config["models"].items():
+          if verbose:
+            print(f"--> Otimizando o modelo {model_info['name']} usando os hiperparâmetros {model_info['grid_search_parms']} e a busca em grade:")
+          # Descobre e importa o modelo de modo dinâmico.
+          module_path, model_name = model_info['import_path'].rsplit(".", 1)
+          # Importa e obtem dinamicamente o modelo.
+          model_module = importlib.import_module(module_path)
+          model = getattr(model_module, model_name)
+
+          # Faz a otimização dos hiperparâmetros.
+          best_hyper = BestHiperparams(verbose=debug_code)
+          best_params, best_score = best_hyper.optimize(dados_limpos, application_info['suggestions_parameters'], 
+                                                        application_info['application_parameters'], 
+                                                        application_info['training']['group_parameters'], 
+                                                        variavel_predita_da_suggestao, 
+                                                        model() if model_info['fixed_params'] is None else model(**model_info['fixed_params']),
+                                                        model_info['grid_search_parms'])
+
+          if verbose:
+            print(f"---> Modelo {model_info['name']}: Melhores hiperparâmetros -> {best_params}; Melhor score -> {best_score}")
+            print("----> Dataframe com a avaliação de todas as combinações dos hiperparâmetros:")         
+            hyperparams_score = best_hyper.get_hyperparams_scores() 
+            print("\n", hyperparams_score.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
+        
+          if model_info['fixed_params'] is not None:
+              best_params = dict(**best_params, **model_info['fixed_params'])
+          initialized_models[preditor_key] = model(**best_params) 
+
+        # Determina o melhor modelo, usando a validacao cruzada.;
+        if verbose:	
+          print(f"--> Determinando o melhor modelo dentre os modelos da lista  {', '.join(initialized_models.keys())}, usando a validação cruzada com o LOGO:")
+        cross_validator = DiscoverBestModel(verbose=debug_code)	
+        best_model_name, best_model_score, results_df, mean_scores_models_df = cross_validator.best_model(dados_limpos, 
+                                                                                    application_info['suggestions_parameters'], 
+                                                                                    application_info['application_parameters'],  
+                                                                                    application_info['training']['group_parameters'], 
+                                                                                    variavel_predita_da_suggestao, initialized_models)
+        if verbose:					
+          print(f'---> Dataframe com os resultados das avaliações dos modelos:')
+          print("\n", results_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
+          print(f'---> Dataframe com os resultados médios para cada modelo, ordenado do melhor para o pior modelo:')
+          print("\n", mean_scores_models_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
+          print(f'--> Treinando agora o preditor com o melhor modelo {best_model_name} (pontuação: {best_model_score}), usando {best_params} como os hiperparâmetros customizados.')
+
         # Descobre e importa o modelo de modo dinâmico.
-        module_path, model_name = model_info['import_path'].rsplit(".", 1)
+        module_path, model_name = training_config["models"][best_model_name]['import_path'].rsplit(".", 1)
         # Importa e obtem dinamicamente o modelo.
         model_module = importlib.import_module(module_path)
         model = getattr(model_module, model_name)
 
-        # Faz a otimização dos hiperparâmetros.
-        best_hyper = BestHiperparams(verbose=debug_code)
-        best_params, best_score = best_hyper.optimize(dados_limpos, application_info['suggestions_parameters'], 
-                                                      application_info['application_parameters'], 
-                                                      application_info['training']['group_parameters'], 
-                                                      variavel_predita_da_suggestao, 
-                                                      model() if model_info['fixed_params'] is None else model(**model_info['fixed_params']),
-                                                      model_info['grid_search_parms'])
-
+        predictor = SuggestionsPredictor()
+        predictor.fit(dados_limpos, application_info['suggestions_parameters'], 
+                                    application_info['application_parameters'], 
+                                    application_info['training']['group_parameters'], 
+                                    variaveis_das_predicoes, 
+                                    model, best_params,
+                                    verbose=debug_code)
+        model_name = training_config['models'][best_model_name]['name']
+        preditor_file_name = predictors_file_path / f"{application_name}_{model_name}_{variavel_predita_da_suggestao}.pickle"
         if verbose:
-          print(f"---> Modelo {model_info['name']}: Melhores hiperparâmetros -> {best_params}; Melhor score -> {best_score}")
-          print("----> Dataframe com a avaliação de todas as combinações dos hiperparâmetros:")         
-          hyperparams_score = best_hyper.get_hyperparams_scores() 
-          print("\n", hyperparams_score.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
-      
-        if model_info['fixed_params'] is not None:
-            best_params = dict(**best_params, **model_info['fixed_params'])
-        predictor_hiperparams[preditor_key] = model(**best_params) 
+          print('---> Dataframe do oráculo:')
+          oracle_df = predictor.get_oracle()
+          print("\n", oracle_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
+        # Obtém as imformações das importâncias, se o modelo as define  
+        importances_df = predictor.get_importances(verbose=debug_code)
+        if verbose and importances_df is not None:
+          print('---> Dataframe com as importâncias do modelo:')
+          print("\n", importances_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
+        elif verbose:
+          print("---> O modelo não avalia as importâncias das características.")
 
-      # Determina o melhor modelo, usando a validacao cruzada.;
-      if verbose:	
-        print(f"--> Determinando o melhor modelo dentre os modelos da lista  {', '.join(predictor_hiperparams.keys())}, usando a validação cruzada com o LOGO:")
-      cross_validator = DiscoverBestModel(verbose=debug_code)	
-      best_model_name, best_model_score, results_df, mean_scores_models_df = cross_validator.best_model(dados_limpos, 
-                                                                                  application_info['suggestions_parameters'], 
-                                                                                  application_info['application_parameters'],  
-                                                                                  application_info['training']['group_parameters'], 
-                                                                                  variavel_predita_da_suggestao, predictor_hiperparams)
-      if verbose:					
-        print(f'---> Dataframe com os resultados das avaliações dos modelos:')
-        print("\n", results_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
-        print(f'---> Dataframe com os resultados médios para cada modelo, ordenado do melhor para o pior modelo:')
-        print("\n", mean_scores_models_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
-        print(f'--> Treinando agora o preditor com o melhor modelo {best_model_name} (pontuação: {best_model_score}), usando {best_params} como os hiperparâmetros customizados.')
+        # Removendo o arquivo anterior do preditor da aplicação, se existir.
+        if application_key in predictors_info_config:
+          old_preditor_file_name = predictors_info_config[application_key]
+          old_preditor_file_path = predictors_file_path / f"{old_preditor_file_name}"
+          if verbose:
+            print(f'--> Removendo o preditor antigo {old_preditor_file_name}')  
+          old_preditor_file_path.unlink(missing_ok=True)
+        
+        # Salva o arquivo do preditor no formato .pickle.
+        print(f'--> Salvando o preditor treinado como o modelo {best_model_name} (nome {model_name}) no arquivo {preditor_file_name}.')
 
-      # Descobre e importa o modelo de modo dinâmico.
-      module_path, model_name = training_config["models"][best_model_name]['import_path'].rsplit(".", 1)
-      # Importa e obtem dinamicamente o modelo.
-      model_module = importlib.import_module(module_path)
-      model = getattr(model_module, model_name)
+        predictor.save_predictor(preditor_file_name)
 
-      predictor = SuggestionsPredictor()
-      predictor.fit(dados_limpos, application_info['suggestions_parameters'], 
-                                  application_info['application_parameters'], 
-                                  application_info['training']['group_parameters'], 
-                                  variaveis_das_predicoes, 
-                                  model, best_params,
-                                  verbose=debug_code)
-      model_name = training_config['models'][best_model_name]['name']
-      preditor_file_name = predictors_file_path / f"{application_info['name']}_{model_name}_{variavel_predita_da_suggestao}.pickle"
-      if verbose:
-        print('---> Dataframe do oráculo:')
-        oracle_df = predictor.get_oracle()
-        print("\n", oracle_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
-      # Obtém as imformações das importâncias, se o modelo as define  
-      importances_df = predictor.get_importances(verbose=debug_code)
-      if verbose and importances_df is not None:
-        print('---> Dataframe com as importâncias do modelo:')
-        print("\n", importances_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
-      elif verbose:
-        print("---> O modelo não avalia as importâncias das características.")
-
-      # Removendo o arquivo anterior do preditor da aplicação, se existir.
-      if application_key in predictors_info_config:
-        old_preditor_file_name = predictors_info_config[application_key]
-        old_preditor_file_path = predictors_file_path / f"{old_preditor_file_name}"
+        # Salva as informações do arquivo do modelo do preditor.
         if verbose:
-          print(f'--> Removendo o preditor antigo {old_preditor_file_name}')  
-        old_preditor_file_path.unlink(missing_ok=True)
-      
-      # Salva o arquivo do preditor no formato .pickle.
-      print(f'--> Salvando o preditor treinado como o modelo {best_model_name} (nome {model_name}) no arquivo {preditor_file_name}.')
+          print(f'--> Salvndo a informação do caminhio do preditor {preditor_file_name} para a aplicação {application_key} no arquivo de configuração dos preditores.')
+        predictors_info_config[application_key] = preditor_file_name.name
+        predictors_info_config_obj.save_predictors_info_config(predictors_info_config)
+      else:  
+          print(f"⚠️  Ignorando aplicação desconhecida {application_key}!")
 
-      predictor.save_predictor(preditor_file_name)
-
-      # Salva as informações do arquivo do modelo do preditor.
-      if verbose:
-        print(f'--> Salvndo a informação do caminhio do preditor {preditor_file_name} para a aplicação {application_key} no arquivo de configuração dos preditores.')
-      predictors_info_config[application_key] = preditor_file_name.name
-      predictors_info_config_obj.save_predictors_info_config(predictors_info_config)
-    else:  
-        print(f"⚠️  Ignorando aplicação desconhecida {application_key}!")
+    return True
+  except KeyError as e:
+    if application_name is None:
+      print("❌ Erro ao processar uma das estruturas indexadas por chave, a "
+            f"chave {e.args[0]} não existe, quando inicializando os "
+            "treinamentos das aplicações!")
+    else:
+      print("❌ Erro ao processar uma das estruturas indexadas por chave, a "
+            f"chave {e.args[0]} não existe, quando gerando o preditor para a "
+            f"aplicação {application_name}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return False
+  except AttributeError as e:
+    if application_name is None:
+      print("❌ Erro ao acessar um dos objetos internos do script, um dos "
+            "seus atributo não existe, quando inicializando os treinamentos "
+            "das aplicações!")
+    else:
+      print("❌ Erro ao acessar um dos objetos internos do script, um dos "
+            "seus atributo não existe, quando gerando o preditor para a "
+            f"aplicação {application_name}!")
+    print(f"❌ Erro gerado: '{e.args[0]}'")  
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return False
+  except ValueError as e:
+    if application_name is None:
+      print("❌ Erro ao inicializar ou usar estruturas internas do script, "
+            "quando inicializando os treinamentos das aplicações!")
+    else:
+      print("❌ Erro ao inicializar ou usar estruturas internas do script, "
+            f"quando gerando o preditor para a aplicação {application_name}!")
+    print(f"❌ Erro gerado: '{e.args[0]}'")  
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return False
+  except FileNotFoundError as e:
+    print(f"❌ Erro ao acessar o arquivo no caminho {e.filename}, o arquivo "
+          "não existe!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return False
+  except IsADirectoryError as e:
+    print(f"❌ Erro ao acessar o arquivo no caminho {e.filename}, o arquivo "
+          "é na verdade um diretório!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return False
+  except PermissionError as e:
+    print(f"❌ Erro ao acessar o arquivo no caminho {e.filename}, permissão "
+          "de acesso negada!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return False
+  except IOError as e:
+    print(f"❌ Erro de I/O ao ler o arquivo {e.filename}!")
+    print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return False
+  except Exception as e:
+    if application_name is None:
+      print("❌ Erro desconhecido ao inicializar os treinamentos das "
+            "aplicações!")
+    else:
+      print("❌ Erro desconhecido ao gerar o preditor para a aplicação "
+            f"{application_name}")
+    print(f"❌ Parâmetros do erro: {e.args}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return False
 
 def execute_commands(command, applications_configs, training_config, system_config, verbose):
  commands_dict = {
@@ -229,8 +306,10 @@ def execute_commands(command, applications_configs, training_config, system_conf
  } 
 
  if len(command) > 0 and command[0] in commands_dict.keys():
-   commands_dict[command[0]]()
-   return True
+   Status = commands_dict[command[0]]()
+   if not Status:
+     print(f"Erro ao executar o comando {command[0]}!")
+   return Status
  else:  
   if command:
     print(f"Comando {command[0]} inválido!")
@@ -246,10 +325,10 @@ configs_file_path, applications_configs, training_config, system_config  = read_
 if applications_configs is None or training_config is None or system_config is None:
   print("❌ Erro ao ler uma das configurações!")
   exit(-1)
-# Executa os comandos do script.
 
+# Executa os comandos do script.
 Status = execute_commands(command, applications_configs, training_config, system_config, verbose)
 
+# Verifica se ocorreu algum erro.
 if not Status:
-  parser.print_help()
   sys.exit(-1)
