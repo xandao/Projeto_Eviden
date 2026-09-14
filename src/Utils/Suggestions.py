@@ -649,6 +649,7 @@ class BestHiperparams:
 										em grade for feita.
 			verbose (bool): Habilita/desabilita as informações de verbosidade.
 		"""
+
 		self.X = None
 		self.y = None
 		self.grid_search_model = None
@@ -749,23 +750,26 @@ class BestHiperparams:
 		# variáveis de configuração definidas pelas colunas em data.
 		if not pd.Index(suggestion_names).isin(data.columns).all():
 			raise KeyError("Nem todas os nomes de variáveis dados na lista de "
-									  f"variáveis de configuração {suggestion_names} é uma das "
-										f"colunas {data.columns} do conjunto de dados dos testes!")
+		 							   f"variáveis de configuração {suggestion_names} é uma das "
+										 f"colunas {data.columns} do conjunto de dados dos "
+										 "testes!")
 
 		# Verifica se cada nome em application_names é o nome de uma das 
 		# variáveis da aplicação definidas pelas colunas em data.
 		if not pd.Index(application_names).isin(data.columns).all():
 			raise KeyError("Nem todas os nomes de variáveis dados na lista de "
-									  f"variáveis de aplicação {application_names} é uma das "
-										f"colunas {data.columns} do conjunto de dados dos testes!")
+									   f"variáveis de aplicação {application_names} é uma das "
+										 f"colunas {data.columns} do conjunto de dados dos "
+										 "testes!")
 
 		# Verifica se cada nome em user_names é o nome de uma das variáveis
 		# da aplicação definidas pelas colunas em data, e usadas para
 		# definir os grupos da validação LOGO.
 		if not pd.Index(user_names).isin(data.columns).all():
 			raise KeyError("Nem todas os nomes de variáveis dados na lista de "
-									  f"variáveis de aplicação {user_names} é uma das "
-										f"colunas {data.columns} do conjunto de dados dos testes!")
+									   f"variáveis de aplicação {user_names} é uma das "
+									 	 f"colunas {data.columns} do conjunto de dados dos "
+										 "testes!")
 		
 		# Verifica o nome em predicted_name é o nome da variável que será a 
 		# usada como variável alvo dos modelos, que também será a variável
@@ -787,7 +791,12 @@ class BestHiperparams:
     # Cria os grupos usados na validação LOGO, usando as variáveis de
 		# aplicação dadas em user_names. Para criar os grupos, primeiramente 
 		# é definida uma instância do objeto LabelEncoder do scikit-learn.
+		# TODO: Eu tinha colocado este código somente para termos os grupos,
+		# mas eles são recriados internamente pelo método fit do objeto da
+		# classe GridSearchCV que criaremos a seguir. Não sei se devo
+		# remover esta parte.
 		lab_encoder = skpp.LabelEncoder()
+
 		# Cria efetivamente os grupos, usando a função fit_transform do
 		# objeto lab_encoder criado anteriormente, e salva uma referência
 		# para um objeto do tipo vetor contendo cada um dos grupos criados.
@@ -796,16 +805,20 @@ class BestHiperparams:
 		# grade. Os grupos serão armazenados no campo groups do objeto.
 		self.groups = lab_encoder.fit_transform(list(map(str, 
 																										 data[user_names].values)))
+
 		# Armazena os nomes internos dos grupos (chamados de classes), no
 		# campo groups_names do objeto.
 		self.groups_names = lab_encoder.classes_
 
+    # Imprime uma mensagem para separar a verbosidade da função fit do
+		# objeto da classe GridSearchCV.
+		if self.verbose:
+			print("*** Início da verbosidade da função GridSearchCV **** \n")
+
     # Cria o objeto de grid para otimizar os hiperparâmetros. A criação
 		# somente cria a referência para o objeto e o inicializa. A busca em
 		# grade é feita pela chamada de uma função do objeto criado, como
-		# veremos a seguir. 
-		if self.verbose:
-			print("*** Início da verbosidade da função GridSearchCV **** \n")
+		# veremos a seguir.  
 		grid_search_model = skms.GridSearchCV(
 			model,
 			cv=skms.LeaveOneGroupOut(),
@@ -816,8 +829,12 @@ class BestHiperparams:
 			return_train_score=True,
 			verbose=int(self.verbose),
 		)
+
+    # Imprime uma mensagem para separar a verbosidade da função fit do
+		# objeto da classe GridSearchCV.
 		if self.verbose:
 			print("*** Fim da verbosidade da função GridSearchCV **** \n")
+			
 		# Depois de criado e inicializado o objeto, a função fit deste 
 		# objeto será chamada para fazer a busca em grade, e retornar a
 		# referência para o objeto com todas as informações sobre a busca
@@ -972,6 +989,7 @@ class DiscoverBestModel:
 										em grade for feita.
 			verbose (bool): Habilita/desabilita as informações de verbosidade.
 		"""
+
 		self.X = None
 		self.y = None
 		self.cv_results = None
@@ -1077,23 +1095,26 @@ class DiscoverBestModel:
 		# variáveis de configuração definidas pelas colunas em data.
 		if not pd.Index(suggestion_names).isin(data.columns).all():
 			raise KeyError("Nem todas os nomes de variáveis dados na lista de "
-									  f"variáveis de configuração {suggestion_names} é uma das "
-										f"colunas {data.columns} do conjunto de dados dos testes!")
+									   f"variáveis de configuração {suggestion_names} é uma das "
+										 f"colunas {data.columns} do conjunto de dados dos "
+										 "testes!")
 
 		# Verifica se cada nome em application_names é o nome de uma das 
 		# variáveis da aplicação definidas pelas colunas em data.
 		if not pd.Index(application_names).isin(data.columns).all():
 			raise KeyError("Nem todas os nomes de variáveis dados na lista de "
-									  f"variáveis de aplicação {application_names} é uma das "
-										f"colunas {data.columns} do conjunto de dados dos testes!")
+									   f"variáveis de aplicação {application_names} é uma das "
+										 f"colunas {data.columns} do conjunto de dados dos "
+										 "testes!")
 
 		# Verifica se cada nome em user_names é o nome de uma das variáveis
 		# da aplicação definidas pelas colunas em data, e usadas para
 		# definir os grupos da validação LOGO.
 		if not pd.Index(user_names).isin(data.columns).all():
 			raise KeyError("Nem todas os nomes de variáveis dados na lista de "
-									  f"variáveis de aplicação {user_names} é uma das "
-										f"colunas {data.columns} do conjunto de dados dos testes!")
+									   f"variáveis de aplicação {user_names} é uma das "
+										 f"colunas {data.columns} do conjunto de dados dos "
+										 "testes!")
 		
 		# Verifica o nome em predicted_name é o nome da variável que será a 
 		# usada como variável alvo dos modelos, que também será a variável
@@ -1116,6 +1137,7 @@ class DiscoverBestModel:
 		# aplicação dadas em user_names. Para criar os grupos, primeiramente 
 		# é definida uma instância do objeto LabelEncoder do scikit-learn.
 		lab_encoder = skpp.LabelEncoder()
+
 		# Cria efetivamente os grupos, usando a função fit_transform do
 		# objeto lab_encoder criado anteriormente, e salva uma referência
 		# para um objeto do tipo vetor contendo cada um dos grupos criados.
@@ -1124,19 +1146,43 @@ class DiscoverBestModel:
 		# grade. Os grupos serão armazenados no campo groups do objeto.
 		self.groups = lab_encoder.fit_transform(list(map(str, 
 																									   data[user_names].values)))
+
 		# Armazena os nomes internos dos grupos (chamados de classes), no
 		# campo groups_names do objeto.
 		self.groups_names = lab_encoder.classes_
 
-		# Cria um dataframe vazio
+		# Cria um dataframe vazio, que irá armazenar os resultados das
+    # valições cruzadas de todos os modelos que serão avaliados.
 		self.results_df = pd.DataFrame()
-		
+
+    # Dicionário que armazenará o campo cv_results_ do objeto da classe
+		# cross_validate do scikit-learn, com os resultados da validação
+		# cruzada para cada modelo avaliado. A chave do dicionário será o
+		# nome do modelo, definido pela chava no dicinário models que
+		# contém um objeto inicializado e não treinado deste modelo. Cada
+		# chave terá um dicionário com duas informações, uma referência para
+		# o dicionário retornado pela validação cruzada do modelo com todas
+		# as informações desta validação cruzada, associada à chave
+		# 'cv_results' e o DataFrame gerado a partir destas informações, 
+		# igonrando os índices e estimadores de cada grupo avaliado, com
+		# uma coluna Model preenchida com o nome do modelo, associada à
+		# chave 'results_dataframe'. 
 		self.cv_results = {}
 
-		if self.verbose:
-			print("*** Início da verbosidade da função cross_validate **** \n")
-		# Avalia os todos os modelos.
+		# Avalia os todos os modelos dados no dicionário models passado como
+		# parâmetro para a função.
 		for name, model in models.items():
+			# Imprime uma mensagem para separar a verbosidade da função fit do
+			# objeto da classe cross_validate.
+			if self.verbose:
+				print("*** Início da verbosidade da função cross_validate **** \n")
+
+			# Faz a validação cruzada para o modelo cujo nome é dado em name,
+			# e cujo objeto inicializado foi armazenado em model. A validação
+			# cruzada irá usar a validação LOGO, sendo os grupos usados os que
+			# foram definidos anteriormente usando um objeto da classe
+			# LabelEncoder do scikit-learn e armazenados no campo groups do
+			# objeto. 
 			cv_results_model = skms.cross_validate(
 				model,
 				data[suggestion_names+application_names],
@@ -1150,12 +1196,41 @@ class DiscoverBestModel:
 				return_estimator=True,
 				verbose=int(self.verbose)
 			)
+
+			# Imprime uma mensagem para separar a verbosidade da função fit do
+			# objeto da classe cross_validate.
 			if self.verbose:
 				print("\n*** Fim da verbosidade da função cross_validate ****")
-				
+
+			# Converte o resultado da validação cruzada, ignorando os campos
+			# do estimador e os índices para os testes de cada um dos grupos
+			# usados pela validação LOGO. Para maior clareza, removemos todos
+			# os "test_" nos nomes associados às pontuações de cada grupo.
+			# TODO: Não usamos as informações excluídas (indices e estimator)
+			# no momento. Talvez seja melhor não retornar estas informações,
+			# defindo, na função fit, 'return_indices' como False e 
+			# return_estimator como False.
 			cv_results_df = pd.DataFrame({k.replace("test_", ""): cv_results_model[k] for k in cv_results_model if k not in ['indices','estimator']})
+
+			# Adiciona uma coluna com o nome do modelo, no DataFrame
+			# cv_results_df, para podermos diferenciar os dados das validações
+			# cruzadas de cada modelo no DataFrame final com os dados de todas
+			# as validações cruzadas feitas para determinar o melhor modelo.
 			cv_results_df['Model'] = name
-			self.cv_results[name] = { 'cv_results': cv_results_model, 'results_dataframe': cv_results_df}
+
+			# Salna no campo cv_results do objeto, na chave associada ao
+			# modelo definida pelo seu nome em name, o dicionário com o
+			# resultado da validação cruzada na chave 'cv_results' de um
+			# dicionário, e o DataFrame obtido a partir dos dados do
+			# dicionário, excluindo as chaves 'indices' e 'estimator', e com
+			# uma coluna 'Model' definida com o nome do modelo, na chave
+			# 'results_dataframe' deste dicionário. 
+			# TODO: Se não usarmos os índices e os estimadores, como neste
+			# caso o DataFrame e o dicionário teriam as mesmas informações,
+			# podemos substituir o dicionário por uma referência direta ao
+			# DataFrame cv_results_df. 
+			self.cv_results[name] = { 'cv_results': cv_results_model, 
+														    'results_dataframe': cv_results_df}
 
 			if self.verbose:
 				print(f"➡️  Model {name} table:")
