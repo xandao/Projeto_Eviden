@@ -597,8 +597,9 @@ class BestHiperparams:
 
 	Atributos:
 		X (DataFrame): X contendo os testes usados para avaliar os melhores
-									 valores dos hiperparâmetros nas linhas e as variáveis
-									 de configuração e da aplicação nas colunas.
+									 valores dos hiperparâmetros com as linhas sendo os
+									 testes e as colunas e as variáveis de configuração e
+									 da aplicação.
 		y (Series): Valores das variáveis alvo para cada teste em X, usado
 								ao avaliar os resultados dos testes da validação cruzada
 								LOGO usada ao avaliar cada combinação dos
@@ -804,8 +805,9 @@ class BestHiperparams:
 		# Será este o objeto com os grupos definidos, que será 
 		# posteriormente pasado à função que efeticamente fará a busca em
 		# grade. Os grupos serão armazenados no campo groups do objeto.
-		self.groups = lab_encoder.fit_transform(list(map(str, 
-																										 data[user_names].values)))
+		self.groups = lab_encoder.fit_transform(
+    		list(map(str, data[user_names].values))
+		)
 
 		# Armazena os nomes internos dos grupos (chamados de classes), no
 		# campo groups_names do objeto.
@@ -907,13 +909,14 @@ class DiscoverBestModel:
 	é o menor de todos e não o maior, como é necessário.
 
 	Parâmetros:
-		X (DataFrame): X contendo os testes usados para avaliar os melhores
-									 valores dos hiperparâmetros nas linhas e as variáveis
-									 de configuração e da aplicação nas colunas.
+		X (DataFrame): X contendo os testes usados para escolher o melhor
+									 modelo usando a validação cruzada, com as variáveis
+									 de configuração e da aplicação sendo as colunas do
+									 Dataframe e os testes sendo as linhas do DataFrame.
 		y (Series): Valores das variáveis alvo para cada teste em X, usado
 								ao avaliar os resultados dos testes da validação cruzada
-								LOGO usada ao avaliar cada combinação dos
-								hiperparâmetros durante a busca em grade. 
+								com a validação LOGO usada ao avaliar cada modelo para
+								depois escolher o melhor modelo. 
 		cv_results (dict): Objeto do scikit-learn com os resultados da busca
 											 em grade para cada modelo avaliado. A chave do
 											 dicionário é o nome do modelo e o conteúdo é o
@@ -1174,10 +1177,11 @@ class DiscoverBestModel:
 		# objeto lab_encoder criado anteriormente, e salva uma referência
 		# para um objeto do tipo vetor contendo cada um dos grupos criados.
 		# Será este o objeto com os grupos definidos, que será 
-		# posteriormente pasado à função que efeticamente fará a busca em
-		# grade. Os grupos serão armazenados no campo groups do objeto.
-		self.groups = lab_encoder.fit_transform(list(map(str, 
-																									   data[user_names].values)))
+		# posteriormente passado à função cross_validate que fará a
+		# validação cruzada para cada modelo.
+		self.groups = lab_encoder.fit_transform(
+    		list(map(str, data[user_names].values))
+		)
 
 		# Armazena os nomes internos dos grupos (chamados de classes), no
 		# campo groups_names do objeto.
@@ -1378,7 +1382,7 @@ class DiscoverBestModel:
 						avaliado.
 		"""
 
-		# Verifica se as valudações cruzadas já foram feitas, ou seja, se 
+		# Verifica se as validações cruzadas já foram feitas, ou seja, se 
 		# já foi executada a função best_model para determinar qual é o
 		# melhor modelo.
 		if self.cv_results is None:
@@ -1404,25 +1408,142 @@ class DiscoverBestModel:
 			      
 class SuggestionsPredictor:
 	"""
+	Classe que implementa as duas fases descritas no artigo, a construção
+	do preditor pelo script de treinamento e o uso do preditor pelo script
+	de otimização. A função fit treina o preditor usando os dados de 
+	entrada, usando como características as variáveis de configuração e as
+	variáveis da aplicação. As variáveis do usuário são somente para
+	permitir obter o oráculo, se for necessário no futuro usar o oráculo,
+	pois atualmente ele somente é usado para calcular as pontuações de
+	acurácia e de diferença que definimos nos artigos, que são somente
+	usadas quando otimizamos os hiperparâmetros de cada modelo a ser
+	avaliado e posteriormente, após obter os melhores valores para os
+	hiperparâmetros, para escolher o melhor modelo que será o usado para
+	ser treinado para obter o preditor. Dois modelos são treinados, um
+	que irá auxiliar a escolha da melhor sugestão de configuração para
+	executar a aplicação do usuário, e outro que será usado para obter o
+	tempo de execução estimado para esta condiguração, que será usado para
+	escolher, junto da sugestão de configuração, a melhor partição do
+	supercomputador (por enquanto, o Santos Dumont 1 e 2) ao configurar o
+	script de submissão que pode ser posteriormente salvo e/ou 
+	automaticamente submetido na fila da partição escolhida. As variáveis
+	alvo usadas em cada caso são configuradas no arquivo de configuração
+	da aplicação e passadas no dicionário estimated_parameters, sendo que 
+	a chave 'suggestion' está associada ao nome da variável alvo do modelo
+	a ser treinado para auxiliar na escolha da melhor sugestão de
+	configuração (nos nossos testes preliminares, configuramos a varíavel 
+	alvo para o 'EDP'), e a chave 'time' está associada ao nome da
+	variável alvo do outro modelo a ser treinado para predizer o tempo
+	estimado de execução da sugestão de configuração escolhida (nos nossos
+	testes preliminares, configuramos para 'ElapsedRaw').
+
+	Parâmetros:
+		X (DataFrame): X contendo os testes usados para treinar os modelos
+									 usados para auxiliar a escoha da melhor sugestão de
+									 configuração e as colunas com as variáveis de
+									 configuração e da aplicação.
+		y (Series): Valores da variável alvo para cada teste em X, usados ao
+								treinar o modelo usado para auxiliar na escolha da
+								melhor sugestão de configuração. O nome da série será o
+								nome da variável alvo, que nos nossos testes 
+								preliminares será a EDP.
+		y_time (Series): Valores da variável alvo para cada teste em X, 
+										 usados ao treinar o modelo usado para estimar o
+										 tempo de execução para a sugestão de configuração
+										 escoçhida e a auxiliar na escolha ds partição para
+										 executar a aplicação com esta sugestão. O nome da
+										 série será o ome da variável alvo, que nos nossos
+										 testes preliminares será a ElapsedRaw.
+		suggestion_names (list[str]): Nomes das variáveis de usadas para
+																	definir as configurações dos
+																	recursos usadas ao executar os
+																	testes. São essas configurações que
+																	serão as sugeridas pelo script de
+																	otimização usado pelo usuário.
+		application_names (list[str]): Nomes das variáveis da aplicação
+															 	   usadas ao treinar o modelo para 
+																	 auxiliar a escolha da melhor sugestão
+																	 de configuração e o modelo para
+																	 estimar o tempo de execução da 
+																	 sugestão de configuração escolhida.
+		user_names (list[str]): Nomes das variáveis definidas pelos usuários
+														quando usarem o script de otimização para
+														escolher a melhor sugestão de configuração
+														para executar a aplicação. Podem ou não ser
+														as mesmas variávis de application_names,
+														tudo dependerá de como as variáveis da
+														aplicação definidas pelo usuário são
+														convertidas em variáveis da aplicação
+														efetivamente usadas nos treinamentos. Esas
+														variáveis serão usadas somente para calcular
+														o DataFrame com os oráculos para cada
+														combinacão dos parâmetro da aplicação usados
+														ao treinar o modelo para auxiliar a escolha
+														da melhor sugestão de configiração e o
+														modelo para estimar o tempo de execução
+														desta melhor sugestão.
+		predicted_name (str): Nome da variável alvo, que será a predita no 
+													modelo treinado para auxiliar a escolha da
+													melhor sugestão de configuração.
+		predicted_time_name (str): Nome da variável alvo, que será a predita
+															 no modelo treinado para fazer a
+															 estimativa do tempo de execução da melhor
+															 sugestão de configuração.
+		dataset (DataFrame): DataFrame com todas as colunas usadas, ou
+												 seja, as colunas em suggestion_names,
+												 application_names, user_names, predicted_name e
+												 predicted_time_name, que é internamente usadas
+												 para calcular o oráculo e para determinar todas
+												 as sugestões de configuração consideradas para
+												 escolher a melhor sugestão quando os usuários
+												 não definem valores customizados para cada
+												 possível variável da configuração, o que
+												 permite definir sugestões de configuração
+												 customizadas usando todas as possíveis
+												 combinações desses valores. 
+		model (BaseEstimator): Referência para o objeto do modelo treinado
+													 que será usado para auxiliar na escolha da
+													 melhor sugestão de configuração.										 
+		model_time (BaseEstimator): Referência para o objeto do modelo
+																treinado que será usado para estimar o
+																tempo de execução da melhor sugestão
+																de configuração.										 
+		suggestion_param (dict): Diconário cujas chaves são as variáveis e,
+														suggestion_names sendo o objeto associado a
+														cada chave uma lista com os possíveis 
+														valores para a variável de sugestão que tem
+														como nome essa chave.
+		applcartion_param (dict): Diconário cujas chaves são as variáveis e,
+															application_names sendo o objeto associado
+															a cada chave uma lista com os possíveis 
+															valores para a variável de aplicação que
+															tem como nome essa chave.
+		user_param (dict): Diconário cujas chaves são as variáveis e,
+											 user_names sendo o objeto associado a cada chave
+											 uma lista com os possíveis valores para a
+											 variável do usuário que tem como nome essa chave.
 	"""
 	def __init__(self):
+		"""
+    Função de inicialização da classe SuggestionsPredictor.
+
+		Parâmetros:
+      Não tem parâmetros.
+		"""
+		self.X = None
+		self.y = None
+		self.y_time = None
 		self.suggestion_names = None
 		self.application_names = None
 		self.user_names = None
 		self.predicted_name = None
 		self.predicted_time_name = None
-		self.predicted_memory_name = None
 		self.dataset = None
 		self.model = None
 		self.model_time = None
-		#self.model_memory = None
 		self.suggestion_params = None
 		self.application_params = None
 		self.user_params = None
-		self.X = None
-		self.y = None
-		self.y_time = None
-		#self.y_memory = None
 	    	
 	def fit(self, data, suggestion_names, application_names, user_names, estimated_parameters, model, model_params, verbose=False):
 		if not isinstance(data, pd.DataFrame):	
@@ -1460,7 +1581,7 @@ class SuggestionsPredictor:
 				self.y_time = data[self.predicted_time_name].copy()
 				self.model_time.fit(self.X, self.y_time)
 		else:
-			self,model_time = None		
+			self.model_time = None		
 
 		# Salva o dataframe usado para treinar o modelo.
 		colunms_names = list(set(suggestion_names+application_names+user_names+list(estimated_parameters.values())))
