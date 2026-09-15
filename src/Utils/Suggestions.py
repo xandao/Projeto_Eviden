@@ -750,26 +750,26 @@ class BestHiperparams:
 		# variáveis de configuração definidas pelas colunas em data.
 		if not pd.Index(suggestion_names).isin(data.columns).all():
 			raise KeyError("Nem todas os nomes de variáveis dados na lista de "
-		 							   f"variáveis de configuração {suggestion_names} é uma das "
-										 f"colunas {data.columns} do conjunto de dados dos "
-										 "testes!")
+		 							   f"variáveis de configuração {','.join(suggestion_names)} "
+										 f"é uma das variáveis {','.join(data.columns)} do "
+										 "conjunto de dados dos testes!")
 
 		# Verifica se cada nome em application_names é o nome de uma das 
 		# variáveis da aplicação definidas pelas colunas em data.
 		if not pd.Index(application_names).isin(data.columns).all():
 			raise KeyError("Nem todas os nomes de variáveis dados na lista de "
-									   f"variáveis de aplicação {application_names} é uma das "
-										 f"colunas {data.columns} do conjunto de dados dos "
-										 "testes!")
+									   f"variáveis de aplicação {','.join(application_names)} é "
+										 f"uma das variáveis {', '.join(data.columns)} do "
+										 "conjunto de dados dos testes!")
 
 		# Verifica se cada nome em user_names é o nome de uma das variáveis
 		# da aplicação definidas pelas colunas em data, e usadas para
 		# definir os grupos da validação LOGO.
 		if not pd.Index(user_names).isin(data.columns).all():
 			raise KeyError("Nem todas os nomes de variáveis dados na lista de "
-									   f"variáveis de aplicação {user_names} é uma das "
-									 	 f"colunas {data.columns} do conjunto de dados dos "
-										 "testes!")
+									   f"variáveis de aplicação {','.join(user_names)} é uma "
+										 f"das variáveis {','.join(data.columns)} do conjunto de "
+										 "dados dos testes!")
 		
 		# Verifica o nome em predicted_name é o nome da variável que será a 
 		# usada como variável alvo dos modelos, que também será a variável
@@ -777,7 +777,8 @@ class BestHiperparams:
 		if not pd.Index([predicted_name]).isin(data.columns).all():
 			raise KeyError("Nome inválido da variável alvo a ser predita! "
 									   f"O Nome {predicted_name} não é o nome de uma das "
-										 f"variáveis em {data.columns}.")
+										 f"variáveis {','.join(data.columns)} do conjunto de dados"
+										 "dos testes!")
 
     # Define o campo X do objeto como as colunas cujos nomes estão em
 		# suggestion_names e application_names (pois estas são as variáveis
@@ -1006,6 +1007,31 @@ class DiscoverBestModel:
 			 					 user_names, predicted_name, models, 
 								 scores_functions=None):
 		"""
+		Função para avaliar todos os modelos passados em models, que é um
+		dicionário em que cada chave é o nome do modelo e o valor associado
+		à esta chave um objeto do modelo já inicializado com os seus
+		melhores hiperparâmetros definidos ao criar um objeto da classe
+		BestHiperparams para cada modelo e chamar a função optimize para
+		obter os melhores valores para os hiperparâmetros otimizados. O 
+		conjunto de dados usado na validação cruzada de cada modelo é
+		passado em data, as variáveis da sugestão de configuração em
+		suggestion_names, as variáveis da aplicação definidas pelos usuários
+		ou derivadas a partir das variáveis da aplicação definidas pelos
+		usuários em application_names, as variáveis em user_names usadas
+		para definir os grupos da validação LOGO usada, geralmente
+		diretamente definidas pelos usuários ou obtidas a partir de uma
+		simples conversão do que foi definido pelo usuário, a variável alvo
+		definida em predicted_name que será a variável para a qual os
+		modelos treinados farão predições, e o dicionário scores_functions
+		com as funções de pontuação usadas, a serem maximizadas, sendo a
+		chave o nome da função e o valor uma referência para a função que
+		calcula a pontuação. Se o parâmetro não for passado, será usado o
+		dicionário com duas funções default, a chave 'accuracy' que calcula
+		a acurácia, como definimos nos artigos, usando a função
+		train_min_edp_config_accuracy, e a chave 'difference' calculando o
+		negativo da função de diferença que também definimos nos artigos,
+		usando a função neg_train_min_edp_config_diff.
+
 		Parâmetros:
 			dados (DataFrame): Conjunto de dados usado para fazer as 
 												 validações cruzadas para escolher os melhores
@@ -1047,7 +1073,12 @@ class DiscoverBestModel:
 			models (dict): Dicionário em que a chave é o nome do modelo e o
 										 valor associado à chave é uma referência para um
 										 objeto do modelo criado e inicializado, mas ainda
-										 não treinado.
+										 não treinado, com os melhores hiperparâmetros
+										 definidos para o modelo quando foi criado um objeto
+										 da classe BestHiperparams para esse modelo e a
+										 função optimize do objeto foi chamada para
+										 descobrir os melhores valores dos hiperparâmetros
+										 otimizados para esse modelo.
 			scores_functions (dict): Dicionário com as funções com as
 															 pontuações usadas para pontuar todas as
 															 avaliações feitas durante a validação
@@ -1095,26 +1126,26 @@ class DiscoverBestModel:
 		# variáveis de configuração definidas pelas colunas em data.
 		if not pd.Index(suggestion_names).isin(data.columns).all():
 			raise KeyError("Nem todas os nomes de variáveis dados na lista de "
-									   f"variáveis de configuração {suggestion_names} é uma das "
-										 f"colunas {data.columns} do conjunto de dados dos "
-										 "testes!")
+		 							   f"variáveis de configuração {','.join(suggestion_names)} "
+										 f"é uma das variáveis {','.join(data.columns)} do "
+										 "conjunto de dados dos testes!")
 
 		# Verifica se cada nome em application_names é o nome de uma das 
 		# variáveis da aplicação definidas pelas colunas em data.
 		if not pd.Index(application_names).isin(data.columns).all():
 			raise KeyError("Nem todas os nomes de variáveis dados na lista de "
-									   f"variáveis de aplicação {application_names} é uma das "
-										 f"colunas {data.columns} do conjunto de dados dos "
-										 "testes!")
+									   f"variáveis de aplicação {','.join(application_names)} é "
+										 f"uma das variáveis {', '.join(data.columns)} do "
+										 "conjunto de dados dos testes!")
 
 		# Verifica se cada nome em user_names é o nome de uma das variáveis
 		# da aplicação definidas pelas colunas em data, e usadas para
 		# definir os grupos da validação LOGO.
 		if not pd.Index(user_names).isin(data.columns).all():
 			raise KeyError("Nem todas os nomes de variáveis dados na lista de "
-									   f"variáveis de aplicação {user_names} é uma das "
-										 f"colunas {data.columns} do conjunto de dados dos "
-										 "testes!")
+									   f"variáveis de aplicação {','.join(user_names)} é uma "
+										 f"das variáveis {','.join(data.columns)} do conjunto de "
+										 "dados dos testes!")
 		
 		# Verifica o nome em predicted_name é o nome da variável que será a 
 		# usada como variável alvo dos modelos, que também será a variável
@@ -1122,7 +1153,8 @@ class DiscoverBestModel:
 		if not pd.Index([predicted_name]).isin(data.columns).all():
 			raise KeyError("Nome inválido da variável alvo a ser predita! "
 									   f"O Nome {predicted_name} não é o nome de uma das "
-										 f"variáveis em {data.columns}.")
+										 f"variáveis {','.join(data.columns)} do conjunto de dados"
+										 "dos testes!")
 
 		# Define o campo X do objeto como as colunas cujos nomes estão em
 		# suggestion_names e application_names (pois estas são as variáveis
@@ -1210,7 +1242,13 @@ class DiscoverBestModel:
 			# no momento. Talvez seja melhor não retornar estas informações,
 			# defindo, na função fit, 'return_indices' como False e 
 			# return_estimator como False.
-			cv_results_df = pd.DataFrame({k.replace("test_", ""): cv_results_model[k] for k in cv_results_model if k not in ['indices','estimator']})
+			cv_results_df = pd.DataFrame(
+					{
+							k.replace("test_", ""): cv_results_model[k]
+							for k in cv_results_model
+							if k not in ["indices", "estimator"]
+					}
+			)
 
 			# Adiciona uma coluna com o nome do modelo, no DataFrame
 			# cv_results_df, para podermos diferenciar os dados das validações
@@ -1232,37 +1270,141 @@ class DiscoverBestModel:
 			self.cv_results[name] = { 'cv_results': cv_results_model, 
 														    'results_dataframe': cv_results_df}
 
+			# Imprime, se a verbosididade estiver habilitada, o DataFrame com 
+			# as informações sobre as pontuações e tempos de execução do
+			# modelo resultante da validação cruzada e as estatístcas deste
+			# DataFrame usando a função describe.
 			if self.verbose:
 				print(f"➡️  Model {name} table:")
-				print("\n", cv_results_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
+				print("\n", cv_results_df.to_markdown(tablefmt="grid", 
+																					    floatfmt=".2f"), 
+							"\n", sep="")
 				print(f"➡️  Model {name} statistics:")
-				print("\n", cv_results_df.describe().to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
+				print("\n", cv_results_df.describe().to_markdown(tablefmt="grid", 
+																										     floatfmt=".2f"), 
+							"\n", sep="")
 
+			# Anexa o DataFarme gerado para o modelo atualmente avaliado e
+			# identificado pelo nome em name no DataFrame results_df 
+			# armazenado no campo do objeto, com as informações das validações
+			# cruzadas dos outros modelos já avaliados.
 			self.results_df = pd.concat([self.results_df, cv_results_df])
 
-		# Torna os índices consecutivos.
+		# Como o DataFrame armazenado no campo results_df do objeto é uma
+		# concatenação dos DataFrames com as informações das validações
+		# cruzadas de cada um dos modelos avaliados, precisamos resetar os
+		# índices deste DataFrame para que sejam consecutivos.
 		self.results_df = self.results_df.reset_index(drop=True)		
 		
-		# Cria um dataframe com a média para os modelos.
+		# Descobre os nomes das colunas do DataFrame armazenado no campo
+		# results_df do objeto que tem as pontuações anteriormente
+		# calculadas durante o processamento das validações cruzadas feitas
+		# para os modelos, e armazena os nomes na lista 
+		# scores_functions_names.
 		scores_functions_names = list(scores_functions.keys())
-		self.mean_scores_models_df = self.results_df.groupby(by=['Model'])[scores_functions_names].mean()
+
+		# Cria um DataFrame com a média de todas as pontuações avaliadas e
+		# definidas em scores_functions_names, agrupando as informações do
+		# DataFrame armazenado no campo results_df do objeto com todas as
+		# pontuações de todas as validações cruzadas dos modelos feitas
+		# anteriormente. O DataFrame foi, para acesso posterior, armazenado
+		# no campo mean_scores_models_df do objeto.
+		self.mean_scores_models_df = (
+				self.results_df.groupby(by=['Model'])[scores_functions_names].mean()
+		)
 		
-		# Descobre o(s) melhor(es) modelos, faz isso ordenando o dataframe mean_scores_models_df pelas
-		self.mean_scores_models_df = self.mean_scores_models_df.sort_values(by=scores_functions_names, ascending=False)
+		# Para descobrir os melhores modelos, usamos as funções de pontuação
+		# para ordenar, em ordem decrescente, porque desejamos as maiores
+		# pontuações, as linhas do DataFrame mean_scores_models_df 
+		# armazenado no objeto de acordo com as pontuaçẽos calculadas, 
+		# usando a ordem definida por como as chaves foram armazenadas, no
+		# dicionário scores_functions com as pontuações usadas (que é a
+		# mesma dos elementos da lista scores_functions_names), ao ordenar
+		# pelas pontuações.
+		#
+		# TODO: As versões mais recentes do Python mantpem a ordem das
+		# chaves dos dicionários, mas as antigas não mantém, então para
+		# versẽos antigas do Python a ordem pode ser aleatória. Vamos manter
+		# a ordenalão deste modo, ou definir um modo de escolher a ordem das
+		# funções de pontuação?
+		self.mean_scores_models_df = self.mean_scores_models_df.sort_values(
+				by=scores_functions_names, 
+				ascending=False
+		)
+
+		# Depois de ordenar o DataFrame armazenado em mean_scores_models_df,
+		# a primeira linha conterá as informações do modelo com as maiores
+		# pontuações, de acordo com a ordem definida na lista
+		# scores_functions_names. Armazenanos o nome desse modelo, que será
+		# o índice desta linha, no campo best_model_name do onjeto, as 
+		# pontuações, que são as colunas desta primeira linha, no campo
+		# best_model_scores do objeto, que será um diciponaŕio em que,
+		# devido a conversão feita, terá uma chava para cada pontuação, com
+		# a chave sendo o nome da pontuação definido originalmente como uma
+		# das chaves do dicionário scores_functions e o valor associado à
+		# chave o valor desta pontuação para o melhor modelo.
 		self.best_model_name = self.mean_scores_models_df.index[0]
 		self.best_model_scores = self.mean_scores_models_df.iloc[0].to_dict()
-		
-		return (self.best_model_name, self.best_model_scores, self.results_df, self.mean_scores_models_df)
-	
+
+		# Retornauma tupla com todas as informações relavantes referentes a
+		# descoberta do melhor modelo, ou seja, o nome do modelo, o
+		# dicionário com as pontuações paara este modelo, o DataFrame com
+		# os resultados de todas as validações cruzadas, e o DataFrame
+		# com as pontuações médias, indexado pelos nomes dos modelos e
+		# ordenado e acordo com as pontuações.
+		return (self.best_model_name, self.best_model_scores, 
+					  self.results_df, self.mean_scores_models_df)
+
 	def get_cv_results_model(self, model_name):
+		"""
+		Função para retornar todas as informações, ou seja, pontuações e
+		tempos de execução, referentes à execução da validação cruzada para
+		o modelo cujo nome é passado como parâmetro.
+
+		Parâmetros:
+			model_name (str): Nome do modelo que foi avaliado, pela chamada à
+			função best_model, para o qual desejamos obter as informações
+			referentes à validação cruzada feita, ou seja, as pontuações e os
+			tempos de treinamento e de teste de cada grupo da validação LOGO.
+
+		Retorna:
+			dict: Dicionário com as informações sobre a validação cruzada
+						feita para o modelo. É o mesmo dicionário retornado pela
+						função cross_validade do scikit-learn quando foi chamada na
+						função best_model para o modelo cujo nome foi passado em
+						model_name. Se algum erro ocorrer, exceções serão geradas, 
+						como não existirem dados porque a função best_model não foi
+						chamada ou o nome do modelo não existe porque ele não foi
+						avaliado.
+		"""
+
+		# Verifica se as valudações cruzadas já foram feitas, ou seja, se 
+		# já foi executada a função best_model para determinar qual é o
+		# melhor modelo.
 		if self.cv_results is None:
-			raise ValueError("Cross-validation of the models has not yet been executed!")
+			raise ValueError("O melhor modelo ainda não foi descoberto e as " 
+										   "validações cruzadas de todos os modelos ainda "
+											 "não foram feitas!")
+
+		# Verfica se o nome do modelo, passado como parâmetro em model_name,
+		# é válido, ou seja, é uma das chaves do dicionário best_model
+		# armazenado no campo do objeto, pois usamos o nome do modelo,
+		# quando executamos a função best_model, como a chave do dicion para
+		# acessar as suas informações.
 		if not model_name in self.cv_results.keys():
-			raise KeyError(f"Invalid model name {model_name}! Must be any in {self.cv_results.keys()}.")
-			
+			raise KeyError(f"Nome {model_name} inválido para um dos modelos " 
+									   "treinados! Deveria ser um dos modelos da lista "
+										 f"{', '.join(self.cv_results.keys())}.")
+
+		# Retorna o dicionário com as informações sobre a validação cruzada
+		# do modelo cujo nome foi passsado como parâmetro, criado quando a
+		# função best_model chamou a função do scikit-learn cross_validate
+		# para o modelo cujo nome foi passado em model_name.	
 		return self.cv_results[model_name]
 			      
 class SuggestionsPredictor:
+	"""
+	"""
 	def __init__(self):
 		self.suggestion_names = None
 		self.application_names = None
