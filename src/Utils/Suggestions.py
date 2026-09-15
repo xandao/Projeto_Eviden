@@ -1038,7 +1038,7 @@ class DiscoverBestModel:
 												 valores dos hiperparâmetros avaliados para um
 												 modelo.
 			suggestion_names (list[str]): Nomes das variáveis de usadas para
-																		definir as configurações dos 
+																		definir as configurações dos
 																		recursos usadas ao executar os
 																		testes. São essas configurações que
 																		serão as sugeridas pelo script de
