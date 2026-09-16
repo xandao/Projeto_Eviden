@@ -1437,7 +1437,7 @@ class SuggestionsPredictor:
 	estimado de execução da sugestão de configuração escolhida (nos nossos
 	testes preliminares, configuramos para 'ElapsedRaw').
 
-	Parâmetros:
+	Atributos:
 		X (DataFrame): X contendo os testes usados para treinar os modelos
 									 usados para auxiliar a escoha da melhor sugestão de
 									 configuração e as colunas com as variáveis de
@@ -1546,6 +1546,30 @@ class SuggestionsPredictor:
 		self.user_params = None
 	    	
 	def fit(self, data, suggestion_names, application_names, user_names, estimated_parameters, model, model_params, verbose=False):
+		"""
+		Função para fazer a parte final da construção do preditor, que é o
+		treinamento do melhor modelo com os seus melhores hiperparâmetros, 
+		utilizando todo o conjunto de dados para gerar os dois modelos que
+		compõem o preditor. O primeiro destes modelos, o mais importante e
+		descrito no artigo, será usado para predizer a variável alvo que
+		usaremos para escolher a melhor sugestão de configuração, ao
+		escolher ao configuração associado ao menor valor predito para a
+		variável alvo. Nos nossos testes preliminares, as configurações dos
+		treinamentos dos aplicativos configuram esta variável para a 'EDP'.
+		O nome desta variável no conjunto de dados data é passado na chave
+		'suggestion' do dicionário referenciado pelo parâmetro 
+		estimated_parameters. O segundo modelo será usado para estimar o
+		tempo de execução para a sugestão de configuração escolhida com o
+		auxílio do primeiro modelo. Nos nossos testes preliminares, as
+		configurações dos treinamentos dos aplicativos configuram esta
+		variável para a 'ElapsedRaw'. A variável alvo deste modelo será
+		definida na chave 'time' do dicionário referenciado pelo parâmetro 
+		estimated_parameters. A função retorna uma referência para o próprio
+		objeto, como é comum em alguns modelos da sckit-learn.
+
+
+		"""
+
 		if not isinstance(data, pd.DataFrame):	
 			raise ValueError("Invalid input data provided, data is not a Dataframe.")
 
