@@ -482,19 +482,55 @@ class FilterOutliers:
 															com os valores que não são outliers.
 
     Retorna:
-      DataFrame: ponteiro para o objeto DataFrame do Pandas com o 
-								 conjunto de dados filtrado.
+      DataFrame: Se nenuhum erro ocorrer, retorna um ponteiro para o 
+								 objeto DataFrame do Pandas com o conjunto de dados 
+								 filtrado. Se algum erro ocorrer, gera uma exceção do
+								 Python.
 		"""
 
+		# Verifica se dados é um DataFrame do Pandas.
+		if not isinstance(dados, pd.DataFrame):	
+			raise ValueError("Conjunto de dados com os dados do teste em um formato"
+											 f"inválido {type(dados)}! Deveria ser uma referência"
+											 "para um objeto DataFrame do Pandas.")
+		
+		# Verifica se cada nome em input_variables é o nome de uma das 
+		# variáveis de configuração ou da aplicação definidas pelas colunas 
+		# em dados.
+		if not pd.Index(input_variables).isin(dados.columns).all():
+			raise KeyError("Nem todas os nomes de variáveis dados na lista de "
+		 							   "variáveis de configuração ou da aplicação "
+										 f"{','.join(input_variables)} é uma das variáveis "
+										 f"{','.join(dados.columns)} do conjunto de dados dos "
+										 "testes!")
+
+		# Verifica se cada nome em filter_variables é o nome de uma das 
+		# variáveis com as informações das execuções dos testes definidas
+		# pelas colunas em dados.
+		if not pd.Index(filter_variables).isin(dados.columns).all():
+			raise KeyError("Nem todas os nomes de variáveis dados na lista de "
+									   f"variáveis de filtragem, {','.join(filter_variables)} é "
+										 f"uma das variáveis {', '.join(dados.columns)} do "
+										 "conjunto de dados dos testes!")
+
+		# Verifica se outliers_limit é um inteiro ou número em ponto 
+		# flutuante.
+		if not isinstance(outliers_limit, (int, float)):
+				raise TypeError("A variável que define o limite, outliers_limit, "
+										    "precisa ser do tipo int ou float.")
+		
     # Define a variável do objeto dados com o conjunto de dados original 
 		# e não filtrado.
 		self.dados = dados
+
 		# Define a variável do objeto input_variables com as variáveis de 
 		# entrada usada no treinamento dos modelos.
 		self.input_variables = input_variables
+
 		# Define a variável do objeto filter_variables com as variáveis 
 		# usadas para fazer a filtragem do conjunto de dados.
 		self.filter_variables = filter_variables
+
 		# Define a variável do objeto outliers_limit com o valor em ponto 
 		# flutuante usado para definir, conjuntamente com o desvio médio 
 		# absoluto e a mediana, do intervalo de com os valores que não são
@@ -1081,7 +1117,8 @@ class DiscoverBestModel:
 										 da classe BestHiperparams para esse modelo e a
 										 função optimize do objeto foi chamada para
 										 descobrir os melhores valores dos hiperparâmetros
-										 otimizados para esse modelo.
+										 otimizados para esse modelo, mais, se existirem, os
+										 hiperparâmetros fixos e os seus valores.
 			scores_functions (dict): Dicionário com as funções com as
 															 pontuações usadas para pontuar todas as
 															 avaliações feitas durante a validação
@@ -1545,7 +1582,8 @@ class SuggestionsPredictor:
 		self.application_params = None
 		self.user_params = None
 	    	
-	def fit(self, data, suggestion_names, application_names, user_names, estimated_parameters, model, model_params, verbose=False):
+	def fit(self, data, suggestion_names, application_names, user_names, 
+				  estimated_parameters, model, model_params, verbose=False):
 		"""
 		Função para fazer a parte final da construção do preditor, que é o
 		treinamento do melhor modelo com os seus melhores hiperparâmetros, 
@@ -1556,18 +1594,77 @@ class SuggestionsPredictor:
 		escolher ao configuração associado ao menor valor predito para a
 		variável alvo. Nos nossos testes preliminares, as configurações dos
 		treinamentos dos aplicativos configuram esta variável para a 'EDP'.
-		O nome desta variável no conjunto de dados data é passado na chave
-		'suggestion' do dicionário referenciado pelo parâmetro 
-		estimated_parameters. O segundo modelo será usado para estimar o
-		tempo de execução para a sugestão de configuração escolhida com o
-		auxílio do primeiro modelo. Nos nossos testes preliminares, as
-		configurações dos treinamentos dos aplicativos configuram esta
-		variável para a 'ElapsedRaw'. A variável alvo deste modelo será
-		definida na chave 'time' do dicionário referenciado pelo parâmetro 
-		estimated_parameters. A função retorna uma referência para o próprio
-		objeto, como é comum em alguns modelos da sckit-learn.
+		O segundo modelo será usado para estimar o tempo de execução para a
+		sugestão de configuração escolhida com o auxílio do primeiro modelo.
+		Nos nossos testes preliminares, as configurações dos treinamentos
+		dos aplicativos configuram esta variável para a 'ElapsedRaw'. 
+		
+		Parâmetros:
+			dados (DataFrame): Conjunto de dados usado usado para treinar os
+												 dois modelos do preditor, o que prediz a 
+												 variável alvo que permitirá escolher a melhor
+												 sugestão de configuração ao escolher o menor
+												 valor predito para um conjunto de sugestões
+												 de configuração e usar como a sugestão de
+												 configuração ótima, ou a escolhida, a
+												 configuração assiciada a este menor valor
+												 predito. O segundo modelo será o usado para
+												 estimar o tempo de execução da melhor sugestão
+												 de configuração.
+			suggestion_names (list[str]): Nomes das variáveis de usadas para
+																		definir as configurações dos
+																		recursos usadas ao treinar os
+																		modelos. São essas configurações que
+																		serão as sugeridas pelo script de
+																		otimização usado pelo usuário.
+			application_names (list[str]): Nomes das variáveis da aplicação
+																		 usadas ao treinar os modelos, que
+																		 são passadas ou derivadas das
+																		 variáveis de aplicação passadas
+																		 pelos usuários.
+			user_names (list[str]): Nomes das variáveis definidas pelos 
+															usuários quando usarem o script de 
+															otimização para escolher a melhor sugestão
+															de configuração para executar a aplicação.
+															Podem ou não ser as mesmas variávis de
+															application_names, tudo dependerá de como
+															as variáveis da aplicação definidas pelo
+															usuário são convertidas em variáveis da
+															aplicação efetivamente usadas nos 
+															treinamentos. 
+			estimated_parameters (dict): Diciońario cujas chaves indicam as
+																	 variáveis alvo treinar os dois
+																	 modelos. O nome da variável alvo do
+																	 primeiro modelo, o que auxilia na
+																	 escolha da melhor sugestão de
+																	 configuração, é referenciado pela 
+																	 chave 'suggestion' do dicionário. Já
+																	 a variável alvo do segundo modelo,
+																	 que estima os tempos de execução das
+																	 melhores seguestões de configuração,
+																	 será definida na chave 'time' do 
+																	 dicionário. 
+			model (BasicEstimator): Referência para o objeto não inicializado
+															do melhor modelo escolhido pelo critério
+															de avaliação dos modelos que, no caso do
+															script treinador, é a validação cruzada,
+															utilizando a validação LOGO, dos modelos
+															escolhidos para serem treinados e para
+															os queis escolhemos os melhores valores
+															para os seus hiperparâmetros.
+			model_params (dict): Dicionário em que a chave é o nome de um dos
+													 hiperparâmetros otimizados para o modelo com
+													 os melhores valores escolhidos mais, se
+													 existirem, os hiperparâmetros fixos e os seus
+													 valores.
+			verbose (bool): Habilita/desabilita as informações de verbosidade.                   
 
-
+		Retorna:
+      tuple: Se não ocorrerem erros, a função retorna uma referência
+						 para o próprio objeto da classe SuggestionsPredictor para o
+						 qual invocamos a função fir, como é comum em alguns modelos
+						 da sckit-learn. Se algum erro ocorrer, gera uma exceção do
+						 Python.
 		"""
 
 		if not isinstance(data, pd.DataFrame):	

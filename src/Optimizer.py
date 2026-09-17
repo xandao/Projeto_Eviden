@@ -333,6 +333,7 @@ def submission_log(application_name, system_args, user_args, suggestion_params, 
 def optimize_application(configs_file_path, system_config, applications_config, user_config, 
                          application_args, predictors_info_config, user_args):
   # Verifica se o usuário deseja somente listar as aplicações
+  application_name = None
   try:
     if user_args.list:
         for application_id in sorted(applications_config.keys()):
@@ -584,11 +585,44 @@ def optimize_application(configs_file_path, system_config, applications_config, 
 
       return True
   except KeyError as e:
-    pass
+    if application_name is None:
+      print("❌ Erro ao processar uma das estruturas indexadas por chave, a "
+            f"chave {e.args[0]} não existe, ao inicializar as otimizações!")
+    else:
+      print("❌ Erro ao processar uma das estruturas indexadas por chave, a "
+            f"chave {e.args[0]} não existe, ao otimizar a aplicação "
+            f"{application_name}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return False
+  except AttributeError as e:
+    if application_name is None:
+      print("❌ Erro ao acessar um dos objetos internos do script, um dos "
+            "seus atributo não existe, ao inicializar as otimizações!")
+    else:
+      print("❌ Erro ao acessar um dos objetos internos do script, um dos "
+            "seus atributo não existe, ao otimizar a aplicação "
+            f"{application_name}!")
+    print(f"❌ Erro gerado: '{e.args[0]}'")  
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return False
   except ValueError as e:
-    pass
+    if application_name is None:
+      print("❌ Erro ao inicializar ou usar estruturas internas do script, ao "
+            "inicializar as otimizações!")
+    else:
+      print("❌ Erro ao inicializar ou usar estruturas internas do script, ao "
+            f"fazer a otimização para a aplicação {application_name}!")
+    print(f"❌ Erro gerado: '{e.args[0]}'")  
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return False
   except Exception as e:
-    pass
+    if application_name is None:
+      print("❌ Erro desconhecido ao começar a fazer as otimizações!")
+    else:  
+      print("❌ Erro desconhecido ao fazer a otimização da aplicação "
+            f"{application_name}!")
+    print(f"❌ Parâmetros do erro: {e.args}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
 
 # Processa a linha de comando.
 user_args, application_args, parser = process_script_args()
