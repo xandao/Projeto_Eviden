@@ -1538,9 +1538,9 @@ class SuggestionsPredictor:
 												 permite definir sugestões de configuração
 												 customizadas usando todas as possíveis
 												 combinações desses valores. 
-		model (BaseEstimator): Referência para o objeto do modelo treinado
-													 que será usado para auxiliar na escolha da
-													 melhor sugestão de configuração.										 
+		model (BaseEstimator): Referência para a classe do objeto do modelo 
+													 treinado que será usado para auxiliar na
+													 escolha da melhor sugestão de configuração.										 
 		model_time (BaseEstimator): Referência para o objeto do modelo
 																treinado que será usado para estimar o
 																tempo de execução da melhor sugestão
@@ -1555,7 +1555,7 @@ class SuggestionsPredictor:
 															a cada chave uma lista com os possíveis 
 															valores para a variável de aplicação que
 															tem como nome essa chave.
-		user_param (dict): Diconário cujas chaves são as variáveis e,
+		user_param (dict): Dicionário cujas chaves são as variáveis e,
 											 user_names sendo o objeto associado a cada chave
 											 uma lista com os possíveis valores para a
 											 variável do usuário que tem como nome essa chave.
@@ -1667,90 +1667,324 @@ class SuggestionsPredictor:
 						 Python.
 		"""
 
+		# Verifica se data é um DataFrame do Pandas.
 		if not isinstance(data, pd.DataFrame):	
-			raise ValueError("Invalid input data provided, data is not a Dataframe.")
-
+			raise ValueError("Conjunto de dados com os dados do teste em um formato"
+											 f"inválido {type(data)}! Deveria ser uma referência"
+											 "para um objeto DataFrame do Pandas.")
+		
+		# Verifica se cada nome em suggestion_names é o nome de uma das 
+		# variáveis de configuração definidas pelas colunas em data.
 		if not pd.Index(suggestion_names).isin(data.columns).all():
-			raise KeyError(f"Invalid input suggestion_names provided, not all {suggestion_names} suggestions params exists in {data.columns}.")
-		if not pd.Index(application_names).isin(data.columns).all():
-			raise KeyError(f"Invalid input application_names provided, not all {application_names} applications params exists in {data.columns}.")
-		if not pd.Index(user_names).isin(data.columns).all():
-			raise KeyError(f"Invalid input user_names provided, not all {user_names} applications params exists in {data.columns}.")
-		if not pd.Index(estimated_parameters.values()).isin(data.columns).all():
-			raise KeyError(f"Invalid input predicted_name provided, one of the {estimated_parameters.values()} doesn't exists in {data.columns}.")
+			raise KeyError("Nem todas os nomes de variáveis dados na lista de "
+		 							   f"variáveis de configuração {','.join(suggestion_names)} "
+										 f"é uma das variáveis {','.join(data.columns)} do "
+										 "conjunto de dados dos testes!")
 
+		# Verifica se cada nome em application_names é o nome de uma das 
+		# variáveis da aplicação definidas pelas colunas em data.
+		if not pd.Index(application_names).isin(data.columns).all():
+			raise KeyError("Nem todas os nomes de variáveis dados na lista de "
+									   f"variáveis de aplicação {','.join(application_names)} é "
+										 f"uma das variáveis {', '.join(data.columns)} do "
+										 "conjunto de dados dos testes!")
+
+		# Verifica se cada nome em user_names é o nome de uma das variáveis
+		# da aplicação definidas pelas colunas em data, e usadas para
+		# definir os grupos da validação LOGO.
+		if not pd.Index(user_names).isin(data.columns).all():
+			raise KeyError("Nem todas os nomes de variáveis dados na lista de "
+									   f"variáveis de aplicação {','.join(user_names)} é uma "
+										 f"das variáveis {','.join(data.columns)} do conjunto de "
+										 "dados dos testes!")
+		
+		# Verifica o nome em predicted_name é o nome da variável que será a 
+		# usada como variável alvo dos modelos, que também será a variável
+		# usada ao escolher a melhor sugestão de configuração.
+		if not pd.Index(estimated_parameters.values()).isin(data.columns).all():
+			raise KeyError("Nome inválido de uma das variáveis alvo a serem "
+									   "preditas! Um dos nomes em "
+										 f"{', '.join(estimated_parameters.values())} não é o "
+										 f"nome de uma das variáveis {','.join(data.columns)} do "
+										 "conjunto de dados dos testes!")
+
+    # Inicializa o campo do objeto com uma referência para a lista com
+		# os nomes das variáveis de configuração.
 		self.suggestion_names = suggestion_names
+
+    # Inicializa o campo do objeto com uma referência para a lista com
+		# os nomes das variáveis de aplicação usadas nos treinamentos.
 		self.application_names = application_names
+
+    # Inicializa o campo do objeto com uma referência para a lista com
+		# os nomes das variáveis de aplicação definidas diretamente pelos
+		# usuários ou por conversão do que foi definido pelo usuário.
 		self.user_names = user_names
+
+		# Inicializa o campo do objeto para o nome da variável alvo usada
+		# para auxiliar na escolha da melhor sugestão de configuração (nos
+		# nossos testes preliminares, é a 'EDP').
 		self.predicted_name = estimated_parameters['suggestion']
+
+		# Inicializa o modelo a ser treinado para auxiliar a escolha da
+		# melhor sugestão de configuração, cuja classe é passada em model,
+		# e utilizando os hiperparâmetros definidos no dicionário 
+		# model_params.
 		self.model = model(**model_params)
+
+		# Inicializa o DataFrame X a ser usado como características ao
+		# treinar os dois modelos.
 		self.X = data[self.suggestion_names+self.application_names].copy()
+
+		# Inicializa a Series y a ser usadaa ao treinar o modelo que auxilia
+		# na escolha da melhor sugestão de configuração.
 		self.y = data[self.predicted_name].copy()
 
-		# Treina o model com os dados
+		# Treina o modelo usado para auxiliar a escolha da melhor sugestão 
+		# de configuração, usando X e y.
 		self.model.fit(self.X, self.y)
 
-    # Se a variável de tempo foi definida, também treina um modelo para predizer o tempo.
+    # Se a variável alvo usada para predizer o tempo da melhor sugestão
+		# de configuração foi definida, o que é indicado pelo dicionário 
+		# estimated_parameters ter a chave 'time', também treina um modelo
+		# para predizer o tempo da melhor sugestão de configuração. 
 		if 'time' in estimated_parameters:
+			# Vamos teinar também um modelo para estimar o tempo de execução
+			# da melhor sugestão de configuração. Como náo existe nenhum 
+			# impedimento de a variável alvo usada para escolher a melhor
+			# sugestão de configuração ser a mesma para estimar o tempo de
+			# execução desta sugestão, primeiramente verificamos se os nomes
+			# das variáveis albo são os mesmos.
 			if estimated_parameters['time'] == estimated_parameters['suggestion']:
-				self.model_time = self.model	
+				# Os nome da variável alvo para auxiliar na escolha da melhor
+				# sugestão de configuração é o mesmo do que o da variável
+				# alvo para estimar o tempo de execução desta sugestão, ou seja,
+				# a variável alvo é a mesma.
+
+				# O nome da variável alvo do modelo treinado para estimar o
+				# o tempo de execução da melhor sugestão terá o mesmo nome do da
+				# variável alvo usada pelo modelo que auxilia a escolha dessa
+				# confiuração. Logo, o campo predicted_time_name será igual ao
+				# campo predicted_name.
 				self.predicted_time_name = self.predicted_name 
+
+				# O y também será o mesmo usado ao treinar o modelo que auxilia
+				# a escolha da melhor sugestão de configuração. Logo, o campo
+				# y_time será igual ao campo y.
 				self.y_time = self.y
+
+				# O modelo para estimar o tempo será simplesmente uma referência
+				# para o modelo já treinado que auxilia na escolha da melhor
+				# configuração. Logo o campo do objeto model_time será igual ao
+				# camnpo model do objeto.
+				self.model_time = self.model	
 			else:	
-				self.model_time = model(**model_params)
+				# Neste caso, os nomes das variáveis alvo do modelo para
+				# auxiliar	na escolha da melhor sugestão de configuração e na
+				# estimativa do tempo de execução desta sugestão serão variáveis
+				# alvo diferentes.
+				
+				# Inicializa o campo do objeto para o nome da variável alvo 
+				# usada para estimar o tempo de execução da  melhor sugestão de
+				# configuração (nos nossos testes preliminares, é a 
+				# 'ElapsedRaw').
 				self.predicted_time_name = estimated_parameters['time']
+
+				# Como as variáveis alvo são diferentes, precisaremos 
+				# inicializar um novo modelo, cuja classe é passada em model,
+				# e utilizando os hiperparâmetros definidos no dicionário 
+				# model_params.
+				self.model_time = model(**model_params)
+
+
+        # Como a variável alvo é diferemte. inicializa a Series y_time 
+				# a ser usadaa ao treinar o modelo que estima o tempo de
+				# execução da melhor sugestão de configuração.
 				self.y_time = data[self.predicted_time_name].copy()
+
+				# Treina o modelo usado para estimar o tempo de execução da
+				# melhor sugestão  de configuração, usando X e y_time.
 				self.model_time.fit(self.X, self.y_time)
 		else:
+			# Se a variável não for definida, então não teremos um modelo para
+			# estimar os tempos das melhores sugestões de condifuração.
+			# TODO: Será que teria problema em tornar o que é opcional 
+			# obrigatório? Isso simplificaria um pouco o código e não afetaria
+			# o que já fizemos, pois usamos um modelo para fazer as
+			# estimativas de tempo.
 			self.model_time = None		
 
-		# Salva o dataframe usado para treinar o modelo.
-		colunms_names = list(set(suggestion_names+application_names+user_names+list(estimated_parameters.values())))
-		self.dataset = data[colunms_names].copy()
+		# Descobre os nomes de todas as variáveis relevantes, que são as
+		# variáveis de configuração, as de aplicação obtidas diretamente do
+		# usuário ou convertidas a partir do que o usuário irá fornecer, 
+		# as váriáveis da aplicação definidas pelo uauŕio ou obtidas delas,
+		# e as variáveis alvo usadas nos dois modelos. A conversão de lista
+		# para conjunto e depois novamente para lista é porque podem existir
+		# variáveis comuns nas listas application_names e user_names.
+		columns_names = list(
+			set(
+				suggestion_names
+				+ application_names
+				+ user_names
+				+ list(estimated_parameters.values())
+			)
+		)
 
-		# Define os possíveis parâmetros para cada sugestão.
-		self.suggestion_params = {col: list(data[col].unique()) for col in suggestion_names}
+		# Salva o dataframe usado para treinar o(s) modelo(s), com todas as
+		# colunas usadas nos treinamentos, e as colunas definidas em
+		# user_names que serão usadas para criar o DataFrame do oráculo.
+		self.dataset = data[columns_names].copy()
 
-		# Define os possíveis parâmetros para cada opção da aplicação do usuário;
-		self.application_params = {col: list(data[col].unique()) for col in application_names}
+		# Cria uma lista no campo suggestion_params do objeto com todos os
+		# possíveis valores para cada variável de configuração definida em
+		# suggestion_names. 
+		self.suggestion_params = {
+			col: list(data[col].unique())
+			for col in suggestion_names
+		}
 
-		# Define os possíveis parâmetros para cada opção da aplicação do usuário;
-		self.user_params = {col: list(data[col].unique()) for col in user_names}
-		
+		# Cria uma lista no campo application_params do objeto com todos os
+		# possíveis valores para cada variável da aplicação definida em
+		# application_names. 
+		self.application_params = {
+			col: list(data[col].unique())
+			for col in application_names
+		}
+
+		# Cria uma lista no campo user_params do objeto com todos os 
+		# possíveis valores para cada variável da aplicação definida em
+		# user_names. 
+		self.user_params = {
+			col: list(data[col].unique())
+			for col in user_names
+		}
+
+		# Imprime os parâmetros usados para treinar o(s) modelo(s) e os 
+		# usados para gerar a tabela do oráculo na função que retorna o
+		# DataFrame com o oráculo para o conjunto de dados com os testes.
 		if verbose:
-			print(f"➡️  Parâmetros de sugestão usados no treinamento: {self.suggestion_params}")
-			print(f"➡️  Parâmetros de aplicação usados no treinamento: {self.application_params}")
-			print(f"➡️  Parâmetros de usuário usados no treinamento: {self.user_params}")
-			print(f"➡️  Variável alvo do modelo auxiliar usado na escolha da melor sugestão: {self.predicted_name}")
+			print("➡️  Parâmetros de sugestão usados no treinamento: "
+				    f"{self.suggestion_params}")
+			print("➡️  Parâmetros de aplicação usados no treinamento: "
+				    f"{self.application_params}")
+			print("➡️  Parâmetros de usuário usados no treinamento: "
+				    f"{self.user_params}")
+			print("➡️  Variável alvo do modelo auxiliar usado na escolha da melor "
+				    f"sugestão: {self.predicted_name}")
 			if self.predicted_time_name is not None:
-				print(f"➡️  Varíavel alvo do modelo predizer o tempo da melhor sugestão: {self.predicted_time_name}")
+				print(f"➡️  Varíavel alvo do modelo predizer o tempo de execução da "
+					     "melhor sugestão: {self.predicted_time_name}")
 			print("➡️  X usado no treinamento dos modelos:")
-			print("\n", self.X.to_markdown(tablefmt="grid", floatfmt=".2f" ), "\n", sep="")
-			print("➡️  y usado no treinamento do modelo auxiliar:")
-			print("\n", self.y.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
+			print("\n", self.X.to_markdown(tablefmt="grid", floatfmt=".2f" ), 
+				    "\n", sep="")
+			print("➡️  y usado no treinamento do modelo auxiliar para escolher a :")
+			print("melhor sugestão de configuraçaõ:", "\n", 
+				    self.y.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
 			if self.model_time is not None:
-				print("➡️  y usado pelo modelo para a predição dos tempos:")
-				print("\n", self.y_time.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
-			print("➡️  Dataframe contendo todas as variáceis usadas nos treinamentos:")
-			print("\n", data.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
-			
+				print("➡️  y usado pelo modelo para a predição dos tempos das ")
+				print("melhores sugestões de coinfiguração", "\n", 
+					    self.y_time.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
+							sep="")
+			print("➡️  Dataframe contendo todas as variáceis usadas nos "
+				    "treinamentos:")
+			print("\n", data.to_markdown(tablefmt="grid", floatfmt=".2f"), 
+				    "\n", sep="")
+
+		# Retorna uma referência para o próprio objeto para o qual foi chamada a
+		# função fit.	
 		return self 		
 		
 	def get_oracle(self, verbose=False):
-		# Calcula o dataset do oraculo.
-		df_aux = self.dataset.groupby(self.suggestion_names+self.user_names)[self.predicted_name].median().reset_index()
+		"""
+		Função para retornar o DataFrame com os orácuos para cada grupo que seria
+		formado com as variáveis de configuração (que foram armazenadas, pela 
+		função fit, no campo suggestion_names do obejto) e as variáveis do usuário
+		(que foram armazenadas no campo user_names), cosiderando a variável alvo
+		do modelo auxiliar usado para escolher a melhor sugestçao de configuração,
+		já que o oráculo é baseado na mediana desta variável alvo para todas as
+		repetições de um mesmo teste definido por uma das possíveis combinações dos
+		valores dessas variáveis (dados nos campos suggestion_params e
+		user_params).
+
+		Parâmetros:
+			verbose (bool): Habilita/desabilita as informações de verbosidade.                   
+
+		Retorna:
+			DataFrame: Se não ocorrerem erros, retorna uma referência para um objeto
+			DataFrame com o oráculo para cada combinação dos possíveis valores para
+			os parâmetros do usuário definidos pelo campo user_params do objeto. Se
+			algum erro ocorrer, gera uma exceção do Python.
+		"""
+
+	  # Verifica se o fit foi feito, ou seja, se a função fit foi chamada, pois
+		# apesar de o oráculo não depender do fit, os campos usados do objeto
+		# somente esterão definidos depois do fit.
+		if self.model is None:
+			raise ValueError("O modelo ainda não foi treinado!")
+
+		# Lista auxiliar com todas os nomes das variáveis de sugestão (que estão na
+		# lista do campo suggestion_names do objeto) e de uruário (que estão no
+		# campo user_names do usuário, porque são estas variáveis que definem os
+		# possíveis testes diferentes).
+		group_cols = self.suggestion_names + self.user_names
+
+		# Cria o DataFrame auxiliar para calcular o oráculo com as medianas, de
+		# todos as repetições, para cada possível combinação de valores das
+		# varíaveis de aplicação e do usuário, cujos nomes estão na lista
+		# group_cols.
+
+		df_aux = (
+			self.dataset.groupby(group_cols)[self.predicted_name]
+			.median()
+			.reset_index()
+		)
+
+		# Se a verbosidade estiver habilitada, imprime o DataFrame df_aux criado
+		# anteriormente com as medianas.
 		if verbose:
-			print(f"➡️  Medianas da variável {self.predicted_name} para todas as repetições de cada combinação dos valores das variáveis {self.suggestion_names+self.user_names}:")
-			print("\n", df_aux.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
-		df_oracle = df_aux.groupby(self.user_names).apply(lambda x: x[x[self.predicted_name] == x[self.predicted_name].min()], include_groups=False)
+			print("➡️  Medianas da variável {self.predicted_name} para todas as "
+				    "repetições de cada combinação dos valores das variáveis "
+						f"{self.suggestion_names+self.user_names}:")
+			print("\n", df_aux.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
+				    sep="")
+
+		# Cria o DataFarme do oráculo, em que os índices inicialmente serão
+		# compostos, sendo definidos por possíveis valores das variáveis de
+		# usuário definidas no campo user_names do objeto, e um valor que
+		# define a ??? e que será descartado, pois não é uma das variáveis
+		# do usuário.
+		df_oracle = df_aux.groupby(self.user_names).apply(
+				lambda x: x[
+						x[self.predicted_name] == x[self.predicted_name].min()
+				],
+				include_groups=False,
+		)
+
+		# Remove o último nível do índice, pois não está associado aos
+		# valores de uma das variáveis do usuário, e depois usa a função
+		# reset_index do Pandas, para tornar os índices, que são os valores
+		# das variáveis do usuário, em colunas, e criar um índice sequencial
+		# para o DataFrame, para uma melhor organização.
 		df_oracle = df_oracle.droplevel(level=-1).reset_index()
+
+		# Se a verbosidade estiver habilitada, imprime o DataFrame com os
+		# oráculos.
+		# TODO: Será que esta impressão é necessário? Não sei mais se é
+		# logico imprimir o retorno da função que pode ser impresso pelo
+		# programa que chamou a função get_oracle do objeto, como faz o
+		# script de treinamento.
 		if verbose:
 			print("➡️  Dataframe do oráculo:")
-			print("\n", df_oracle.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
+			print("\n", df_oracle.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
+				    sep="")
 
+		# Retorna uma referÊncia para o DataFrame criado com as informações
+		# dos oráculos.
 		return df_oracle
 	
 	def get_importances(self, verbose=True):
+		"""
+		"""
 		if self.model is None:
 			raise ValueError("The model hasn't been trained yet!")
 		
@@ -1779,7 +2013,7 @@ class SuggestionsPredictor:
 		return importances_df
 		    	
 	def predict_suggestions_data(self, user_applicaion_params, custom_suggestions_params=None, verbose=False):
-	    # Verifica se o fit foi feito
+	  # Verifica se o fit foi feito
 		if self.model is None:
 			raise ValueError("The model hasn't been trained yet!")
 	    	
