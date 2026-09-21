@@ -1896,42 +1896,46 @@ class SuggestionsPredictor:
 		
 	def get_oracle(self, verbose=False):
 		"""
-		Função para retornar o DataFrame com os orácuos para cada grupo que seria
-		formado com as variáveis de configuração (que foram armazenadas, pela 
-		função fit, no campo suggestion_names do obejto) e as variáveis do usuário
-		(que foram armazenadas no campo user_names), cosiderando a variável alvo
-		do modelo auxiliar usado para escolher a melhor sugestçao de configuração,
-		já que o oráculo é baseado na mediana desta variável alvo para todas as
-		repetições de um mesmo teste definido por uma das possíveis combinações dos
-		valores dessas variáveis (dados nos campos suggestion_params e
-		user_params).
+		Função para retornar o DataFrame com os oráculos para cada grupo
+		que seria formado com as variáveis de configuração (que foram
+		armazenadas, pela função fit, no campo suggestion_names do obejto) e
+		as variáveis do usuário (que foram armazenadas no campo user_names),
+		cosiderando a variável alvo do modelo auxiliar usado para escolher a
+		melhor sugestçao de configuração, já que o oráculo é baseado na
+		mediana desta variável alvo para todas as repetições de um mesmo
+		teste definido por uma das possíveis combinações dos valores dessas
+		variáveis (dados nos campos suggestion_params e user_params). A
+		função fit precisa ter sido chamada, pois a função usa os campos
+		suggestion_names e user_names do objeto para gerar o DataFrame com
+		os oráculos.
 
 		Parâmetros:
 			verbose (bool): Habilita/desabilita as informações de verbosidade.                   
 
 		Retorna:
-			DataFrame: Se não ocorrerem erros, retorna uma referência para um objeto
-			DataFrame com o oráculo para cada combinação dos possíveis valores para
-			os parâmetros do usuário definidos pelo campo user_params do objeto. Se
-			algum erro ocorrer, gera uma exceção do Python.
+			DataFrame: Se não ocorrerem erros, retorna uma referência para um
+								 objeto DataFrame com o oráculo para cada combinação dos
+								 possíveis valores para os parâmetros do usuário
+								 definidos pelo campo user_params do objeto. Se algum
+								 erro ocorrer, gera uma exceção do Python.
 		"""
 
-	  # Verifica se o fit foi feito, ou seja, se a função fit foi chamada, pois
-		# apesar de o oráculo não depender do fit, os campos usados do objeto
-		# somente esterão definidos depois do fit.
+	  # Verifica se o fit foi feito, ou seja, se a função fit foi chamada,
+		# pois apesar de o oráculo não depender do fit, os campos usados do
+		# objeto somente esterão definidos depois do fit.
 		if self.model is None:
 			raise ValueError("O modelo ainda não foi treinado!")
 
-		# Lista auxiliar com todas os nomes das variáveis de sugestão (que estão na
-		# lista do campo suggestion_names do objeto) e de uruário (que estão no
-		# campo user_names do usuário, porque são estas variáveis que definem os
-		# possíveis testes diferentes).
+		# Lista auxiliar com todas os nomes das variáveis de sugestão (que
+		# estão na lista do campo suggestion_names do objeto) e de uruário (
+		# que estão no campo user_names do usuário, porque são estas
+		# variáveis que definem os possíveis testes diferentes).
 		group_cols = self.suggestion_names + self.user_names
 
-		# Cria o DataFrame auxiliar para calcular o oráculo com as medianas, de
-		# todos as repetições, para cada possível combinação de valores das
-		# varíaveis de aplicação e do usuário, cujos nomes estão na lista
-		# group_cols.
+		# Cria o DataFrame auxiliar para calcular o oráculo com as medianas,
+		# de todos as repetições, para cada possível combinação de valores
+		# das varíaveis de aplicação e do usuário, cujos nomes estão na
+		# lista group_cols.
 
 		df_aux = (
 			self.dataset.groupby(group_cols)[self.predicted_name]
@@ -1939,8 +1943,8 @@ class SuggestionsPredictor:
 			.reset_index()
 		)
 
-		# Se a verbosidade estiver habilitada, imprime o DataFrame df_aux criado
-		# anteriormente com as medianas.
+		# Se a verbosidade estiver habilitada, imprime o DataFrame df_aux
+		# criado anteriormente com as medianas.
 		if verbose:
 			print("➡️  Medianas da variável {self.predicted_name} para todas as "
 				    "repetições de cada combinação dos valores das variáveis "
@@ -1984,32 +1988,91 @@ class SuggestionsPredictor:
 	
 	def get_importances(self, verbose=True):
 		"""
+		Função para retornar o DataFrame com as importâncias do modelo 
+		treinado com a variável alvo usada para auxliar na escolha da melhor
+		sugestão de configuração, se o modelo escolhido definir importâncias
+		para cada característica usada para treinar o modelo. As
+		características são, no modelo auxiliar, as variáveis de
+		configuração e as variáveis da aplicação. A função fit precisa ter
+		sido chamada, pois as importâncias somente são geradas, quando 
+		definidas, após o modelo ser treinado,
+
+		Parâmetros:
+			verbose (bool): Habilita/desabilita as informações de verbosidade.                   
+
+		Retorna:
+			DataFrame | None: Se não ocorrerem erros, retorna uma referência
+			                  para um objeto DataFrame com as importâncias de
+												cada uma das características ao treinar o modelo,
+												ou seja, as importânias das variáveis de
+												configuração e das variáveis da aplicação, se o
+												modelo calcula as importâncias, e None se o
+												modelo não calcula as importâncias. Se algum
+												erro ocorrer, gera uma exceção do Python.
 		"""
+
+	  # Verifica se o fit foi feito, ou seja, se a função fit foi chamada,
+		# pois apesar de o oráculo não depender do fit, os campos usados do
+		# objeto somente esterão definidos depois do fit.
 		if self.model is None:
-			raise ValueError("The model hasn't been trained yet!")
-		
+			raise ValueError("O modelo ainda não foi treinado!")
+
+		# Verifica se o objeto da classe do modelo tem o campo
+		# feature_importances_ no qual são definidas as importâncias das
+		# características (variáveis de configuração e da aplicação) usadas
+		# ao treinar o modelo que auxilia na escolha da melhor sugestão de
+		# configuração.
 		if hasattr(self.model, "feature_importances_"):
+			# Obtém o vetor com as importâncias de cada característica, na
+			# ordem em que foram considerdas, ou seja, a ordem definida pelas
+			# colunas do DataFrame X usado ao treinar o modelo
 			importances = getattr(self.model, "feature_importances_")
+			# Verifica se o ojeto da classe do modelo tem o campo
+			# feature_names_in_ com a ordem em que as características foram 
+			# consideradas, ou seja, a ordem definida pelas colunas do
+			# DataFrame X usado ao treinar o modelo.
 			if hasattr(self.model, "feature_names_in_"):
+				# Se existir o campo, usa a ordem dada nele, sendo que é
+				# necessário converter o campo para uma lista.
 				importances_names = getattr(self.model, "feature_names_in_").tolist()
 			else:
-				importances_names = self.suggestion_names
+				# se o campo não existir, usa a ordem definida pelas colunas do
+				# campo X usado ao treinar o modelo.
+				importances_names = list(self.X.columns)
 
+			# Cria um dicionário auxiliar para a criação do DataFrame final.
+			# A chave 'nome' armazena os nomes das características na ordem
+			# definida pelas colunas do DataFrame X usado ao treinar o modelo,
+			# e a chave 'values' que armazena as importâncias das
+			# características, também na mesma ordem das colunas de X.
 			importances_dict = {
 				'names': importances_names,
 				'values': importances
 			}
+
+			# Cria o DataFrame com as importâncias a partir do dicionário
+			# criado. Ele terá duas colunas, 'names' com os nomes das
+			# importâncias, e 'values' com os valores das importâncias.
 			importances_df = pd.DataFrame(importances_dict)	
 
+			# Se a verbosidade estiver habilitada, imprime o dicionário
+			# auxiliar criado no qual a chave 'names' tem os nomes das
+			# características e a chave 'values' tem os valores das
+			# importâncias e também o DataFrame final com as importâncias
+			# gerado a partir deste dicionário.
 			if verbose:
 				print(f"➡️  Diciońario com as importâncias: {importances_dict}")		
 				print("➡️  Dataframe das importâncias")
-				print("\n", importances_df.to_markdown(tablefmt="grid", floatfmt=".2f"))
+				print("\n", importances_df.to_markdown(tablefmt="grid", 
+																					 		 floatfmt=".2f"))
 		else:		
+			# Se o objeto da classe do modelo não possuir um campo
 			if verbose:
 				print("➡️  O modelo usado não define as importâncias das variáveis!")		
 			importances_df = None
-		
+
+		# Retorna o DataFrame criado com as características e suas
+		# importâncias.
 		return importances_df
 		    	
 	def predict_suggestions_data(self, user_applicaion_params, custom_suggestions_params=None, verbose=False):
