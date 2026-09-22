@@ -1667,9 +1667,10 @@ class SuggestionsPredictor:
 						 Python.
 		"""
 
-		# Verifica se data é um DataFrame do Pandas.
+		# Verifica se data, com o conjunto de dados com dos dados usados ao
+		# treinar os modelos, é um DataFrame do Pandas.
 		if not isinstance(data, pd.DataFrame):	
-			raise ValueError("Conjunto de dados com os dados do teste em um formato"
+			raise ValueError("O conjunto de dados com os dados do teste tem um tipo "
 											 f"inválido {type(data)}! Deveria ser uma referência"
 											 "para um objeto DataFrame do Pandas.")
 		
@@ -2321,13 +2322,14 @@ class SuggestionsPredictor:
 																		 aplicação definidos pelo usuário do 
  																		 script de otimização, sendo as
 																		 variáveis as usadas ao treinar o
-																		 modelo. Estes valores serão fixos
-																		 ao fazer a predição para o conjunto
-																		 de possíveis configurações, pois
-																		 estamostentando escolher a melhor
-																		 sugestão de configuração para a
-																		 execução da aplicação do usuário
-																		 deifnida.
+																		 modelo junto com as variáveis de
+																		 configuração. Estes valores serão
+																		 fixos ao fazer a predição para o
+																		 conjunto de possíveis
+																		 configurações, pois estamos
+																		 tentando escolher a melhor sugestão
+																		 de configuração para a execução da
+																		 aplicação do usuário.
 			custom_suggestions_params (dict): Parâmetro opcional que, se for
 																				passado conterá, para cada
 																				componente de uma possível
@@ -2366,8 +2368,10 @@ class SuggestionsPredictor:
 						auxiliar; e, se o modelo para estimar o tempo de execução da 
 						melhor sugestão de configuração foi treinado, ou seja, a 
 						variável alvo do tempo de execução foi definida, "Time" com
-						o tempo predito para a melhor sugestão de configuração. Se
-						algum erro ocorrer, gera uma exceção do Python.
+						o tempo predito para a melhor sugestão de configuração, que
+						dependerá desta sugestão e dos parâmetros da aplicação
+						definidos pelo usuário. Se algum erro ocorrer, gera uma
+						exceção do Python.
 		"""
 
 		# Faz a predição dos valores para todas as configurações da base
@@ -2414,57 +2418,277 @@ class SuggestionsPredictor:
 		# função.
 		y_suggestion = X.loc[y_pred_posmin,self.suggestion_names].to_dict()
 		
-    # Retorna a sugestão com o manor valor predito para a variável
-		# predita pelo modelo.
+    # Converte as predições da variável alvo do modelo usado para
+		# auxiliar a escolha da melhor sugestão de configuração em uma 
+		# Series do Pandas para facilitar o acesso aos valores preditos e
+		# manter consistência com o X ser um DataFrame do Pandas.
 		y_pred_s = pd.Series(y_pred)
 
+		# Define o nome da série como o nome da variável alvo do modelo
+		# auxiliar.
+		y_pred_s.name = self.predicted_name
+
+		# Cria o dicionário com as informações referentes a melhor sugestão
+		# de configuração escolhidao ao selecionar a configuração associada
+		# ao menor valor predito pelo modelo auxliar para a variável alvo.
+		# Inicialmente, como vimos antes, o dicionário terá as segunites
+		# chaves:
 		# 
-		y_pred_s.name = self.predicted_name		
-		info_suggestion = {"Suggestion": y_suggestion, "Score": y_pred_min, "X": X, "y_pred": y_pred_s, "y_pred_minimum": y_pred_min, "y_pred_minimum_position": y_pred_posmin}
+		# "Suggestion": Referẽncia para um dicionário com a melhor sugestão
+		# de configuração. Cada chave do dicionário é uma compomente desta
+		# sugestão, ou seja, uma das variáveis de configuração, e o valor é
+		# o valor desta compomente nesta melhor sugestão.
+		# 
+		# "Score": Pontuação dada a melhor sugestão de configuração. É
+		# atualmente o valor predito da variável alvo predido para a melhor
+		# sugestão de configuração, ou seja, o menor valor predito dentre os
+		# preditos para todas as configurações consideradas e armazenadas no
+		# DataFrame X.
+		#
+		# "X": DataFrame com todas as configurações consideradas ao escolher
+		# a melhor sugestão de configuração. AS colunas do DataFrame são as
+		# compomentes ou variáveis de configuração e, para cada linha, que
+		# representa uma possível configuração, os valores de cada
+		# componente desta configuração.
+		#
+		# "y_pred": Series com os valores preditos pelo modelo auxiliar para
+		# a variável alvo para cada configuração em X, sendo que o valor de
+		# uma das linhas em y_pred é o valor predito para configuração
+		# definida pela linha correspondente em X.
+		# 
+		# "y_pred_minimum": Menor valor predito pelo modelo auxiliar para a
+		# variável alvo, ou seja, o menor valor de y_pred associado a melhor
+		# sugestão de configuração.
+		#
+		# "y_pred_minimum_position": Posição na Series y_pred do menor valor
+		# predito para a variável alvo pelo modelp auxiliar, ou seja, a 
+		# posição da linha da melhor configuração, que será a sugerida, em 
+		# X, como vimos antes quando criamos o dicionário y_suggestion. 
+		info_suggestion = {"Suggestion": y_suggestion, 
+										   "Score": y_pred_min, "X": X, "y_pred": y_pred_s, 
+											 "y_pred_minimum": y_pred_min, 
+											 "y_pred_minimum_position": y_pred_posmin}
 
-		# Verifica se podemos predizer o tempo de execução e/ou o consumo de memória
+		# Verifica se o modelo para predizer o tempo de execução foi
+		# treinado, o que somente ocorrerá se foi definida uma variável alvo
+		# para ser predita por este modelo que é uma estimativa do tempo de
+		# exdcução. Isso ocorrerá somente se o campo model_time do objeto
+		# for diferente de None, tendo uma referência para o objeto deste
+		# modelo inicilizada e treinada.		
 		if self.model_time is not None:
+			# Cria um dicionário com o conjunto de dados para o qual iremos
+			# predizer (ou estimar) o tempo de execução. Como desejamos
+			# somente predizer o tempo da melhor sugestão de configuração,
+			# O dicionário terá as chaves das componentes (variáveis de
+			# configuração) da melhor sugestão de configuração e os parâmetros
+			# da aplicação definidos pelo usuário.
 			X_dict_aux = y_suggestion | user_applicaion_params
-			X_aux = pd.DataFrame(X_dict_aux, index=[0])
-			if verbose:
-				print(f"➡️  X auxiliar usado ao predizer a o tempo da melhor sugestão {y_suggestion}, using {user_applicaion_params}:")
-				print("\n", X_aux.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
 
-      # Fazendo a predição do tempo.
+			# Cria o DataFrame X_aux com somente uma linha, com os volres das
+			# variáveis de configuração (componentes) da melhor sugestão de
+			# configuração e das variáveis da aplicação definidos pelo
+			# usuário.
+			X_aux = pd.DataFrame(X_dict_aux, index=[0])
+
+			# Se a verbosidade estiver habilitada, imprime a informação sobre
+			# a melhor configuração de sugestão e o DataFrame X_aux criado
+			# anteriormente.
+			if verbose:
+				print("➡️  X auxiliar usado ao predizer a o tempo da melhor sugestão "
+					    f"de configuração {y_suggestion}, usando os parâmetros da "
+							f"aplicação {user_applicaion_params}:")
+				print("\n", X_aux.to_markdown(tablefmt="grid", floatfmt=".2f"), 
+					    "\n", sep="")
+
+      # Agora que temos um DataFrame com a melhor sugestão de
+			# configuração e as variáveis do usuário, usamos o modelo para
+			# predizer o tempo de execução, armazenado no campo model_time do
+			# objeto, para predizer (estimar) o tempo de execução da melhor
+			# sugestão de configuração, considerando também os parâmetros de
+			# aplicação deifnidos pelo usuário, já que o tempo de execução
+			# depende da configuração e dos parâmetros da aplicação.
 			y_time = self.model_time.predict(X_aux)
 
-      # Obtendo o tempo predito.
+      # Obtendo o tempo de execução que foi predito, que será armazenado
+			# na única posição, a 0, porque X_aux tem somente uma linha
+			# associada a melhor sugestão de configuração, e armazena este 
+			# tempo predito na chave "Time" do diconário info_suggestion
+			# criado anteriormente.  
 			info_suggestion["Time"] = y_time[0]
-			if verbose:	
-				print(f"➡️  Tempo de execução predito para a melhor configuração {y_suggestion}, using {user_applicaion_params}: {y_time[0]}") 
 
+			# Se a verbosidade estiver habilitada, imprime a informação sobre
+			# a melhor configuração de sugestão e tempo de execuçlão predito
+			# para esta configuração e os parâmetros da aplicação definidos
+			# pelo usuário. 
+			if verbose:	
+				print("➡️  Tempo de execução predito para a melhor sugestão de "
+					    f"configuração {y_suggestion}, usando os parâmetros da " 
+							f"aplicação {user_applicaion_params}: {y_time[0]}") 
+
+		# Retorna o dicionário info_suggestion criado anterioemente com
+		# todas as informações, como descrevemos anterioemente, referentes
+		# a melhor sugestão de configuração escolhida. 
 		return info_suggestion	                     	
 
 	def get_suggestions(self, user_applications_params_df, 
 											custom_suggestions_params=None, verbose=False):
 		"""
-		Função para retornar a melhor sugestão de configuração para os
-		parâmetros da aplicação definidos pelo usuário do script de
-		otimização, pa
-		
+		Função para retornar para os vários valores definidos pelo usuário 
+		para os parâmetros da aplicação defidos no DataFrame
+		user_applications_params_df, as melhores sugestões de configuração
+		para cada uma dessas combinações de parâmetros, usando a função
+		get_suggestion para cada combinação de parâmetros do usuário dadas
+		em user_applications_params_df:
+
+		Parâmetros:
+			user_applicaion_params_df (DataFrame): DataFrame em que cada linha
+																						 define possíveis valores
+																						 para os parâmetros de
+																						 aplicação definidos pelo
+																						 usuário do script de 
+																						 otimização, sendo as
+																		 				 variáveis as usadas ao
+																						 treinar junto com as 
+																						 variáveis de configuração.
+																						 Para cada linha do 
+																						 DataFrame, será definido um
+																						 dicionário que será usado
+																						 na função get_suggestion
+																						 para descobrir a melhor
+																						 sugestão de configuração 
+																						 para as variáveis de
+																						 aplicação definidas por
+																						 esta linha do DataFrame.
+			custom_suggestions_params (dict): Parâmetro opcional que, se for
+																				passado conterá, para cada
+																				componente de uma possível
+																				configuração, os valores para
+																				esse componente. É um dicionário
+																				em que a chave é o componente e
+																				o valor assiciado à chave é a
+																				lista com os possíveis valores
+																				para o componente. As
+																				configurações consideradas serão
+																				as obtidas por todas as
+																				possíveis combinações dos
+																				valores dos componentes. Se o 
+																				parâmetro não for passado, serão
+																				usadas todas as configurações
+																				usadas ao treinar o modelo
+																				auxiliar para escolher a melhor
+																				sugestão de configuração.
+			verbose (bool): Habilita/desabilita as informações de verbosidade.                   
+
+		Retorna:
+			dict: Se não ocorrerem erros, retorna uma lista na qual, para cada
+						combinação dos valores das variáveis de aplicação definidos
+						em uma das linhas de user_applicaion_params_df, retorna na
+						entrada corresponde na lista o dicionário com as informações
+						da melhor sugestão de configuração para esta combinação
+						retornadas pela função get_suggestion. Se algum erro
+						ocorrer, gera uma exceção do Python.
 		"""
-		if not isinstance(user_applications_params_df, pd.DataFrame):
-			raise ValueError("Invalid input user_params_df provided, not a Pandas DataFrame.")
-		if not pd.Index(self.application_names).isin(user_applications_params_df.columns).all():
-			raise KeyError(f"Invalid input user_params_df provided, not all {self.application_names} user params exists in user predictions dataset.")
-			
+
+		# Verifica se user_applications_params_df, com os valores das 
+		# variáveis de aplicação para os quais desejamos descobrir as 
+		# melhores sugestões de configuração, é um DataFrame do Pandas
+		if not isinstance(user_applications_params_df, pd.DataFrame):	
+			raise ValueError("o conjunto de dados com os valores das variáveis da "
+											 "aplicação tem um tipo inválido "
+											 f"{type(user_applications_params_df)}! Deveria ser uma "
+											 "referência para um objeto DataFrame do Pandas.")
+
+		# Verifica se cada nome em application_names é o nome de uma das 
+		# variáveis da aplicação definidas pelas colunas em data.
+		if not (pd.Index(self.application_names)
+					.isin(user_applications_params_df.columns).all()):
+			raise KeyError("Nem todas os nomes de variáveis dadas na lista de "
+										"variáveis de aplicação "
+										f"{','.join(self.application_names)} é uma das variáveis "
+										f"{', '.join(user_applications_params_df.columns)} do "
+										"conjunto de dados com os parâmetros da aplicação!")
+
+		# Inicializa a lista com as sugestões de configuração para todos os
+		# parâmetros da aplicação cujos valores foram definidos em 
+		# user_applications_params_df.			
 		info_suggestions = []	
 
+		# Para cada combinação de valores das variáveis de configuração 
+		# definidos pelo usuário, vamos usar a função get_suggestion para
+		# escolher a nelhor sugestão de configuração e retornar o dicionário
+		# com as informações referentes a esta melhor sugestão. Isso será
+		# feito percorrendo cada linha do DataFrame
+		# user_applications_params_df.
 		for idx in user_applications_params_df.index:
+			# Vamos descobrir a melhor sugestão de configuração e retornar as
+			# suas informações para os valores dos parâmetros da aplicação 
+			# definidos na linha do DataFrame user_applications_params_df 
+			# indexada pelo índice idx. 
+
+			# Primeiramente, convertemos e armazenamos em user_params, a linha
+			# para esses valores em um dicionário adequado para ser usado com
+			# a função get_suggestion, em que cada chave é um das variáveis da
+			# aplicação definidos pelo usuário, e o valor associado à chave o
+			# valor desta variável.
 			user_params = user_applications_params_df.loc[idx].to_dict()
+
+			# Se a verbosidade estiver habilitada, imprime as variáveis da
+			# aplicação indexadas no DataFrane user_applications_params_df 
+			# pelo índice idx.
 			if verbose:
-				print(f"➡️  Definindo a sugestão para os parâmetros {user_params} do usuário")
-			info_suggestion = self.get_suggestion(user_params, custom_suggestions_params, verbose)
+				print("➡️  Descobrindo a melhor sugestão de configuração para "
+					    f"as vbariáveis {user_params} da aplicação definidas " 
+							"pelo usuário")
+
+			# Usa a função get_suggestion para o dicionário com a melhor 
+			# sugestão de configuração e as suas informações relevantes para
+			# os parâmetros da aplicação definidos em user_params
+			info_suggestion = self.get_suggestion(user_params, 
+																				 		custom_suggestions_params,
+																						verbose)
+
+      # Adiciona as informações sobre a melhor sugestão de configuração
+			# (retornadas em um dicionário) para as variáveis da aplicação
+			# deifnidas em user_names na lista info_suggestions. Devido ao 
+			# uso da função append, a ordem das informações na lista
+			# respeitará a ordem dada no DataFrame 
+			# user_applications_params_df.
 			info_suggestions.append(info_suggestion)
 
+		# Depois de processar todas os valores das variáveis de aplicação
+		# dados do DataFrame user_applications_params_df, retorna a lista
+		# com as informações sobre as melhores sugestões de configuração
+		# para cada combinação dos valores das variáveis da aplicação dadas
+		# em user_applications_params_df.
 		return info_suggestions		
 		
 	def predict(self, X):
+		"""
+		Função para predizer os valores das variáveis alvo pelo modelo
+		auxiliar usado para escolher a melhor sugestão de configuração,
+		para o X passado como parâmetro, com as linhas tendo valores para
+		todas as características, ou seja, as variáveis de configuração de
+		aplicação, usadas para treinar o modelo auxiliar. As predições são
+		feitas usando a função predict do modelo auxiliar.
+		TODO: Esta função somente existe para a classe ser compatível e ser
+		usada pela scikit-learn, mas isso permitiria somente usar o modelo
+		auxiliar para a predição. Não sei se devemos manter ou remover esta
+		função. Por enquanto, enquanto usamos o valor da variável alvo como
+		a pontuação da melhor sugestão de configuração, podemos ver como
+		obter as pontuações para valores definidos para as variáveis de
+		configuração e do usuário.
+
+		Parâmetros:
+			X (DataFrame): X com os possíveis valores para cada variável de
+			configuração ou da aplicação, sendo as linhas os possíveis valores
+			e as colunas as variáveis.
+
+		Retorna:
+			array_like[float]: Vetor com os valores preditos pelo modelo
+												 auxiliar para cada combinação de valores das
+												 variáveis de configuiração e de aplicação dados
+												 em X.
+		"""
 	    # Verifica se o fit foi feito
 		if self.model is None:
 			raise ValueError("The model hasn't been trained yet!")
@@ -2472,6 +2696,36 @@ class SuggestionsPredictor:
 		return self.model.predict(X)			
 
 	def score(self, X, y):
+		"""
+		Função para calcular a pontuação para avaliar a qualidade dos 
+		valores das variáveis alvo preditos pelo modelo auxiliar usado para
+		escolher a melhor sugestão de configuração, para o X passado como
+		parâmetro, com as linhas tendo valores para todas as 
+		características, ou seja, as variáveis de configuração de aplicação, 
+		usadas para treinar o modelo auxiliar. Usei a função score do modelo
+		auxiliar usado para avaliar a qualidade das predições das variáveis
+		alvo para cada combinação de valores das variáveis de configuração
+		e de aplicação definidos em X, em relação aos valores reais desta
+		variável dados em y com os valores reais para a variável alvo para
+		cada combinação dada em X.
+		TODO: Esta função somente existe para a classe ser compatível e ser
+		usada pela scikit-learn, mas isso permitiria somente usar o modelo
+		auxiliar para a predição. Não sei se devemos manter ou remover esta
+		função. 
+
+		Parâmetros:
+			X (DataFrame): X com os possíveis valores para cada variável de
+			configuração ou da aplicação, sendo as linhas os possíveis valores
+			e as colunas as variáveis.
+			y (Series): y com o valores reais, para cada combinação dada em X,
+									das variáveis alvo preditas pelo modelo auxiliar.
+
+		Retorna:
+			float: A pontuação, de acordo com a fução score do modelo auxiliar
+						 das variáveis alvo preditas para cada combinação em X, 
+						 considerando os valore reais para a variável alvo dados em
+						 y e os valores preditos pelo modelo.
+		"""
 	    # Verifica se o fit foi feito
 		if self.model is None:
 			raise ValueError("The model hasn't been trained yet!")
