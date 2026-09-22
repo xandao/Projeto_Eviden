@@ -1993,9 +1993,7 @@ class SuggestionsPredictor:
 		sugestão de configuração, se o modelo escolhido definir importâncias
 		para cada característica usada para treinar o modelo. As
 		características são, no modelo auxiliar, as variáveis de
-		configuração e as variáveis da aplicação. A função fit precisa ter
-		sido chamada, pois as importâncias somente são geradas, quando 
-		definidas, após o modelo ser treinado,
+		configuração e as variáveis da aplicação. 
 
 		Parâmetros:
 			verbose (bool): Habilita/desabilita as informações de verbosidade.                   
@@ -2012,8 +2010,8 @@ class SuggestionsPredictor:
 		"""
 
 	  # Verifica se o fit foi feito, ou seja, se a função fit foi chamada,
-		# pois apesar de o oráculo não depender do fit, os campos usados do
-		# objeto somente esterão definidos depois do fit.
+		# pois as importâncias somente são geradas, quando definidas, após o 
+		# modelo ser treinado.
 		if self.model is None:
 			raise ValueError("O modelo ainda não foi treinado!")
 
@@ -2075,55 +2073,352 @@ class SuggestionsPredictor:
 		# importâncias.
 		return importances_df
 		    	
-	def predict_suggestions_data(self, user_applicaion_params, custom_suggestions_params=None, verbose=False):
-	  # Verifica se o fit foi feito
+	def _predict_suggestions_data(self, user_applicaion_params, 
+															  custom_suggestions_params=None, verbose=False):
+		"""
+		Função auxiliar para construir um DataFrame X com todas as possíveis
+		configurações para executar uma apluiação. Se o parâmetro opcional 
+		custom_suggestions_params com um dicionário com as configurações
+		customizadas do usuário não for passado, X será composto por todas
+		as configurações avaliadas durante o treinamento do modelo que preve
+		a variável alvo usada para escolher a sugestão de configuração para
+		a aplicação do usuário do script de otimização. Se o dicionário for
+		passado, ele terá uma chave para cada componente de uma das
+		configurações, e o valor associado ao componente será uma lista com
+		os possíveis valores para este compomente, definidos pelo usuário.
+		Neste caso, todas as combinações dos valores de todos os componentes
+		serão usadas para definir quais configurações serão avaliadas. Esta
+		função é auxiliar e somente faz a predição da variável alvo usando o
+		modelo auxiliar para todas as configurações (usadas no treinamento
+		ou customizadas) e não foi projetada para ser usada externamente ao
+		criar um objeto da classe.
+
+		TODO: Quando os usuários passam as configurações costomizadas em
+		custom_suggestions_params, podem existir combinações que não seriam
+		válidas, mas desconsiderei porque, como definir as configurações
+		customizadas seria atilizado por usuários avançados, considerei que
+		o usuário não faria combinações inválidas. Podemos fazer uma regra
+		simples como, por exemplo, quando a configuração é composta por
+		nós, processos por nó e threads por processo, que o número de 
+		threads multiplaco pelo número de procesos não pode ser maior do que
+		o maior número de threads passado para a função (os valores já são
+		ajustados considerando os limites de todas as partições que podem
+		ser usadas). Acredito que isso possa ser feito com um campo especial
+		no dicionário custom_suggestions_params, por exemplo, uma chave com
+		o nome 'rules'.
+
+		Parâmetros:
+			user_applicaion_params (dict): Dicionário com os parâmetros da 
+																		 aplicação definidos pelo usuário do 
+ 																		 script de otimização, sendo as
+																		 variáveis as usadas ao treinar o
+																		 modelo. Estes valores serão fixos
+																		 ao fazer a predição para o conjunto
+																		 de possíveis configurações, pois
+																		 estamostentando escolher a melhor
+																		 sugestão de configuração para a
+																		 execução da aplicação do usuário
+																		 deifnida.
+			custom_suggestions_params (dict): Parâmetro opcional que, se for
+																				passado conterá, para cada
+																				componente de uma possível
+																				configuração, os valores para
+																				esse componente. É um dicionário
+																				em que a chave é o componente e
+																				o valor assiciado à chave é a
+																				lista com os possíveis valores
+																				para o componente. As
+																				configurações consideradas serão
+																				as obtidas por todas as
+																				possíveis combinações dos
+																				valores dos componentes. Se o 
+																				parâmetro não for passado, serão
+																				usadas todas as configurações
+																				usadas ao treinar o modelo
+																				auxiliar para escolher a melhor
+																				sugestão de configuração.
+			verbose (bool): Habilita/desabilita as informações de verbosidade.                   
+
+		Retorna:
+			tuple: Se não ocorrerem erros, retorna uma tupla em que o primeiro
+						 componente é o y predito pelo modelo auxiliar para cada
+						 configuração e o segundo componente e o DataFrame com
+						 todas as configurações consideradas. Se algum erro ocorrer,
+						 gera uma exceção do Python.
+		"""
+
+	  # Verifica se o fit foi feito, ou seja, se a função fit foi chamada,
+		# pois apesar de o oráculo não depender do fit, os campos usados do
+		# objeto somente esterão definidos depois do fit.
 		if self.model is None:
-			raise ValueError("The model hasn't been trained yet!")
-	    	
-		if sorted(user_applicaion_params.keys()) != sorted(self.application_params.keys()):
-			raise KeyError(f"Invalid application {user_applicaion_params.keys()} param names! Must be {self.application_params.keys()}")
-	  			
+			raise ValueError("O modelo ainda não foi treinado!")
+
+		# Cria uma variável auxiliar user_applicaion_params com os
+		# parâmetros da aplicação passados pelo usuário, ordenados e
+		# convertidos para uma lista.
+		user_applicaion_params = sorted(user_applicaion_params.keys())
+
+		# Cria uma variável auxiliar self_params com os parâmetros da
+		# aplicação usados ao treinar o modelo, ordenados e convertidos
+		# para uma lista.
+		self_params = sorted(self.application_params.keys())
+
+		# Verifica se os parâmetros dd aplicação definodos pelo usuário e 
+		# passados como chaves no dicionário user_applicaion_params são
+		# exatamente os mesmos parâmetros da aplicação usados ao treinar o
+		# modelo (não podem ter parâmetros ausentes, pois as predições das
+		# variáveis alvo precisam usar todos os parâmetros da aplicação). 
+		# Isso será feito usando as variáveis auxiliares criadas, para 
+		# verificar se os parâmetros da aplicação passados pelo usuário são
+		# os mesmos parâmetros usados ao treinar o modelo, e se não forem,
+		# gera uma exceção do tipo KeyError.
+		if (user_applicaion_params != self_params):
+			raise KeyError("Os parâmetros de aplicação "
+									   f"{', '.join(user_applicaion_params)} inválidos! "
+										 f"Deveriam ser os parâmerros {', '.join(self_params)}")
+
+		# Constrói o X usado para fazer a predição da variável alvo do
+		# modelo auxiliar para escolher a melhor sugestão de configuração. 
+		# Se o parâmetro custom_suggestions_params não for passado, o X será
+		# construído com todas as configurações usadas ao treinar o modelo
+		# auxiliar, e se o parâmetro for passado, o X será construído com
+		# todas as combinações dos valores de cada componente da
+		# configuração, que são passados como listas no dicionário
+		# custom_suggestions_params, como cada componente da configuração
+		# sendo uma chave do dicionário.
 		if custom_suggestions_params is None:
-		  # Cria um X usando as opções de configuração usadas para treinar o modelo.
-			X = self.dataset.groupby(self.suggestion_names)[self.predicted_name].median().reset_index().copy().drop(columns=[self.predicted_name])
+		  # Cria um DataFrame X usando as opções de configuração usadas para
+			# treinar o modelo auxiliar, pois não foram passadas as opções de
+			# configuração customizadas pelo usuário. X será criado usando a
+			# função de agrupamento (groupby) do Pandas, que agrupa os dados
+			# do DataFrame, com todas as variáveis de configuração usadas ao
+			# treinar o modelo modelo auxiliar, usando o DataFrame armazenado
+			# no campo dataset do objeto, sendo o cálculo da mediana da
+			# variável alvo feito somente para o agrupamento poder ser feito, 
+			# pois o que queremos é apenas o DataFrame com todas as
+			# configurações usadas ao treinar o modelo auxiliar. Logo, depois
+			# de resetar os índices para tornar eles colunas de X, pois são
+			# os componentes de cada configuração, uma cópia é feita e X terá
+			# o Dataframe final sem a coluna da variável alvo.
+			X = (
+					self.dataset.groupby(self.suggestion_names)[self.predicted_name]
+					.median()
+					.reset_index()
+					.copy()
+					.drop(columns=[self.predicted_name])
+			)
 		else:
-		  # Cria um X usando as opções de configuração passadas como parâmetro
-			suggestions_cobinations = list(itertools.product(*custom_suggestions_params.values()))
-			X = pd.DataFrame(suggestions_cobinations, columns=custom_suggestions_params.keys())
-	
+		  # Cria um X usando as opções de configuração passadas como
+			# parâmetro em custom_suggestions_params, que é um dicionário em
+			# que a chave indica o componente da configuração e o valor
+			# associado à chave é a lista com os possíveis valores para o
+			# componente. Todas as combinações dos valores de todos os
+			# componentes serão usadas para definir quais configurações serão
+			# avaliadas e, consequentemente, o X que será usado para fazer a
+			# predição da variável alvo usando o modelo auxiliar.
+			# TODO: Ver a observção sobre as configurações customizadas do
+			# usuário, que podem gerar combinações inválidas, e se seria
+			# interessante fazer uma regra simples para evitar combinações
+			# inválidas.
+
+			# Cria uma lista com todas as combinações dos valores de todos os
+			# componentes da configuração, que são passados como listas no
+			# dicionário custom_suggestions_params, como cada componente da
+			# configuração sendo uma chave do dicionário. A função product do
+			# módulo itertools do Python é usada para gerar todas as possíveis
+			# combinações dos valores de todos os componentes de uma
+			# configuração. No final da função product, a lista será composta
+			# por cada configuração, sendo cada configuração uma tupla com os
+			# valores de cada componente dessa configuração.
+			suggestions_combinations = list(
+					itertools.product(*custom_suggestions_params.values())
+			)
+
+			# Depois de criada a lista de tuplas suggestions_cobinations, 
+			# que contém todas as configurações, é criado um DataFrame X a
+			# partir dessa lista, em que cada coluna do DataFrame será um
+			# componente da configuração, e o nome de cada coluna será o nome
+			# do componente da configuração, que é a chave do dicionário
+			# custom_suggestions_params, pois já verificamos que todas as
+			# chaves do dicionário são nomes de variáveis de configuração
+			# usadas ao treinar o modelo auxiliar, e na mesma ordem dessas
+			# variaveis no Dataframe armazenado no campo dataset do objeto.
+			X = pd.DataFrame(suggestions_combinations, 
+										   columns=custom_suggestions_params.keys())
+
+		# Uma vez criado o X com todas as possíveis configurações, é
+		# necessário adicionar as colunas com os parâmetros da aplicação
+		# definidos pelo usuário. O loop for a seguir examina cada chave do
+		# dicionário user_applicaion_params, que são os parâmetros da
+		# aplicação definidos pelo usuário, e adiciona uma coluna ao
+		# DataFrame X com o nome do parâmetro da aplicação e o valor
+		# definido pelo usuário deste parâmetro.
 		for param_name in user_applicaion_params.keys():
 			X[param_name] = user_applicaion_params[param_name]
 
-		# Mantém a ordem das colunas do dataframe original,
+		# Reordena as colunas do DataFrame X para que elas fiquem na mesma
+		# ordem das colunas do DataFrame X usado ao treinar o modelo
+		# auxiliar.
 		X = X[self.X.columns]	
    	
+		# Se a verbosidade estiver habilitada, imprime o DataFrame X criado
+		# com todas as possíveis configurações para a aplicação do usuário,
+		# que serão usadas para fazer a predição da variável alvo do modelo
+		# auxiliar.
 		if verbose:
-			print(f"➡️  X usado quando foi predito todos os valores da variável alvo {self.predicted_name} para todas as possíveis sugestões:")	
+			print("➡️  X usado quando foi predito todos os valores da variável "
+				    f"alvo {self.predicted_name} para todas as possíveis sugestões:")	
 			print("\n", X.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
 
-		# Faz a predição para o X_aux.
+		# Faz a predição para todas as possíveis configurações, que estão no
+		# DataFrame X criado anteriormente.
 		y_pred = self.model.predict(X)
 
+		# Se a verbosidade estiver habilitada, imprime o vetor com os
+		# valores preditos da variável alvo do modelo auxiliar para todas as
+		# possíveis configurações, que estão no DataFrame X criado
+		# anteriormente.
 		if verbose:
-			print(f"➡️  y predito da variável alvo {self.predicted_name} para todas as possíveis sugestões:")	
-			print("\n", pd.Series(y_pred).to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
+			print(f"➡️  y predito da variável alvo {self.predicted_name} para todas "
+				    "as possíveis sugestões:")
+			# Cria uma Series do Pandas a partir do vetor y_pred, para
+			# facilitar a impressão do vetor com os valores preditos y_pred,
+			y_pred_series = pd.Series(y_pred)	
+			print("\n", y_pred_series.to_markdown(tablefmt="grid", floatfmt=".2f"), 
+				    "\n", sep="")
 
+		# Retorna uma tupla com o vetor y_pred com os valores preditos da
+		# variável alvo do modelo auxiliar para todas as possíveis
+		# configurações, e o DataFrame X com todas as possíveis
+		# configurações usadas ao fazer as predições em y_pred.
 		return (y_pred, X)
 	
-	def get_suggestion(self, user_applicaion_params, custom_suggestions_params=None, verbose=False):
-		# Faz a predição dos valores para todas as configurações da base usada para o treinamento e os parâmetros da aplicação passados.
-		y_pred, X = self.predict_suggestions_data(user_applicaion_params, custom_suggestions_params, verbose)
+	def get_suggestion(self, user_applicaion_params, 
+										 custom_suggestions_params=None, verbose=False):
+		"""
+		Função para retornar a melhor sugestão de configuração para os
+		parâmetros da aplicação definidos pelo usuário do script de
+		otimização e passados no dicionário user_application_params, 
+		passando os parâmetros da aplicação definidos pelo usuário do script
+		de otimização, e opcionalmente um dicionário com as configurações
+		customizadas do usuário. Se o parâmetro opcional
+		custom_suggestions_params com um dicionário com as configurações 
+		customizadas do usuário não for passado, a melhor sugestão será 
+		escolhida entre todas as configurações usadas ao treinar o modelo 
+		auxiliar que preve a variável alvo usada para escolher esta melhor
+		sugestão de configuração.	Junto com a configuração, também são
+		retornados o DataFrame com todas as configurações consideradas, o 
+		vetor com os valores preditos da variável alvo do modelo auxiliar
+		para todas as configurações consideradas, o menor valor predito da
+		variável alvo do modelo auxiliar, a posição do menor valor predito
+		da variável alvo do modelo auxiliar, e, se o modelo para estimar o
+		tempo de execução da melhor sugestão de configuração foi treinado, 
+		ou seja, a variável alvo do tempo de execução foi definida, o tempo
+		predito para a melhor sugestão de configuração. 
+
+		Parâmetros:
+			user_applicaion_params (dict): Dicionário com os parâmetros da 
+																		 aplicação definidos pelo usuário do 
+ 																		 script de otimização, sendo as
+																		 variáveis as usadas ao treinar o
+																		 modelo. Estes valores serão fixos
+																		 ao fazer a predição para o conjunto
+																		 de possíveis configurações, pois
+																		 estamostentando escolher a melhor
+																		 sugestão de configuração para a
+																		 execução da aplicação do usuário
+																		 deifnida.
+			custom_suggestions_params (dict): Parâmetro opcional que, se for
+																				passado conterá, para cada
+																				componente de uma possível
+																				configuração, os valores para
+																				esse componente. É um dicionário
+																				em que a chave é o componente e
+																				o valor assiciado à chave é a
+																				lista com os possíveis valores
+																				para o componente. As
+																				configurações consideradas serão
+																				as obtidas por todas as
+																				possíveis combinações dos
+																				valores dos componentes. Se o 
+																				parâmetro não for passado, serão
+																				usadas todas as configurações
+																				usadas ao treinar o modelo
+																				auxiliar para escolher a melhor
+																				sugestão de configuração.
+			verbose (bool): Habilita/desabilita as informações de verbosidade.                   
+
+		Retorna:
+			dict: Se não ocorrerem erros, retorna um dicionário com as 
+						seguintes chaves: "Suggestion", sendo o valor da chave um 
+						dicionário com os parâmetros da sugestão, em que cada chave
+						é o nome de um componente (variável de configuração) da 
+						melhor sugestão de configuração e o valor da chave o valor
+						deste compomente; "Score" com a pontuação dada a melhor 
+						sugestão de configuração, que no momento é o menor valor 
+						predito da variável alvo do modelo auxiliar; "X" com o 
+						DataFrame com todas as configurações consideradas; "y_pred"
+						com o vetor com os valores preditos da variável alvo do
+						modelo auxiliar para todas as configurações consideradas em
+						X; "y_pred_minimum" com o menor valor predito da variável 
+						alvo do modelo auxiliar; "y_pred_minimum_position" com a 
+						posição do menor valor predito da variável alvo do modelo 
+						auxiliar; e, se o modelo para estimar o tempo de execução da 
+						melhor sugestão de configuração foi treinado, ou seja, a 
+						variável alvo do tempo de execução foi definida, "Time" com
+						o tempo predito para a melhor sugestão de configuração. Se
+						algum erro ocorrer, gera uma exceção do Python.
+		"""
+
+		# Faz a predição dos valores para todas as configurações da base
+		# usada para o treinamento e os parâmetros da aplicação passados,
+		# usando a função auxiliar _predict_suggestions_data, que retorna
+		# uma tupla com o vetor y_pred com os valores preditos da variável
+		# alvo do modelo auxiliar para todas as configurações e o
+		# DataFrame X com todas as configurações consideradas.
+		y_pred, X = self._predict_suggestions_data(user_applicaion_params, 
+																						   custom_suggestions_params, 
+																							 verbose)
         
-     	# Descobre a posicao do menor valor predito e esse valor, que indicará a posição da configuração predita.
+    # Descobre a posição do menor valor predito que indicará a posição 
+		# da configuração predita, ou seja, a melhor sugestão de
+		# configuração.
 		y_pred_posmin = y_pred.argmin()
+
+		# Também descobre o mebor valor predito da variável alvo do modelo
+		# auxiliar, que será, no momento, também a pontuação da melhor
+		# sugestão de configuração.
 		y_pred_min = y_pred.min()
+
+		# Se a verbosidade estiver habilitada, imprime o menor valor
+		# predito da variável alvo do modelo auxiliar e a posição deste
+		# menor valor no vetor com as predições y_pred.
 		if verbose:
-			print(f"y mínimo predito para os parâmetros da aplicação {user_applicaion_params}: {y_pred_min} está na posição {y_pred_posmin} do vetor de predições!")
-		# A sugestão será a configuração associada ao menor valor da variável predita.	
+			print("y mínimo predito para os parâmetros da aplicação "
+				    f"{user_applicaion_params}: {y_pred_min} está na posição "
+						f"{y_pred_posmin} do vetor de predições!")
+			
+		# A sugestão será a configuração associada ao menor valor da
+		# variável predita no DataFrame X, que é a configuração que está na
+		# posição y_pred_posmin em X. Como estamos interessados apenas nos
+		# parâmetros da sugestão, que são as variáveis de configuração e
+		# somente na posição y_pred_posmin, o DataFrame X é filtrado para
+		# obter apenas a linha da posição y_pred_posmin e as colunas com os
+		# nomes das variáveis de configuração, que estão armazenadas no
+		# campo suggestion_names do objeto. O resultado é convertido para um
+		# dicionário, em que cada chave é o nome de um componente da
+		# configuração e o valor da chave é o valor deste componente, que
+		# será retornado como a melhor sugestão de configuração. Será este
+		# o dicionário que será retornado como a melhor sugestão de 
+		# configuração no campo "Suggestion" do dicionário retornado pela
+		# função.
 		y_suggestion = X.loc[y_pred_posmin,self.suggestion_names].to_dict()
 		
-        # Retorna a sugestão com o manor valor predito para a variável predita pelo modelo.
+    # Retorna a sugestão com o manor valor predito para a variável
+		# predita pelo modelo.
 		y_pred_s = pd.Series(y_pred)
+
+		# 
 		y_pred_s.name = self.predicted_name		
 		info_suggestion = {"Suggestion": y_suggestion, "Score": y_pred_min, "X": X, "y_pred": y_pred_s, "y_pred_minimum": y_pred_min, "y_pred_minimum_position": y_pred_posmin}
 
@@ -2145,7 +2440,14 @@ class SuggestionsPredictor:
 
 		return info_suggestion	                     	
 
-	def get_suggestions(self, user_applications_params_df, custom_suggestions_params=None, verbose=False):
+	def get_suggestions(self, user_applications_params_df, 
+											custom_suggestions_params=None, verbose=False):
+		"""
+		Função para retornar a melhor sugestão de configuração para os
+		parâmetros da aplicação definidos pelo usuário do script de
+		otimização, pa
+		
+		"""
 		if not isinstance(user_applications_params_df, pd.DataFrame):
 			raise ValueError("Invalid input user_params_df provided, not a Pandas DataFrame.")
 		if not pd.Index(self.application_names).isin(user_applications_params_df.columns).all():
