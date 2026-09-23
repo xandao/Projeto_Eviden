@@ -1,62 +1,260 @@
 import pandas as pd
 import numpy as np
 from Utils.Suggestions import SuggestionsPredictor
-from Utils.ReadConfigs import ReadSystemConfig, ReadApplicationsConfigs, ReadUserConfig, PredictorsInfoConfig
+from Utils.ReadConfigs import (
+    ReadApplicationsConfigs,
+    PredictorsInfoConfig,
+    ReadSystemConfig,
+    ReadUserConfig,
+)
 import sys
 import argparse
 from pathlib import Path
 import os
 from functools import partial
 import subprocess
-from Utils.Common import base_files_path_env_name, base_files_path, configs_files_dir, debug_code, CustomFormatter
+from Utils.Common import (
+  base_files_path_env_name, 
+  base_files_path, 
+  configs_files_dir, 
+  debug_code, 
+  CustomFormatter
+)
 import textwrap
 import tempfile
 import re
 
 def read_configs(verbose=False):
-  # Lê as variáveis gerais.
+  """
+  Lê os arquivos de configuração do sistema, das aplicações e do
+  usuário. Retorna uma tupla com os seguintes elementos, referentes às
+  configurações lidas:
+
+  - configs_file_path: Caminho para o diretório de configuração.
+  - system_config: Dicionário com as configurações do sistema.
+  - applications_configs: Dicionário com as configurações das 
+    aplicações.
+  - user_config: Dicionário com as configurações do usuário.
+  - predictors_info_config: Dicionário com as informações dos 
+    preditores.
+
+  Se algum dos arquivos de configuração não puder ser lido, a função
+  retorna None para todos os elementos da tupla.
+
+  Parâmetros:
+    verbose: Se True, imprime mensagens detalhadas durante a leitura
+             dos arquivos de configuração.
+
+  Retorna:
+    tuple: Uma tupla com os elementos configs_file_path, system_config, 
+           applications_configs, user_config, predictors_info_config
+           desfritos anteriormente.
+  """
+
+  # Primeiramente verifica se a variável de ambiente com o caminho da 
+  # base do diretório com os arquivos dos scripts está definida,
+  # o que ocorrerá somente se a variável de ambiente 
+  # APPOPTIMIZER_BASE_FILES_PATH estiver definida ao executar o script
+  # de otimização. 
   if base_files_path is None:
-    print(f"❌ Variável de ambiente {base_files_path_env_name} com o caminho da base dos scripts não foi definida")
+    # Se a varável de ambiente não estiver definida, imprime uma
+    # mensagem de erro com o nome da variável de ambiente.
+    print(f"❌ Variável de ambiente {base_files_path_env_name} com o caminho "
+          "da base dos scripts não foi definida")
+
+    # Como não temos como ler os arquivos de configuração pois não
+    # sabemos o diretório com as configurações, retorna None para todos
+    # os elementos da tupla.
     return None, None, None, None, None
   else:
+    # Como o diretório base dos arquivos dos scripts está definido,
+    # descobrimos o caminho do diretório com os arquivos de
+    # configuração, que será composto por este diretório base e o
+    # subdiretório definido na variável configs_files_dir (este nome de
+    # subdiretório é definido pela variável de ambiente 
+    # APPOPTIMIZER_CONFIGS_DIR, que pode ser definida pelo adminstrador
+    # do sistema para mudar o valor default "configs" usado quando a
+    # variável não for definida.
     configs_file_path = base_files_path / configs_files_dir
-  system_config_file_path = configs_file_path / 'system_config.json'
-  system_config = ReadSystemConfig(verbose).read_system_config(system_config_file_path)
 
-  # Lê os parâmetros da aplicação
+  # Lê as configurações do sistema, que são usadas para ler as
+  # configurações das aplicações, pois é neste arquivo que está o nome
+  # do diretório com as configurações das aplicações. O caminho do
+  # arquivo de configuração do sistema é composto pelo diretório de 
+  # configuração e o nome do arquivo de configuração do sistema, que é 
+  # definido como "system_config.json". O nome está atualmente fixo no
+  # código, mas podemos no futuro permitir que seja definido por uma
+  # variável de ambiente.
+  system_config_file_path = configs_file_path / 'system_config.json'
+
+  # Lê as configurações do sistema usando a classe ReadSystemConfig, 
+  # usando a função read_system_config, para ler o arquivo de
+  # configuração do sistema e retorna um dicionário com as configurações
+  # lidas. Se o arquivo não puder ser lido, a função retorna None.
+  system_config = ReadSystemConfig(verbose).read_system_config(
+    system_config_file_path)
+
+  # Verifica se as configurações do sistema foram lidas com sucesso, 
+  # pois são necessárias para ler os arquivos de configuração das
+  # aplicações, já que o nome do diretório com os arquivos de
+  # configuração das aplicações está definido no arquivo de configuração
+  # do sistema.
   if system_config is None:
+    # Se não foi possível ler as configurações do sistema, não podemos
+    # ler as configurações das aplicações, porque não sabemos o nome do
+    # diretório com as configurações das aplicaçõesm, dentro do
+    # diretório de configuração. Neste caso, definimos 
+    # applications_configs como None, para indicar que não foi possível
+    # ler as configurações das aplicações.
     applications_configs = None
   else:    
-    applications_configs_dir_path = configs_file_path / system_config['applications_path']
-    applications_configs = ReadApplicationsConfigs(verbose).read_applications_config(applications_configs_dir_path)
+    # Para ler as configurações das aplicações, precisamos do caminho do
+    # diretório com os arquivos de configuração das aplicações, que é
+    # composto pelo diretório de configuração e o subdiretório definido
+    # na chave "applications_path" do dicionário system_config definido
+    # pelo arquivo de configuração do sistema. 
+    applications_configs_dir_path = (
+        configs_file_path / system_config["applications_path"]
+    )
 
-  # Lê as configurações do script do usuário
+    # Lê as configurações das aplicações usando a classe
+    # ReadApplicationsConfigs, para processar, usando a função 
+    # read_applications_config desta classe, o diretório de configuração
+    # das aplicações e retorna um dicionário com as configurações lidas, 
+    # caso o diretório possa ler lido, tenha os arquivos de configuração 
+    # das aplicações e estes possam ser lidos sem erros. Se algum erro
+    # ocorrer durante o processamento do diretório ou dos arquivos de
+    # configuração das aplicações, a função retorna None.
+    applications_configs = ReadApplicationsConfigs(
+      verbose
+      ).read_applications_config(applications_configs_dir_path)
+
+  # Define o caminho do arquivo de configuração do script de otimizaçao,
+  # usado pelos usuários, que é composto pelo diretório de configuração
+  # e o nome do arquivo de configuração do script de otimização, que é
+  # definido como "user_config.json". O nome está atualmente fixo no 
+  # código, mas podemos no futuro permitir que seja definido por uma
+  # variável de ambiente ou no arquivo de configuração do sistema.
   user_config_file_path = configs_file_path / 'user_config.json'
-  user_config = ReadUserConfig(verbose).read_user_config(user_config_file_path)
 
-  # Lê as configurações que associam cada preditor a aplicação correspondente,
+  # Lê as configurações do script do usuário, usando a classe
+  # ReadUserConfig, que lê o arquivo de configuração do usuário
+  # como o nome do script de submissão default gerado se o usuário não
+  # especificar um nome para o script e outras configurações do script,
+  # como o nome do programa de submissão do script (default para sbatch)
+  # e a expressão regular para extrair o ID do trabalho submetido da
+  # saída do programa de submissão. 
+  # TODO: Existem algumas configurações do script do usupario que ainda
+  # não foram usadas, como as dadas na chave 'collect_consumed_energy'
+  # para coletar o consumo de energia do job submetido, 
+  # que ainda não foi implementado (seria similar ao que fizemos ao
+  # obter o consumo de energia nas execuções do RAxML e dos benchmarks
+  # do NAS) e a chave 'users_activity', um dicionario com as informações
+  # para coletar os dados da melhor sugestão de configuração e os
+  # parâmetros da aplicação, o tempo de execução estimado e as 
+  # informações sobre o trabalho, ou seja, o seu nome e o JobID, e 
+  # salva-los em um arquivo CSV, sendo que um arquivo será gerado para
+  # cada aplicação das que podem ser otimizadas.
+  user_config = ReadUserConfig(verbose).read_user_config(
+    user_config_file_path)
+
+  # Verifica se as configurações do sistema foram lidas com sucesso, 
+  # pois o nome do diretório com os preditores e o nome do arquivo de
+  # configuração dos preditores estão definidos no arquivo de
+  # configuração do sistema.
   if system_config is None:
+    # Se não foi possível ler as configurações do sistema, não podemos
+    # ler o arquivo com os nomes dos arquivos dos preditores, pois não
+    # temos o diretório dos preditores nem o nome do arquivo de 
+    # configuração dos preditores, portanto definimos
+    # predictors_info_config como None, para indicar que não foi
+    # possível ler as informações dos preditores.
     predictors_info_config = None
   else:
-    predictors_info_file_parh = base_files_path / Path(system_config["predictors_path"]) / system_config["predictors_info_config_filename"]
-    predictors_info_config = PredictorsInfoConfig(verbose).read_predictors_info_config(predictors_info_file_parh)
+    # Define o caminho do arquivo de configuração com as informações dos
+    # preditores, que é composto pelo diretório de configuração, o
+    # subdiretório definido na chave "predictors_path" do dicionário
+    # system_config e o nome do arquivo de configuração dos preditores
+    # definido na chave "predictors_info_config_filename" do dicionário
+    # system_config.
+    predictors_info_file_path = (
+        base_files_path
+        / Path(system_config["predictors_path"])
+        / system_config["predictors_info_config_filename"]
+    )
 
-  return configs_file_path, system_config, applications_configs, user_config, predictors_info_config
+    # Lẽ o dicionário com as informações dos preditores, que é usado para
+    # ler os preditores usados para fazer a sugestão da melhor
+    # configuração de execução das aplicações. Cada aplicação tem um
+    # preditor, com o nome dele associado a uma chave do dicionário, igual 
+    # ao nome da aplicação e o valor sendo o nome do arquivo que armazena
+    # o preditor no diretório de preditores. O caminho do arquivo de 
+    # configuração com as informações dos preditores é composto pelo 
+    # diretório de configuração, o subdiretório definido na chave
+    # "predictors_path" do dicionário system_config e o nome do arquivo de
+    # configuração dos preditores definido na chave 
+    # "predictors_info_config_filename" do dicionário system_config. 
+    predictors_info_config = PredictorsInfoConfig(
+      verbose
+    ).read_predictors_info_config(
+      predictors_info_file_path
+    )
+
+  # Retorna uma tupla com cinco elementos, sendo o primeiro o
+  # caminho do diretório de configuração, o segundo o dicionário com as
+  # configurações do sistema, o terceiro o dicionário com as
+  # configurações das aplicações, o quarto o dicionário com as
+  # configurações do script de otimização e o quinto o dicionário com
+  # as informações dos preditores. Se algum dos arquivos de configuração
+  # não pode ser lido, a função retorna None para o arquivo que não foi
+  # lido.
+  return (configs_file_path, system_config, applications_configs, user_config,
+          predictors_info_config)
 
 def process_script_args():
-  parser = argparse.ArgumentParser(description="Script para escolher a melhor configuração para as aplicações selecionadas.",
-                                   usage="script_optimizer [opções] -- [executável da aplicação] [-h] [opções obrigatórias da aplicação] [outras opções da aplicação]",
-                                   add_help=False, formatter_class=CustomFormatter)
+  """
+  """
+  parser = argparse.ArgumentParser(
+    description="Script para escolher a melhor configuração para as "
+                "aplicações selecionadas.",
+    usage="script_optimizer [opções] -- [executável da aplicação] [-h] ["
+          "opções obrigatórias da aplicação] [outras opções da aplicação]",
+    add_help=False,
+    formatter_class=CustomFormatter
+  )
 
   opcoes = parser.add_argument_group("Opções principais")
   ajuda = parser.add_argument_group("Ajuda")
-  opcoes.add_argument("-r", "--run", action="store_true", default=False, help="Submete o script com a melhor configuração de execução.")
-  opcoes.add_argument("-j", "--jobname", type=str, default=None, help="Nome do trabalho registrado no sistema de submissão.")
-  opcoes.add_argument("-s", "--script", type=str, default=None, help="Salva o script gerado em um arquivo.")
-  opcoes.add_argument("-S", "--suggestion", action="store_true", default=False, 
-                      help="Mostra somente a sugestão para os parâmetros do script.")
-  opcoes.add_argument("-n", "--nodes", type=str, nargs="+", default=None, 
-                      help=textwrap.dedent('''Lista com os possíveis números de nós, se a aplicação usa múltiplos nós.
+  opcoes.add_argument(
+    "-r", "--run", 
+    action="store_true", 
+    default=False, 
+    help="Submete o script com a melhor configuração de execução."
+  )
+  opcoes.add_argument(
+    "-j", "--jobname", 
+    type=str, 
+    default=None, 
+    help="Nome do trabalho registrado no sistema de submissão."
+  )
+  opcoes.add_argument(
+    "-s", "--script", 
+    type=str, 
+    default=None, 
+    help="Salva o script gerado em um arquivo."
+  )
+  opcoes.add_argument(
+    "-S", "--suggestion", 
+    action="store_true", 
+    default=False, 
+    help="Mostra somente a sugestão para os parâmetros do script."
+  )
+  opcoes.add_argument(
+    "-n", "--nodes", 
+    type=str, 
+    nargs="+", 
+    default=None, 
+    help=textwrap.dedent('''Lista com os possíveis números de nós, se a aplicação usa múltiplos nós.
 Usada conjuntamente com as opções -p e -t, que terão os valores padrão se não forem usadas.
 Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo.  
 Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o s, que será igual a 1.
@@ -64,9 +262,14 @@ Default 1:1.
 Exemplos: -n 1 2:10:2 -> Nós: 1, 2, 4, 6, 8, 10.
           -n :10:2    -> Nós: 1, 3, 5, 7, 9.
           -n 1:5      -> Nós: 1, 2, 3, 4, 5.                                                                 
-                      '''))                      
-  opcoes.add_argument("-p", "--process", type=str, nargs="+", default=None, 
-                      help=textwrap.dedent('''Lista com os possíveis números de processos, se a aplicação usa múltiplos processos por nó.
+                      ''')
+  )                      
+  opcoes.add_argument(
+    "-p", "--process", 
+    type=str, 
+    nargs="+", 
+    default=None, 
+    help=textwrap.dedent('''Lista com os possíveis números de processos, se a aplicação usa múltiplos processos por nó.
 Usada conjuntamente com as opções -n e -t, que terão os valores padrão se não forem usadas.
 Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo. 
 Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o s, que será igual a 1.
@@ -74,9 +277,14 @@ Default 1:1.
 Exemplos: -p 1 2:      -> Processos: 1, 2.
           -p 1 :3:1    -> Processos: 1, 2, 3.
           -p :3 6:12:3 -> Processos: 1, 2, 3, 6, 9, 12                                                                  
-                      '''))
-  opcoes.add_argument("-t", "--threads", type=str, nargs="+", default=None, 
-                      help=textwrap.dedent('''Lista com os possíveis números de threads, se a aplicação usa múltiplas threads por processo.
+                      ''')
+  )
+  opcoes.add_argument(
+    "-t", "--threads", 
+    type=str, 
+    nargs="+", 
+    default=None, 
+    help=textwrap.dedent('''Lista com os possíveis números de threads, se a aplicação usa múltiplas threads por processo.
 Usada conjuntamente com as opções -n e -p, que terão os valores padrão se não forem usadas.
 Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo.  
 Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o s, que será igual a 1.
@@ -84,10 +292,25 @@ Default 1:1.
 Exemplos: -t 1 2:24:2 -> Threads: 1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24
           -t 2 :24:8  -> Threads: 2, 24, 32, 40, 48.
           -t 2 24 48  -> Threads: 2, 24, 48.  
-                      '''))
-  opcoes.add_argument("-v", "--verbose", action="store_true", default=False, help="Habilita a verbosidade do script.")
-  opcoes.add_argument("-l", "--list", action="store_true", default=False, help="Lista as aplicações cujas execuções podem ser otimizadas pelo script.")
-  ajuda.add_argument("-h", "--help", action="help", help="Mostra esta mensagem de ajuda e sai.")
+                      ''')
+  )
+  opcoes.add_argument(
+    "-v", "--verbose", 
+    action="store_true", 
+    default=False, 
+    help="Habilita a verbosidade do script."
+  )
+  opcoes.add_argument(
+    "-l", "--list", 
+    action="store_true", 
+    default=False, 
+    help="Lista as aplicações cujas execuções podem ser otimizadas pelo script."
+  )
+  ajuda.add_argument(
+    "-h", "--help", 
+    action="help", 
+    help="Mostra esta mensagem de ajuda e sai."
+  )
   # Divide os parâmetros do script e da aplicação (separados por "--").
   application_param_separator = '--'
 

@@ -2689,10 +2689,15 @@ class SuggestionsPredictor:
 												 variáveis de configuiração e de aplicação dados
 												 em X.
 		"""
-	    # Verifica se o fit foi feito
+	  # Verifica se o fit foi feito, ou seja, se a função fit foi chamada,
+		# pois apesar de o oráculo não depender do fit, os campos usados do
+		# objeto somente esterão definidos depois do fit.
 		if self.model is None:
-			raise ValueError("The model hasn't been trained yet!")
+			raise ValueError("O modelo ainda não foi treinado!")
 
+		# Usa a função predict do modelo auxiliar para predizer os valores
+		# das variáveis alvo para cada combinação de valores das variáveis
+		# de configuração e de aplicação dados em X.
 		return self.model.predict(X)			
 
 	def score(self, X, y):
@@ -2726,41 +2731,189 @@ class SuggestionsPredictor:
 						 considerando os valore reais para a variável alvo dados em
 						 y e os valores preditos pelo modelo.
 		"""
-	    # Verifica se o fit foi feito
+	  # Verifica se o fit foi feito, ou seja, se a função fit foi chamada,
+		# pois apesar de o oráculo não depender do fit, os campos usados do
+		# objeto somente esterão definidos depois do fit.
 		if self.model is None:
-			raise ValueError("The model hasn't been trained yet!")
+			raise ValueError("O modelo ainda não foi treinado!")
 
+		# Usa a função score do modelo auxiliar para calcular a pontuação
+		# das variáveis alvo preditas para cada combinação em X, 
+		# considerando os valore reais para a variável alvo dados em y e os
+		# valores preditos pelo modelo.
 		return self.model.score(X, y)			
-		
+	
 	def get_params(self, deep=False):
+		"""
+		Função para retornar, em um dicionário, os parâmetros do objeto da 
+		classe SuggestionsPredictor, quando foi criado a a função __init__ 
+		foi chamada. O parâmetro deep seria usado para retornar os 
+		parâmetros de um subestimador. Como não temos subestimadores e nem
+		parâmetros do objeto da classe inicializados quando ele é criado, o 
+		dicionário retornado será vazio.
+		TODO: Esta função somente existe para a classe ser compatível e ser
+		usada pela scikit-learn. Não sei se devemos manter ou remover esta
+		função. 
+		"""
+		# Como não temos parâmetros do objeto da classe inicializados quando 
+		# ele é criado, e como não existem subestimadores (deep=True), o 
+		# dicionário retornado será vazio.
 		return {}	
 
 	def save_predictor(self, file_name):
+		"""
+		Função para salvar o objeto da classe SuggestionsPredictor em um
+		arquivo binário usando a biblioteca pickle do Python. O nome do
+		arquivo é passado como parâmetro file_name. Se o arquivo não puder
+		ser criado, será gerada uma exceção do Python.
+
+		Parâmetros:
+			file_name (str): Caminho do arquivo binário em que o objeto da
+											 classe SuggestionsPredictor será salvo.
+
+		Retorna:
+			Não tem retorno (retorna None).
+		"""
+
+		# Salva o objeto da classe SuggestionsPredictor em um arquivo 
+		# binário usando a biblioteca pickle do Python. O caminho do arquivo 
+		# é passado como parâmetro em file_name. O ambiente with é usado 
+		# para abrir o arquivo e garantir que ele será fechado corretamente, 
+		# mesmo que ocorra uma exceção durante a execução da função dump do
+		# pickle. O arquivo é aberto no modo 'wb', que significa escrita em 
+		# binário e sobreposição se o arquivo já existir. 
 		with open(file_name, 'wb') as file:
+			# Usa a função dump() do pickle para serializar o objeto da classe 
+			# SuggestionsPredictor e gravá-lo no arquivo binário.
 			pickle.dump(self, file)		
 
 	@classmethod
-	def print_suggestion(cls, info_suggestion, show_score=False, show_X=False, show_y_pred=False, 
-											 show_time=False, suggestion_map=None):
+	def print_suggestion(cls, info_suggestion, show_score=False, show_X=False, 
+											 show_y_pred=False, show_time=False, 
+											 suggestion_map=None):
+		"""
+		Método de classe para imprimir as informações sobre a melhor 
+		sugestão de configuração, que são passadas como parâmetro em 
+		info_suggestion, que é o dicionário retornado pela função 
+		get_suggestion. O método imprime a sugestão de configuração, a 
+		pontuação da sugestão, se show_score for True, o DataFrame com 
+		todas as configurações consideradas se show_X for True, o vetor com
+		os valores preditos da variável alvo do modelo auxiliar para todas 
+		as configurações em X se show_y_pred for True, e o tempo predito 
+		para a melhor sugestão de configuração se show_time for True. 
+		O parâmetro opcional suggestion_map é um dicionário que mapeia os 
+		nomes das variáveis de configuração para nomes mais amigáveis, que 
+		serão usados na impressão da sugestão de configuração.
+
+		Parâmetros:
+			info_suggestion (dict): Dicionário com as informações sobre a
+															melhor sugestão de configuração, retornado
+															pela função get_suggestion.	
+			show_score (bool): Se True, imprime a pontuação da sugestão de
+												 configuração.
+			show_X (bool): Se True, imprime o DataFrame com todas as 
+										 configurações em X.	
+			show_y_pred (bool): Se True, imprime o vetor com os valores
+												  preditos da variável alvo do modelo auxiliar
+												  para todas as configurações em X.
+			show_time (bool): Se True, imprime o tempo predito para a melhor
+											  sugestão de configuração.
+			suggestion_map (dict): Dicionário que mapeia os nomes das
+														 variáveis de configuração para nomes mais 
+														 amigáveis, que serão usados na impressão da
+														 sugestão de configuração.
+
+		Retorna:
+			Não tem retorno (retorna None).
+		"""	
+    # Se o parâmetro opcional suggestion_map não for passado, ou seja, 
+		# for None, a sugestão de configuração será impressa com os nomes das
+		# variáveis de configuração. Caso contrário, a sugestão de 
+		# configuração será impressa com os nomes amigáveis das variáveis de 
+		# configuração mapeados pelo dicionário suggestion_map.
 		if suggestion_map is None:
-			formatted_suggestion = ", ".join(f"{k}={v}" for k, v in info_suggestion['Suggestion'].items())
+			formatted_suggestion = ", ".join(
+					f"{k}={v}" for k, v in info_suggestion["Suggestion"].items()
+			)
 		else:
-			formatted_suggestion = ", ".join(f"{suggestion_map[k]}={v}" for k, v in info_suggestion['Suggestion'].items())	
+			formatted_suggestion = ", ".join(
+					f"{suggestion_map[k]}={v}"
+					for k, v in info_suggestion["Suggestion"].items()
+			)
+
+		# Imprime a sugestão de configuração formatada, a pontuação da 
+		# sugestão, o DataFrame com todas as configurações em X, o vetor 
+		# com os valores preditos da variável alvo do modelo auxiliar para 
+		# todas as configurações em X, e o tempo predito para a melhor 
+		# sugestão de configuração, dependendo dos parâmetros show_score, 
+		# show_X, show_y_pred e show_time.			
 		print(f"➡️  Sugestão: {formatted_suggestion}")
-		if show_time:
-			if 'Time' in info_suggestion:
-				print(f"➡️  Tempo para a sugestão: {info_suggestion['Time']:.2f} s")
+
+		# Se show_time for True, imprime o tempo predito para a melhor
+		# sugestão de configuração, caso também tenha sido treinado o modelo
+		# para estimar o tempo de execução dessa sugestão e esse tempo
+		# calculado.
+		if show_time and 'Time' in info_suggestion:
+			print(f"➡️  Tempo para a sugestão: {info_suggestion['Time']:.2f} s")
+
+		# Se show_score for True, imprime a pontuação da melhor sugestão de 
+		# configuração.
 		if show_score:
 			print(f"➡️  Pontuação da sugestão: {info_suggestion['Score']:.2f}")
+
+		# Se show_X for True, imprime o DataFrame com todas as configurações
+		# consideradas, que estão no campo X do dicionário info_suggestion.
 		if show_X:
-			print('➡️  X usado nas predições feitas quando estavamos escolhendo a malhor sugestão:')
-			print("\n", info_suggestion['X'].to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
+			print("➡️  X, com todas as configurações, usado nas predições feitas "
+			      "quando estavamos escolhendo a malhor sugestão:")
+			print("\n", info_suggestion['X'].to_markdown(tablefmt="grid", 
+																								   floatfmt=".2f"), "\n", 
+						sep="")
+
+		# Se show_y_pred for True, imprime o vetor com os valores preditos da
+		# variável alvo do modelo auxiliar para todas as configurações em X,
+		# que estão no campo y_pred do dicionário info_suggestion, e também
+		# imprime o menor valor predito da variável alvo do modelo auxiliar
+		# e a posição deste menor valor no vetor com as predições y_pred.				
 		if show_y_pred:
-			print(f"➡️  y predito usado para escolher a melhor sugestão, sendo que o mínimo {info_suggestion['y_pred_minimum']} está na posição {info_suggestion['y_pred_minimum_position']}:")
-			print("\n", info_suggestion['y_pred'].to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
+			print("➡️  y predito usado para escolher a melhor sugestão, sendo que "
+				    f"o mínimo {info_suggestion['y_pred_minimum']} está na posição "
+						f"{info_suggestion['y_pred_minimum_position']}:")
+			print("\n", info_suggestion['y_pred'].to_markdown(tablefmt="grid", 
+																										    floatfmt=".2f"), 
+						"\n", sep="")
 		
 	@classmethod
 	def load_predictor(cls, file_name):
+		"""
+		Função para carregar o objeto da classe SuggestionsPredictor de um
+		arquivo binário usando a biblioteca pickle do Python. O caminho do
+		arquivo é passado como parâmetro file_name. Se o arquivo não puder
+		ser aberto, será gerada uma exceção do Python.
+
+		Parâmetros:
+			file_name (str): Caminho do arquivo binário em que o objeto da
+											 classe SuggestionsPredictor será carregado.
+
+		Retorna:
+			SuggestionsPredictor: Se não ocorrerem erros, retorna o objeto
+													  da classe SuggestionsPredictor carregado do
+													  arquivo binário. Se algum erro ocorrer, gera
+													  uma exceção do Python.
+		"""
+
+		# Carrega o objeto da classe SuggestionsPredictor de um arquivo
+		# binário usando a biblioteca pickle do Python. O caminho do arquivo
+		# é passado como parâmetro em file_name. O ambiente with é usado
+		# para abrir o arquivo e garantir que ele será fechado corretamente,
+		# mesmo que ocorra uma exceção durante a execução da função load do
+		# pickle. O arquivo é aberto no modo 'rb', que significa leitura em
+		# binário.	 	 
 		with open(file_name, 'rb') as file:
+			# Usa a função pickle.load() para desserializar o objeto da
+			# classe SuggestionsPredictor salvo no arquivo binário.
 			predictor = pickle.load(file)
+
+		# Retorna o objeto da classe SuggestionsPredictor carregado do 
+		# arquivo.
 		return predictor
