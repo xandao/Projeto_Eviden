@@ -213,7 +213,55 @@ def read_configs(verbose=False):
 
 def process_script_args():
   """
+  Função para processar a linha de comando do script de otimização. A 
+  linha de comando é dividida em duas partes, de acordo com o separador
+  '--', a parte antes do separador, os parâmetros do script de
+  otimização, e os parâmetros após o separador, o nome da aplicação 
+  seguido pelos parâmetros da aplicação. Os parâmetros do scipt, da
+  aplicação e o nome são todos separados por espaços. No momento, temos
+  somente os seguintes parâmetros:
+  # TODO: Eu estou pensando, no caso dos parâmetros relacionados as
+  # variáveis de configuração, mostrar somente as variáveis usadas pela
+  # aplicação que está sendo otimizada. Isso necessitaria mudar o código
+  # para detectar a aplicação nesta função. Eu acho adequado, porque
+  # além de poder fazer isso, poderíamos concentrar todo o código de
+  # processamento dos parâmetros, incluindo o da aplicação, nesta
+  # função, além de já fazer o tratamento dos parâmetros -n, -p e -t e
+  # os outros que serão similares.
+
+  -r, --run: Submete o script com a melhor configuração de execução.
+  -j, --jobname: Nome do trabalho registrado no sistema de submissão.
+  -s, --script: Salva o script gerado em um arquivo.
+  -S, --suggestion: Mostra somente a sugestão para os parâmetros do
+                    script.
+  -n, --nodes: Lista com os possíveis números de nós, se a aplicação usa
+               múltiplos nós. Usada conjuntamente com as opções -p e -t.
+  -p, --process: Lista com os possíveis números de processos, se a 
+                 aplicação usa múltiplos processos por nó. Usada
+                 conjuntamente com as opções -n e -t. 
+  -t, --threads: Lista com os possíveis números de threads, se a 
+                 aplicação usa múltiplas threads por processo. Usada 
+                 conjuntamente com as opções -n e -p.
+  -l, --list: Lista as aplicações cujas execuções podem ser otimizadas 
+              pelo script.
+  -v, --verbose: Habilita a verbosidade com informações sobre a melhor
+                 sugestão de configuração escolhida para a aplicação.
+
+		Parâmetros:
+      Não tem parâmetros.
+
+    Retorna:
+      tupla: Uma tupla com três elementos, o primeiro é as informações
+             sobre os parâmetros do script de otimização descritos 
+             anteriormente em uma tupla nomeada chamada de NameSpace,
+             o segundo parâmetro retorna os parâmetros da aplicação em
+             uma lista, sendo a primeira entrada o nome da aplicação, e
+             o terceiro parâmetro retorna uma referência para o objeto
+             analizador usado para processar os parâmetros do script de
+             otimização.
   """
+
+  #
   parser = argparse.ArgumentParser(
     description="Script para escolher a melhor configuração para as "
                 "aplicações selecionadas.",
