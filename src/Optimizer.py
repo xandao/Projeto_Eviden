@@ -261,7 +261,6 @@ def process_script_args():
              otimização.
   """
 
-  #
   parser = argparse.ArgumentParser(
     description="Script para escolher a melhor configuração para as "
                 "aplicações selecionadas.",
@@ -302,45 +301,71 @@ def process_script_args():
     type=str, 
     nargs="+", 
     default=None, 
-    help=textwrap.dedent('''Lista com os possíveis números de nós, se a aplicação usa múltiplos nós.
-Usada conjuntamente com as opções -p e -t, que terão os valores padrão se não forem usadas.
-Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo.  
-Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o s, que será igual a 1.
-Default 1:1.
-Exemplos: -n 1 2:10:2 -> Nós: 1, 2, 4, 6, 8, 10.
-          -n :10:2    -> Nós: 1, 3, 5, 7, 9.
-          -n 1:5      -> Nós: 1, 2, 3, 4, 5.                                                                 
-                      ''')
+    help=textwrap.dedent
+    (
+      """\
+        Lista com os possíveis números de nós, se a aplicação usa múltiplos "
+        "nós.
+        Usada conjuntamente com as opções -p e -t, que terão os valores "
+        "padrão se não forem usadas.
+        Cada elemento da lista está no formato i:e:s, onde i é o número "
+        "inicial, f é o final e s é o passo.
+        Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o "
+        "s, que será igual a 1.
+        Default 1:1.
+
+          Exemplos: -n 1 2:10:2 -> Nós: 1, 2, 4, 6, 8, 10.
+                    -n :10:2    -> Nós: 1, 3, 5, 7, 9.
+                    -n 1:5      -> Nós: 1, 2, 3, 4, 5.                                                                 
+      """
+     )
   )                      
   opcoes.add_argument(
     "-p", "--process", 
     type=str, 
     nargs="+", 
     default=None, 
-    help=textwrap.dedent('''Lista com os possíveis números de processos, se a aplicação usa múltiplos processos por nó.
-Usada conjuntamente com as opções -n e -t, que terão os valores padrão se não forem usadas.
-Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo. 
-Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o s, que será igual a 1.
-Default 1:1.
-Exemplos: -p 1 2:      -> Processos: 1, 2.
-          -p 1 :3:1    -> Processos: 1, 2, 3.
-          -p :3 6:12:3 -> Processos: 1, 2, 3, 6, 9, 12                                                                  
-                      ''')
+    help=textwrap.dedent(
+      """\
+        Lista com os possíveis números de processos, se a aplicação usa "
+        "múltiplos processos por nó."
+        Usada conjuntamente com as opções -n e -t, que terão os valores "
+        "padrão se não forem usadas."
+        Cada elemento da lista está no formato i:e:s, onde i é o número "
+        "inicial, f é o final e s é o passo."
+        Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o "
+        "s, que será igual a 1."
+        Default 1:1.
+
+        Exemplos: -p 1 2:      -> Processos: 1, 2.
+                  -p 1 :3:1    -> Processos: 1, 2, 3.
+                  -p :3 6:12:3 -> Processos: 1, 2, 3, 6, 9, 12                                                                  
+      """
+    )
   )
   opcoes.add_argument(
     "-t", "--threads", 
     type=str, 
     nargs="+", 
     default=None, 
-    help=textwrap.dedent('''Lista com os possíveis números de threads, se a aplicação usa múltiplas threads por processo.
-Usada conjuntamente com as opções -n e -p, que terão os valores padrão se não forem usadas.
-Cada elemento da lista está no formato i:e:s, onde i é o número inicial, f é o final e s é o passo.  
-Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o s, que será igual a 1.
-Default 1:1.
-Exemplos: -t 1 2:24:2 -> Threads: 1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24
-          -t 2 :24:8  -> Threads: 2, 24, 32, 40, 48.
-          -t 2 24 48  -> Threads: 2, 24, 48.  
-                      ''')
+    help=textwrap.dedent(
+      """\
+        Lista com os possíveis números de threads, se a aplicação usa "
+        "múltiplas threads por processo."
+        Usada conjuntamente com as opções -n e -p, que terão os valores "
+        "padrão se não forem usadas."
+        Cada elemento da lista está no formato i:e:s, onde i é o número "
+        "inicial, f é o final e s é o passo."
+        Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o "
+        "s, que será igual a 1."
+        Default 1:1.
+
+        Exemplos: -t 1 2:24:2 -> Threads: 1, 2, 4, 6, 8, 10, 12, 14, 16, 18, "
+        "20, 22, 24"
+                  -t 2 :24:8  -> Threads: 2, 24, 32, 40, 48.
+                  -t 2 24 48  -> Threads: 2, 24, 48.  
+      """
+    )
   )
   opcoes.add_argument(
     "-v", "--verbose", 
@@ -352,7 +377,8 @@ Exemplos: -t 1 2:24:2 -> Threads: 1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24
     "-l", "--list", 
     action="store_true", 
     default=False, 
-    help="Lista as aplicações cujas execuções podem ser otimizadas pelo script."
+    help="Lista as aplicações cujas execuções podem ser otimizadas pelo "
+         "script."
   )
   ajuda.add_argument(
     "-h", "--help", 
