@@ -251,16 +251,20 @@ def process_script_args():
       Não tem parâmetros.
 
     Retorna:
-      tupla: Uma tupla com três elementos, o primeiro é as informações
+      tupla: Uma tupla com dois elementos, o primeiro é as informações
              sobre os parâmetros do script de otimização descritos 
              anteriormente em uma tupla nomeada chamada de NameSpace,
-             o segundo parâmetro retorna os parâmetros da aplicação em
-             uma lista, sendo a primeira entrada o nome da aplicação, e
-             o terceiro parâmetro retorna uma referência para o objeto
-             analizador usado para processar os parâmetros do script de
-             otimização.
+             e o segundo parâmetro retorna os parâmetros da aplicação em
+             uma lista, sendo a primeira entrada o nome da aplicação.
   """
-
+  # Inicializa o analisador dos parâmetros do script de otimização, com
+  # uma descrição, uma descrição do formato da linha de comando do
+  # script. Também informamos que vamos definir uma ajuda (help)
+  # customizada, necessário para escrever a ajuda em português, e uma
+  # classe de formatação, necessário para lidar com múltiplas linhas e,
+  # no nosso caso, que definimos um objeto da classe customizada 
+  # CustomFormatter, mudar o nome na drescição da linha de comando do
+  # inglês "usage:" para o português "uso".
   parser = argparse.ArgumentParser(
     description="Script para escolher a melhor configuração para as "
                 "aplicações selecionadas.",
@@ -270,32 +274,69 @@ def process_script_args():
     formatter_class=CustomFormatter
   )
 
+  # Cria um objeto cuja referência será armazenada em opcoes para 
+  # agrupar as opções gerais do script, sendo que a string 
+  # "Opções principais" passada ao criar o objeto será o texto mostrado
+  # antes dos textos com as descrições de cada opção do script, com 
+  # exceção da ajuda, que será colocada em um outro grupo único.
   opcoes = parser.add_argument_group("Opções principais")
+
+  # Cria um objeto cuja referência será armazenada em ajuda para criar 
+  # um grupo somente com a opção de ajuda, sendo que a string  "Ajuda" 
+  # passada ao criar o objeto será o texto mostrado antes do texto da 
+  # opção de ajuda.
   ajuda = parser.add_argument_group("Ajuda")
+
+  # Adiciona ao grupo de opções gerais, referenciado por opcoes, a opção
+  # -r ou --run que permite ao usuário executar o script gerado com a 
+  # melhor sugestão de configuração para a aplicação escolhida pelo
+  # usuário.
   opcoes.add_argument(
     "-r", "--run", 
     action="store_true", 
     default=False, 
     help="Submete o script com a melhor configuração de execução."
   )
+
+  # Adiciona ao grupo de opções gerais, referenciado por opcoes, a opção
+  # -j ou --jobname que permite ao usuário dar um nome para o trabalho a
+  # ser submetido pelo script gerado com a melhor sugestão de
+  # configuração para a aplicação escolhida pelo usuário.
   opcoes.add_argument(
     "-j", "--jobname", 
     type=str, 
     default=None, 
     help="Nome do trabalho registrado no sistema de submissão."
   )
+  
+  # Adiciona ao grupo de opções gerais, referenciado por opcoes, a opção
+  # -s ou --script que permite ao usuário definir o caminho e o nome do
+  # arquivo em que será salvo o script gerado a melhor sugestão de
+  # configuração para a aplicação escolhida pelo usuário.
   opcoes.add_argument(
     "-s", "--script", 
     type=str, 
     default=None, 
     help="Salva o script gerado em um arquivo."
   )
+
+  # Adiciona ao grupo de opções gerais, referenciado por opcoes, a opção
+  # -S ou --suggestion que permite ao usuário desabilitar a geração do
+  # script de submissão, sendo que a melhor sugestão de configuração
+  # será mostrada no terminal em que o usuário executou o script.
   opcoes.add_argument(
     "-S", "--suggestion", 
     action="store_true", 
     default=False, 
     help="Mostra somente a sugestão para os parâmetros do script."
   )
+
+  # Adiciona ao grupo de opções gerais, referenciado por opcoes, a opção
+  # -n ou --nodes que permite ao usuário definir os possíveis valores da
+  # variável de configuração que define o números de nós. O uso da opção
+  # habilita o uso das configurações otimizadas, e as outras opções
+  # referentes às outras variáveis de configuração serão definidas em
+  # '1' se não forem definidas pelo usuário.
   opcoes.add_argument(
     "-n", "--nodes", 
     type=str, 
@@ -320,6 +361,13 @@ def process_script_args():
       """
      )
   )                      
+
+  # Adiciona ao grupo de opções gerais, referenciado por opcoes, a opção
+  # -p ou --process que permite ao usuário definir os possíveis valores
+  # da variável de configuração que define o números de processos por
+  # nó. O uso da opção habilita o uso das configurações otimizadas, e as
+  # outras opções referentes às outras variáveis de configuração serão
+  # definidas em '1' se não forem definidas pelo usuário.
   opcoes.add_argument(
     "-p", "--process", 
     type=str, 
@@ -343,6 +391,14 @@ def process_script_args():
       """
     )
   )
+
+  # Adiciona ao grupo de opções gerais, referenciado por opcoes, a opção
+  # -t ou --threads que permite ao usuário definir os possíveis valores
+  # da variável de configuração que define o números de threads por
+  # processo. O uso da opção habilita o uso das configurações
+  # otimizadas, e as outras opções referentes às outras variáveis de
+  # configuração serão definidas em '1' se não forem definidas pelo
+  # usuário.
   opcoes.add_argument(
     "-t", "--threads", 
     type=str, 
@@ -367,12 +423,23 @@ def process_script_args():
       """
     )
   )
+
+  # Adiciona ao grupo de opções gerais, referenciado por opcoes, a opção
+  # -v ou --verbose que habilita a verbosidade do script de otimização,
+  # mostrando diversas informações sobre o processo de escolha da melhor
+  # sugestão de configuração.
   opcoes.add_argument(
     "-v", "--verbose", 
     action="store_true", 
     default=False, 
     help="Habilita a verbosidade do script."
   )
+
+  # Adiciona ao grupo de opções gerais, referenciado por opcoes, a opção
+  # -l ou --list que lista todas as aplicações que podem ter as suas
+  # execuções otimizadas pelo script de otimização. A lista mostra a
+  # aplicação com os possíveis nomes que podem ser usados para escolher
+  # a aplivação na linha de comando.
   opcoes.add_argument(
     "-l", "--list", 
     action="store_true", 
@@ -380,25 +447,102 @@ def process_script_args():
     help="Lista as aplicações cujas execuções podem ser otimizadas pelo "
          "script."
   )
+
+  # Adiciona ao grupo de ajuda, referenciado por ajuda, a opção -h ou
+  # --help que mostra a ajuda do script de otimização, com a descrição
+  # da linha de comando e quais são as opções disponíveis e como elas
+  # devem ser usadas.
   ajuda.add_argument(
     "-h", "--help", 
     action="help", 
     help="Mostra esta mensagem de ajuda e sai."
   )
-  # Divide os parâmetros do script e da aplicação (separados por "--").
+
+  # Define a string "--" usada para definir, nos parâmetros passados ao
+  # script quando o usuário executou ele no terminal, o ponto em que
+  # temos os parâmetros do script nos patâmetros do primeiro até o
+  # parâmetro igual à string, e o que vem depois deste parâmetro, o 
+  # nome da aplicação seguido pelos parâmetros da aplicação. 
+  # TODO: Defini o valor fixo "--"" porque é o usado na maior parte dos
+  # programas e scrips para separar os parâmetros do script dos da 
+  # aplicação que o script trata,
   application_param_separator = '--'
 
+  # Verifica a string application_param_separator que define o serapador
+  # está na lista de argumntos passados ao script e dados na lista
+  # sys.argv.
   if application_param_separator in sys.argv:
+    # Como o separador está na lista, primeiramente descobrimos a sua
+    # posição separator_pos na lista,
     separator_pos = sys.argv.index(application_param_separator)
+
+    # Como as listas do Python são indexadas a partir da posição 0, e
+    # como o primeiro parâmetro da lista sys.argv sempre será, como em
+    # outros comandos de terminal do Linux e suas variantes, o nome do
+    # script de otimização, então os parâmetros do script de otimização
+    # estarão na posição de 1 até separator_pos - 1. A lista com esses
+    # parâmetros será armazenada em script_args.
     script_args = sys.argv[1:separator_pos]
+
+    # Já o nome da aplicação e os parâmetros da aplicação estarão na
+    # posição de separator_pos + 1 até o final da lista. A lista com
+    # o nome da plicação e os seus parâmetros será armazenada em 
+    # application_args. Note que a sintaxe do script de otimização exige
+    # que o primeiro elemento dessa lista seja o nome da aplicação. 
     application_args = sys.argv[separator_pos+1:]
+
+    # Apesar de o usuário ter usado o separador, ainda precisamos 
+    # verificar se ele passou um nome da aplicação e pelo menos um
+    # parâmetro da aplicação, pois precisamos de no mínimo um parâmetro
+    # da aplicação para treinar o preditor para a aplicação;
+    if len(application_args) > 1:
+      # Como temos uma linha de comando do script de otimização
+      # aparentemente válida, com os parâmetros do script de otimização
+      # e o nome da aplicação e pelo menos um parâmetro, então a função 
+      # parse_args do objeto analisador da linha de comando parser é
+      # usada para processar e salvar os parâmetros do script de 
+      # otimização definidos pelo usuário e retornar eles em uma tupla
+      # nomeada com a sua referência armazenada em user_args.
+      user_args = parser.parse_args(script_args)
+    else:
+      # Como o usuário não passou pelo menos o nome da aplicação e um
+      # parâmetro, definimos user_args como None.
+      user_args = None
   else:
+    # Se o separador não estiver na lista, então todos os parâmetros
+    # serão atribuídos a lista de parâmetros do script de otimização.
+    # TODO: Eu preciso verificar se é necessário usar a função do 
+    # analisador da linha de comando para processar a linha de comandos
+    # neste caso, porque o script não irá executar já que nção foi
+    # definido o nome e nem os parâmetros da aplicação.
     script_args = sys.argv[1:]
+
+    # Como não foi usado o separador, então não foi passado o nome da
+    # aplicação e nem a lisra de argumentos. 
     application_args = []
 
-  user_args = parser.parse_args(script_args)
+    # Como o usuário nõa passou o nome da aplicação e seus parâmetros,
+    # definimos user_args como None.
+    user_args = None
 
-  return user_args, application_args, parser
+  # Se o campo user_args for None, então o usuário tentou executar o 
+  # script sem usar o separador "--" ou não passou pelo menos o nome da
+  # aplicação e um parâmetro da aplicação depois dele. Então, precisamos
+  # informar o erro e mostrar a ajuda do script de otimização, que pode
+  # ser mostrada pela função print_help do analisador da linha de
+  # comando parser.
+  if user_args is None:
+      print("Não foi definido o nome da aplicação e pelo menos um argumento "
+            "da aplicação!")
+      parser.print_help()
+
+  # Retorna a tupla composta pela tupla nomeada com os parâmetros do
+  # scriptr de otimização, se o usuário usou o separador da aplicação
+  # e passou pelo menos dois parâmetros, pois precisamos usar pelo menos
+  # um parâmetro da aplicação, ou None se os parâmetros não foram
+  # passados ou somente foi passado o nome da aplicação, e uma
+  # referência para o objeto parser.
+  return user_args, application_args
 
 def get_type(type_name):
   types_map = {
@@ -640,6 +784,8 @@ def optimize_application(configs_file_path, system_config, applications_config, 
       # Caso não deseje listar as aplucações, precisamos fornecer uma aplicaçao, pois o usuário deseja otimizar o uso dos reursos.
       if not application_args:
         print("❌ Não foi fornecido o nome da aplicação a ser otimizada e os seus parâmetros de execução.")
+        print("❌ Este erro não deveria ser mostrado!")
+        print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
         return False
       
       # Diretorio dos arquivos de configuração das aplicações.
@@ -922,18 +1068,22 @@ def optimize_application(configs_file_path, system_config, applications_config, 
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
 
 # Processa a linha de comando.
-user_args, application_args, parser = process_script_args()
+user_args, application_args = process_script_args()
+
+# Verifica se algum erro ocorreu
+if user_args is None:
+  exit(-1)
 
 # Lê os arquivos de confoguraçã.o
 configs_file_path, system_config, applications_configs, user_config, predictors_info_config = read_configs(verbose=user_args.verbose)
 
 if system_config is None or applications_configs is None or user_config is None or predictors_info_config is None:
   print('❌ Erro ao processar um dos arquivos de configuração. Por favor, avise o erro ao suporte.')
-  exit(-1)
+  exit(-3)
 
 # Processa os parâmetros da linha de comando
 status = optimize_application(configs_file_path, system_config, applications_configs, user_config, application_args, 
                               predictors_info_config, user_args)
 if not status:
   print("Erro ao otimizar o script!")
-  exit(-1)
+  exit(-2)
