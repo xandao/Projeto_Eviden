@@ -545,12 +545,49 @@ def process_script_args():
   return user_args, application_args
 
 def get_type(type_name):
+  """
+  Função para retornar a classe do Python associada a um tipo definido por uma
+  string e retornar uma referência para a classe correspondente do Python. Esta
+  string é usada ao definir os tipos dos parâmetros da aplicação que os
+  usuários precisam necessariamente passar ao otimizar a aplicação. No momento,
+  são três tipos identificados pela string dada como parâmetro:
+
+  "integer": o tipo é um inteiro, então é retornada uma referNeciia para a
+  classe int do Python.
+  "floating-point": o tipo é um número de ponto flutuante, então é retornada
+  uma referNeciia para a classe float do Python.
+  "string": o tipo é uma string, então é retornada uma referNeciia para a
+  classe str do Python.
+
+  
+  Parâmetros:
+      type_name: Nome do tipo, sendo "integer" para inteiros, "floating-point" 
+                 para npumeros de ponto flutuante ou "string" para uma string.
+                 Se o tipo for inválido, o tipo é considerado como string.
+                   
+  Retorna: <class int> se a string dada em type_name for "integer", 
+           <class 'float'> se a string dada em type_name for "floating-point",
+           ou <class 'str'>, se a string dada em type_name for "string" ou
+           inválida.    
+  """
+
+  # Dicionáro auxiliar que mapeia cada tipo, identificado pela string que 
+  # define uma chave do dicionário, e o valor desta chave, que é uma referência
+  # para a classe do tipo correspondente à chave em Python.
+  # 
+  # - A chave "integer" tem uma referência para a classe int.
+  # - A chave "floating-point" tem uma referência para a classe float.
+  # - A chave "string" tem uma referência para a classe str.
   types_map = {
     'integer': int,
     'floating-point': float,
     'string': str
   }
 
+  # Usa a função get do dicionário para retornar a referência para a classe
+  # identificada pela chave type_name, se esta chave existir, ou o valor
+  # default com a referência para a classe str se a chave (ou seja, o tipo dado
+  # em type_name) não existir.
   return types_map.get(type_name, str)    
 
 def get_options_suggestion(suggestion_args):
