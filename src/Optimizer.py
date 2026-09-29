@@ -42,8 +42,8 @@ def read_configs(verbose=False):
   retorna None para todos os elementos da tupla.
 
   Parâmetros:
-    verbose: Se True, imprime mensagens detalhadas durante a leitura
-             dos arquivos de configuração.
+    verbose (bool): Se True, imprime mensagens detalhadas durante a 
+                    leitura dos arquivos de configuração.
 
   Retorna:
     tuple: Uma tupla com os elementos configs_file_path, system_config, 
@@ -561,9 +561,10 @@ def get_type(type_name):
 
   
   Parâmetros:
-      type_name: Nome do tipo, sendo "integer" para inteiros, "floating-point" 
-                 para npumeros de ponto flutuante ou "string" para uma string.
-                 Se o tipo for inválido, o tipo é considerado como string.
+      type_name (str): Nome do tipo, sendo "integer" para inteiros, 
+                       "floating-point" para npumeros de ponto flutuante ou
+                       "string" para uma string. Se o tipo for inválido, o tipo
+                       é considerado como string.
                    
   Retorna: 
     <class int>: Se a string dada em type_name for "integer".
@@ -606,11 +607,12 @@ def get_options_suggestion(suggestion_args):
   :: 6:10: -> 1, 6, 7, 8, 9 e 10
 
   Parâmetros:
-    suggestion_args list[str] | None: Se for uma lista de strings com os
-                                      parâmetros, sendo que cada string precisa
-                                      estar no formato dado anteriormente. Se 
-                                      for None, processa uma lista com uma 
-                                      única string '1:1'
+    suggestion_args (list[str] | None): Se for uma lista de strings com os
+                                        parâmetros, sendo que cada string
+                                        precisa estar no formato dado
+                                        anteriormente. Se for None, 
+                                        processa uma lista com uma única string 
+                                        '1:1'.
 
   Retorna: 
     list[int] | None: Se todas as strings da lista foram processadas 
@@ -770,26 +772,179 @@ def get_options_suggestion(suggestion_args):
   # strings em suggestion_args.
   return options
 
-def convert_user_params(required_applicaion_params, conversions, application_configs_dir):
-  # Dicionario com os dataframes para os mapeamentos (para evitar ler eles em cada mapeamento, se usados mais de uma vez)
+def convert_user_params(required_applicaion_params, conversions, 
+                        application_configs_dir):
+  """
+  Função para comverter um ou mais parâmetros da aplicação passados diretamente
+  pelo usuário, em um ou mais parâmetros da aplicação que efetivamente foram
+  usados ao treinar os modelos. No momento, temos as seguintes operações, 
+  definidas no dicionário conversions, sendo que a chave define a operação:
+
+  "copy": O parâmetro da apluicação definido pelo usuário é usado diretamente
+          ao treinar os modelos, e será copiado para o parâmetro da aplicação
+          correspondente usado ao treinar o modelo, que pode ter ou não o mesmo
+          nome do parâmetro da aplicação fornecido pelo usuário, mas sempre
+          usará o mesmo parâmetro passado diretamente pelo usuário.
+  "filesize": Supõe que o usuário passou, como um dos parâmetros da aplicação,
+              um nome do arquivo, e que foi efetivamente usado, ao treinar os
+              modelos, o tamanho deste arquivo no disco.
+  "map": Define que um parâmetro da aplicação, usado ao treinar os modelos, é
+         definido a partir de uma tabela no formato csv, em que cada linha
+         define os possíveis valores para os parâmetros da aplicação definidos
+         pela operação de mapeamento, sendo que cada parâmetro obrigatoriamente
+         terá uma coluna nessa tabela, e também uma coluna que define, para
+         este parâmetro o seu valor considerando os valores dos parâmetros da
+         aplicação definidos pelos valores das colunas, associadas aos 
+         parâmetros da aplicação usados no mapeamento, desta linha. Por 
+         exemplo, no benchmark NPB, supondo um caso de teste hipotético em que
+         o usuário escolheria um dos benchmarks usados ao treinar os modelos,
+         bt-mz, lu-mz e sp-mz, e uma das classes também usadas ao treinar os 
+         modelos, A, B, C ou D, que existirá um mapeamento, no caso em uma
+         mesma tabela armazenada em um arquivo .csv, para cada parâmetro de 
+         aplicação efetivamente usado ao treinar os modelos, ou seja, Zone X,
+         Zone Y, iteration, Grid X, Grid Y e GridZ. Nete arquivo .csv, que será
+         lido e convertido em um DataFrame do Pandas, existirá uma linha para
+         cada combinação de benchmark e classe, uma coluna para o benchmark,
+         classe e cada uma das variáveis Zone X, Zone Y, iteration, Grid X,
+         Grid Y e GridZ usadas ao treinar os modelos, sendo que uma linha para
+         uma combinação de benchmark e classe definirá o valor de cada uma das
+         variáveis usadas ao treinar os modelos, como foi definido na tabela
+         com as relação entre benchmark, classe, Zone X, Zone Y, iteration,
+         Grid X, Grid Y e GridZ dada no artigo estendido do SSCAD.
+
+  Parâmetros:
+    required_applicaion_params (named_tuple): Tupla nomeada com todos os
+                                              parâmetros da aplicaçaõ e os seus
+                                              valores, passados pelo usuário
+                                              como parâmetros da aplucação na
+                                              linha de comando do script de 
+                                              otimização. Os parâmetros são
+                                              otidos usando um objeto da classe
+                                              argparse.ArgumentParser do
+                                              Python, a mesma usadas para
+                                              processar os parâmetros do script
+                                              de otimização.       
+    conversions: (dict[tuple]): lista com as conversões a serem feitas, 
+                                baseadas nas variáveis de aplicação definidas
+                                em required_applicaion_params, sendo cada
+                                chave o nome da variável da aplicação usada ao
+                                treinar os modelos, e a tupla associada a essa
+                                chave definindo a conversão usada para obter o 
+                                valor dessa variável. O primeiro elemento de
+                                uma dessas tuplas é o nome da conversão, como
+                                definido anteriormente. Os demais elementos
+                                dependerão da conversão. Para as conversões
+                                "copy" e "filesize", o segundo elemento é o
+                                nome da variável de aplicação usada na
+                                conversão com o valor passado pelo usuário
+                                definido em required_applicaion_params. Já para
+                                a operação "map", o segundo até o pénúltimo
+                                elemento são as variáveis usadas no mapeamento,
+                                também definidas pelos usuários em
+                                required_applicaion_params, usadas ao gerar o
+                                valor da aplicação associado àchave que
+                                referencia a tupla, e o último elemento é o
+                                nome do arquivo .csv com a tabela com os
+                                mapeamentos. 
+  application_configs_dir (Path): Diretório com os arquivos de configuração, 
+                                  que é necessário porque todas as tabelas de
+                                  conversão usadas pela operação "map" serão
+                                  armazenadas.
+
+  Retorna: 
+    dict[int | float] | None: Se nenhum erro ocorrer durante as conversões, 
+                        retorna um dicionário que define, para cada variável da 
+                        aplicação usadas nos treinamentos e definida por uma
+                        das chaves no dicionário conversions com todas as
+                        variáveis de aplicação a serem convertidas e usadas nos
+                        treinamentos, o seu valor após a converção, que poderá
+                        ser um inteiro ou um número de ponto flutuante dependo
+                        da variável da aplicação. Porém, se algum erro de
+                        conversão ocorrer, retorna None para informar que
+                        pelo menos uma conversão não foi feita.
+  """
+  # Dicionário com os dataframes usados pela conversão que faz um mapeamento,
+  # para garantir que eles sejam lidos uma única vez se forem usados em mais de
+  # um mapeamento. Neste dicionário, cada chave é o nome do arquivo que contém
+  # um dataframe usado para mapear um conjunto de parâmetros da aplicação
+  # definidos pelos usuários, nos parâmetros da aplicação correspondentes
+  # usados at treinar os modelos. Um exemplo é o benchmark de teste NPB do NAS.
+  # se não fosse um benchmark, o usuário poderia fornecer um das aplicações do
+  # benckmark consideradas ao treinar os modelos, ou seja, bt-mz, lu-mz e 
+  # sp-mz, e uma das classes usadas ao treinar o modelo, A, B, C ou D, e o
+  # dataframe iria mapear cada combinação de benckmark e classe nos parametros
+  # relevantes sobre as aplicações e que foram considerados ao treinar os
+  # modelos, Zone X, Zone Y, Iterations, Grid X, Grid Y e Grid Z, como mostrado
+  # na tabela do nosso artigo estendido do SSCAD.
   dataframe_map_dict = {}
-  # Funções de conversão
+  
+  # Função para simplesmente copiar o valor de uma variável de aplicação
+  # definida pelo usuário. A tupla, neste caso, terá somente uma componente
+  # que será o nome da variável definida pelo usuário da qual deveremos copiar
+  # o valor. 
   def copy_func(*args):
+    # Como todas as variáveis da aplicação definidas pelo usuário estão
+    # armazemadas na tupla nomeada required_applicaion_params, então
+    # verificamos se essa tupla tem um campo com o nome dado em args[0]. Caso o
+    # nome não exista, que seria um erro no código do script de otimização, a
+    # exceção "KeyError" é gerada pela função getattr e capturada pelo bloco
+    # try que usa a função copy_func, e o erro informado ao usuário, para ser
+    # reportado a equipe de suporte do script de otimização. Se o nome da
+    # variável de aplicação for válido, getattr retorna o valor desta variável.
     return getattr(required_applicaion_params, args[0])
 
+  # Função para obter o tamanho do arquio definido por uma variável de 
+  # aplicação definida pelo usuário. A tupla, neste caso, terá somente uma 
+  # componente que será o nome da variável definida pelo usuário que conterá o
+  # caminho completo do arquivo para o qual desejamos obter o tamanho. 
   def filesize_func(*args):
+    # Como todas as variáveis da aplicação definidas pelo usuário estão
+    # armazemadas na tupla nomeada required_applicaion_params então, como 
+    # antes, a função getattr gerará uma exceção "KeyError" se args[0] não
+    # existir na tupla. Neste caso, o valor retornado por getattr será o 
+    # caminho completo do arquivo para o qual desejamos obter o tamanho, 
+    # passado pelo usuário. Geramos uma instância do objeto Path do Pandas para
+    # poder acessar o arquivo, e armazena a referência para essa instância em
+    # file_path.
     file_path = Path(getattr(required_applicaion_params, args[0]))
+
+    # Verificamo, usando a função is_file da classe Path, se o caminho passado
+    # pelo o usuário é de um arquivo.
     if file_path.is_file():
+      # Se o caminho for de um arquivo válido, ou seja, é realmente um arquivo
+      # que existe no sistema de arquivos e pode ser acessado, a função stat
+      # da classe Path é usada para retornar, em uma tupla nomeada, as 
+      # propriedades do arquivo cujo caminho foi associado ao objeto 
+      # referenciado por file_path. Um dos campos dessa tupla é o st_size que
+      # armazena exatamente o tamanho do arquivo que desejamos. Logo, 
+      # retornamos o valor desse campo pois será o tamanho do arquivo. 
       return file_path.stat().st_size
     elif file_path.is_dir():
-      print(f"Path {file_path.resolve()} is a directory!")
+      # Se o caminhio for um diretório, o usuário definiu incorretamente o
+      # parâmertro da aplicação para o qual desejavamos obter o tamanho do
+      # arquivo, pois este caminho deveria ser para um arquivo. Neste caso, 
+      # mostramos uma mensagem de erro com o caminho completo do arquivo e
+      # retornamos None para indicar que ocorreu um erro ao converter a
+      # variável da aplicação passada pelo usuário.
+      print(f"❌ Erro ao converter a variável {args[0]}! O caminho "
+            f"{file_path.resolve()} é um diretório!")
       return None
     else:
-      print(f"Path {file_path.resolve()} does not exists!")
+      # Se o caminhio nao for um arquivo e nem um diretório, também o usuário
+      # definiu incorretamente o parâmertro da aplicação para o qual 
+      # desejavamos obter o tamanho do arquivo, pois este caminho referencia um
+      # arquivo que não existe ou um caminho que não é um arquivo e nem um 
+      # diretório. Neste caso, mostramos uma mensagem de erro com o caminho 
+      # ompleto do arquivo e retornamos None para indicar que ocorreu um erro 
+      # ao converter a variável da aplicação passada pelo usuário.
+      print(f"❌ Erro ao converter a variável {args[0]}! O caminho "
+            f"{file_path.resolve()} não existe ou não é um arquivo e nem um "
+            "diretório!")
       return None
 
   def map_func(user_arg_name, *args):
-    # O primeiro parâmetro é o nome do arquivo com o datafraame com os mapeamentos.
+    # O primeiro parâmetro é o nome do arquivo com o datafraame com os 
+    # mapeamentos.
     dataframe_map_file_name = args[0]
     dataframe_map_full_path_name = Path(application_configs_dir) / dataframe_map_file_name
     if dataframe_map_file_name in dataframe_map_dict.keys():
