@@ -565,10 +565,10 @@ def get_type(type_name):
                  para npumeros de ponto flutuante ou "string" para uma string.
                  Se o tipo for inválido, o tipo é considerado como string.
                    
-  Retorna: <class int> se a string dada em type_name for "integer", 
-           <class 'float'> se a string dada em type_name for "floating-point",
-           ou <class 'str'>, se a string dada em type_name for "string" ou
-           inválida.    
+  Retorna: 
+    <class int>: Se a string dada em type_name for "integer".
+    <class 'float'>: Se a string dada em type_name for "floating-point".
+    <class 'str'>: Se a string dada em type_name for "string" ou inválida.    
   """
 
   # Dicionáro auxiliar que mapeia cada tipo, identificado pela string que 
@@ -591,48 +591,183 @@ def get_type(type_name):
   return types_map.get(type_name, str)    
 
 def get_options_suggestion(suggestion_args):
+  """
+  Função para converter uma das componentes de uma configuração, ou seja, uma
+  das variáveis de configuração como o número de nós, de processos por nó, ou
+  de threads por processo. Para cada opção, o formato geral da opção é uma 
+  lista de strings, separados por espaços, no formato início:fim:incremento. Em
+  cada string, pode ser otimido cada um dos componentes. Se o início for
+  otimido, ele será 1. Se o fim for omitido, ele será igual ao início, e se o
+  incremento for otimido, ele será igual a 1. Exemplos:
+
+  2:12:2 -> 2, 4, 6, 8, 10 e 12.
+  :4: -> 1, 2, 3 e 4.
+  4::2 12:24:4 -> 4, 12, 16, 20 e 24. 
+  :: 6:10: -> 1, 6, 7, 8, 9 e 10
+
+  Parâmetros:
+    suggestion_args list[str] | None: Se for uma lista de strings com os
+                                      parâmetros, sendo que cada string precisa
+                                      estar no formato dado anteriormente. Se 
+                                      for None, processa uma lista com uma 
+                                      única string '1:1'
+
+  Retorna: 
+    list[int] | None: Se todas as strings da lista foram processadas 
+                      corretamente, ou seja ínicio, fim e incremento eram
+                      números inteiros, retorna uma lista de inteiros com todos
+                      os possíveis valores diferentes definidos pelas strings 
+                      da lista, como mostrado nos exemplos anteriores, ou 
+                      None, se algum erro ocorrer ao processar uma das strings.
+  """
+
+  # Inicializa a lista que armazenará os valores definidos pelas strings da
+  # passadas na lista suggestion_args, com uma lista vazia, pois ainda não
+  # processamos nenhuma string da lista suggestion_args.
   options = []
+
+  # Se suggestion_args for None, então será processada uma lista fixa.
   if suggestion_args is None:
+    # A lista fixa será composta por uma única string '1:1' representando a 
+    # lista de inteiros composta somente pelo inteiro 1.
     suggestion_args = ['1:1']
+
+  # Avalia cada string da lista suggestion_args, sendo que a string a ser 
+  # avaliada é referenciada pela variável args.
   for arg in suggestion_args:
+    # Tenta processar a lista, gerando uma exceção, que será capturada se, ao  
+    # converter ínicio, fim ou incremento da string "início:fim:incremento", se
+    # existirem, a string nçao puder ser convertida para um número inteiro.
     try:
-      # Parametro start:end:step 
-      # Se não tem startm start=1
-      # Se não tem end, end=start+1
-      # Se não tem step, step=1
+      # Como vimos, o formato de cada string da lista pode ser 
+      # ínicio:fim:invremento, e não existir início, início = 1, se não existir
+      # fim, fim = início e se não existir incremento, incremento = 1.
+
+      # Primeiramente verificamos se a string tem pelo menos um ":".
       if ':' in arg:
+        # Se existir pelo menos um ":", usamos a função split do objeto str do
+        # Python para dividir a string em arqs em várias strings, usando o ":"
+        # como o separador das strings. A função retorna uma lista com as 
+        # strings definidas pela divisão nos separadores ":", cuja referÊncia
+        # será armazenada em params. Como temos pelo menos um ":", então a
+        # string poderá ter ou não o incremento. Em qualquer caso, o incremento
+        # serś o terceiro parâmetro da lista params.
         params = arg.split(':')
-        # Inicio da faixa.
+
+        # O primeiro parâmetro sempre será ínicio, mesmo quando não for
+        # definido, pois neste caso a string seria vazia, já que não tem nenhum
+        # caractere antes do primeiro ":". Este parâmetro será a string que 
+        # começa na posição inicial (0) de args até a posição anterior a do 
+        # primeiro ":". A função strip do objeto str é usada para remover
+        # eventuais espaços que existam entre o possível inteiro que vamos
+        # posteriormente tentar converter.
         strstart = params[0].strip()
-        strend = params[1].strip()
-        if len(params) > 2:
-          strstep = params[2].strip()
-        else:
-          strstep = "1"
-        # Converte strstart para inteiro.
+
+        # Verifica se o tamanho da string strstart é maior do que 0.
         if len(strstart) > 0:
+          # Se o tamanho for maior do que 0 (o que ocorrerá se não existirem
+          # separadores e arg não for uma string vazia ou se existir pelo menos
+          # um separador e ele não for o primeiro caractere de arg), tenta 
+          # converter strstart para inteiro e armazena o valor em start.
           start = int(strstart) 
         else:
+          # Se o tamanho da string strstart for 0, então define o valor de
+          # start para 1.
           start = 1   
-        # Converte strend para inteiro
+
+        # O segundo parâmetro sempre será fim, mesmo quando não for definido,
+        # pois neste caso a string seria vazia, já que não tem nenhum caractere
+        # depois do primeiro ":" e o final da string, se não existir um segundo
+        # ":", ou seja, incremento não foi definido, ou entre o primeiro e o
+        # segundo ":". Este parâmetro será a string que começa na posição 
+        # após a posição do primeiro ":" até o caractere final, se o segundo 
+        # ":" não existie, ou a strings entre os dois caracteres ":" em caso
+        # contrário. A função strip do objeto str é usada para remover 
+        # eventuais espaços que existam entre o possível inteiro que vamos
+        # posteriormente tentar converter.
+        strend = params[1].strip()
+
+        # Verifica se o tamanho da string strend é maior do que 0.
         if len(strend) > 0:
-          end = int(strend)+1 
+          # Se o tamanho for maior do que 0 (o que ocorrerá se existir somente
+          # um separador e exsitirem caracteres depois dele ou dois separadores
+          # e existirem caracteres entre estes separadores), tenta converter
+          # strend para inteiro e armazena o valor em end.
+          end = int(strend) 
         else:
-          end = start+1   
-        # Converte strstep para inteiro
+          # Se o tamanho da string strend for 0, então define o valor de end
+          # igual ao de start convertido anteriormente.
+          end = start
+
+        # Verificamos se existem pelo menos dois separadores ":", o que implica
+        # que a lista parms terá duas ou mais strings.
+        if len(params) > 2:
+          # Se existirem pelo menos três strings em params, então temos pelo
+          # menos dois separadores ":" e o incremento será a terceira string de
+          # params. Se separadores adicionais forem usados, no momento eles
+          # serão ignorados. O incremento será a string depois do segundo 
+          # separador até o final, se não existir um terceiro separador (que 
+          # não seria correto), ou até antes deste separador, em caso
+          # contrário. Novamente a string pode ser vazia se não existirem
+          # caracteres definidos por uma das strings descritas anteriormente.
+          # TODO: Será que deveríamos dar um erro caso len(params) for maior do
+          # que 3?
+          strstep = params[2].strip()
+        else:
+          # Se params tiver menos do que 3 strings, então o incremento não foi
+          # definido porque somente foi usado um ":", logo o incremento será
+          # definido com o inteiro 1.
+          strstep = "1"
+
+        # Verifica se o tamanho da string strstep é maior do que 0.
         if len(strstep) > 0:
+          # Se o tamanho for maior do que 0 (o que ocorrerá se dois ou mais 
+          # separadores foram definidos e existia uma string não vazia, ou
+          # um ou nenum separador foi definido e a string foi definida para
+          # "1"), tenta converter strstep para inteiro e armazena o valor em
+          # step.
           step = int(strstep) 
         else:
+          # Se o tamanho da string strstep for 0, então define o valor de
+          # step para 1.
           step = 1
-        options.extend(range(start, end, step))  
+
+        # Uma vez definidos start, end e step, usamos a função range do Python
+        # para gerar os valores entre start e end, com incrementos dados en
+        # step, lembrando que, como o range não inclui o ultimo valor, devemos
+        # então passar end+1. Depois, usamos a função extend da lista do Python
+        # para inserir todos os inteiros definidos entre start e end, inclusos,
+        # em incrementos step na lista options com os valores definidos pelas
+        # strings em suggestion_args. 
+        options.extend(range(start, end+1, step))  
       else:
+        # Se não existirem separadores ":" na string arg, então ela é composta
+        # por uma string que deveria ser início e ser um número inteiro, logo
+        # tentaremos convertar arq para inteiro e, se nenuma exceção ocorrer,
+        # armazenamos o valor convertido em param.
         param = int(arg)
+
+        # Como arq tinha somente um inteiro que foi convertido de string para
+        # inteiro e armazenado em param, adicionamos este inteiro a lista
+        # options com os valores definidos pelas strings em suggestion_args. 
         options.append(param)
+
+    # Verifica se alguma exceção ocorreu ao fazer uma das conversões para
+    # inteiro descritas anteriormemte.    
     except Exception as e:
+      # Se ocorrer alguma exceção, indicando um erro ao tentar converter os 
+      # inteiros, é retornado None ao invés da lista.    
       return None
   
-  # Remove valores duplicados
+  # Como podem ser gerados valores duplicados ao processar as strngs em
+  # suggestion_args, usamos o troque de converter a lista em conjunto para
+  # remover os valores dulicados e depois geramos uma lista com esses valores
+  # ordenados usando a função sorted.
   options = sorted(list(set(options)))
+
+  # Retorna a lista dos valores deinidos pelas strins em suggestion_args se
+  # nenhum erro ocorreu, ou None se algum erro ocorreu ao processar uma das
+  # strings em suggestion_args.
   return options
 
 def convert_user_params(required_applicaion_params, conversions, application_configs_dir):
