@@ -863,26 +863,40 @@ def convert_user_params(required_applicaion_params, conversions,
                         conversão ocorrer, retorna None para informar que
                         pelo menos uma conversão não foi feita.
   """
-  # Dicionário com os dataframes usados pela conversão que faz um mapeamento,
-  # para garantir que eles sejam lidos uma única vez se forem usados em mais de
-  # um mapeamento. Neste dicionário, cada chave é o nome do arquivo que contém
-  # um dataframe usado para mapear um conjunto de parâmetros da aplicação
-  # definidos pelos usuários, nos parâmetros da aplicação correspondentes
-  # usados at treinar os modelos. Um exemplo é o benchmark de teste NPB do NAS.
-  # se não fosse um benchmark, o usuário poderia fornecer um das aplicações do
-  # benckmark consideradas ao treinar os modelos, ou seja, bt-mz, lu-mz e 
-  # sp-mz, e uma das classes usadas ao treinar o modelo, A, B, C ou D, e o
-  # dataframe iria mapear cada combinação de benckmark e classe nos parametros
-  # relevantes sobre as aplicações e que foram considerados ao treinar os
-  # modelos, Zone X, Zone Y, Iterations, Grid X, Grid Y e Grid Z, como mostrado
-  # na tabela do nosso artigo estendido do SSCAD.
+  # Dicionário com os dataframes usados pela conversão "map" que faz um 
+  # mapeamento, para garantir que eles sejam lidos uma única vez se forem 
+  # usados em mais de um mapeamento. Neste dicionário, cada chave é o nome do
+  # arquivo que contém um dataframe usado para mapear um conjunto de parâmetros
+  # da aplicação, definidos pelos usuários, nos parâmetros da aplicação
+  # correspondentes usados ao fazer as predições nos modelos. Um exemplo é o 
+  # benchmark de teste NPB do NAS. Se não fosse um benchmark, o usuário poderia
+  # fornecer um das aplicações do benckmark consideradas ao treinar os modelos,
+  # ou seja, bt-mz, lu-mz e sp-mz, e uma das classes usadas ao treinar os
+  # modelos, A, B, C ou D. Neste caso, o dataframe mapeará cada combinação de
+  # benckmark e classe nos parametros relevantes sobre as aplicações e que
+  # foram considerados ao treinar os modelos, Zone X, Zone Y, Iterations,
+  # Grid X, Grid Y e Grid Z, como mostrado na tabela do nosso artigo estendido
+  # do SSCAD.
   dataframe_map_dict = {}
   
-  # Função para simplesmente copiar o valor de uma variável de aplicação
-  # definida pelo usuário. A tupla, neste caso, terá somente uma componente
-  # que será o nome da variável definida pelo usuário da qual deveremos copiar
-  # o valor. 
   def copy_func(*args):
+    """
+      Função para simplesmente copiar o valor de uma variável de aplicação
+      definida pelo usuário. A tupla, neste caso, terá somente uma componente
+      que será o nome da variável definida pelo usuário da qual deveremos
+      copiar o valor.
+
+      Parâmetros:
+        args (tuple): tupla com somente um elemento, uma string com o nome da
+                      variável de aplicação, passada pelo usuário, a ter o seu
+                      valor copiado.
+
+      Retorna: 
+        int | float: Como a conversão é de cópia, retorna diretamente o valor
+                     da variável definido pelo usuário do script de otimização,
+                     que pode ser um int ou um float, já que essa variável será
+                     usada ao fazer predições em um modelos de regressão.
+    """
     # Como todas as variáveis da aplicação definidas pelo usuário estão
     # armazemadas na tupla nomeada required_applicaion_params, então
     # verificamos se essa tupla tem um campo com o nome dado em args[0]. Caso o
@@ -893,11 +907,29 @@ def convert_user_params(required_applicaion_params, conversions,
     # variável de aplicação for válido, getattr retorna o valor desta variável.
     return getattr(required_applicaion_params, args[0])
 
-  # Função para obter o tamanho do arquio definido por uma variável de 
-  # aplicação definida pelo usuário. A tupla, neste caso, terá somente uma 
-  # componente que será o nome da variável definida pelo usuário que conterá o
-  # caminho completo do arquivo para o qual desejamos obter o tamanho. 
   def filesize_func(*args):
+    """
+      Função para obter o tamanho do arquio definido por uma variável de 
+      aplicação definida pelo usuário. A tupla, neste caso, terá somente uma 
+      componente que será o nome da variável definida pelo usuário que conterá
+      o caminho completo do arquivo para o qual desejamos obter o tamanho. 
+
+      Parâmetros:
+        args (tuple): tupla com somente um elemento, uma string com o nome da
+                      variável de aplicação, passada pelo usuário, com o
+                      caminho completo do nome do arquivo, dado pelo usuário,
+                      para o qual vamos calcular o tamanho e usar como uma das
+                      variáveis de aplicação ao fazer as prediçoes nos modelos.
+
+      Retorna: 
+        int | None: Se o caminho do arquivo dado no único elemento da tupla for
+                    válido, ou seja, é o caminho de um arquivo que existe e
+                    está acessível pelo usuário, retorna o tamanho desse
+                    arquivo em bytes. Em caso contrário, ou seja, não foi
+                    possível obter o tamanho devido ao caminho ser de um
+                    arquivo inexistente, um diretório ou algum outro tipo de
+                    objeto do sistema de arquivos, retorna None.
+    """
     # Como todas as variáveis da aplicação definidas pelo usuário estão
     # armazemadas na tupla nomeada required_applicaion_params então, como 
     # antes, a função getattr gerará uma exceção "KeyError" se args[0] não
@@ -908,7 +940,7 @@ def convert_user_params(required_applicaion_params, conversions,
     # file_path.
     file_path = Path(getattr(required_applicaion_params, args[0]))
 
-    # Verificamo, usando a função is_file da classe Path, se o caminho passado
+    # Verificamos, usando a função is_file da classe Path, se o caminho passado
     # pelo o usuário é de um arquivo.
     if file_path.is_file():
       # Se o caminho for de um arquivo válido, ou seja, é realmente um arquivo
@@ -943,34 +975,119 @@ def convert_user_params(required_applicaion_params, conversions,
       return None
 
   def map_func(user_arg_name, *args):
-    # O primeiro parâmetro é o nome do arquivo com o datafraame com os 
-    # mapeamentos.
+    """
+    Função que mapeia um conjunto de variáveis de entrada, passadas na tupla,
+    que define o arquivo com a tabela csv com os mapeamentos e as variáveis de
+    aplicação, definidas pelo usuário, usadas neste mapeamento e a variável que
+    será gerada pelo mapeamento porque, ao contrário das outras operações, 
+    precisamos saber do nome da variável de destino para acessar a coluna
+    correta com os valores do mapeamento dessa variável.
+    """
+ 
+    # O primeiro elemento da tupla args é o nome do arquivo com a tabela no
+    # formato CSV com os mapeamentos, para o qual a sua referência é também
+    # armazenada na variável dataframe_map_file_name. O nome dado no primeiro
+    # elemento é somente o nome do arquivo com a tabela, sem o caminho do
+    # diretório com os arquivos de configurão das aplicações.
     dataframe_map_file_name = args[0]
-    dataframe_map_full_path_name = Path(application_configs_dir) / dataframe_map_file_name
+
+    # Como o primeiro elemento da tupla é somente o nome do arquivo com a
+    # tabela precisamos obter o caminho completo para ler a tabela, que será
+    # o caminho com os arquivos de configuração das aplicações dado em
+    # application_configs_dir mais uma "/" mais o nome do arquivo porque todos
+    # as tabelas de mapeamento estão nesse diretório com os arquivos de
+    # configuração das aplicaações.
+    dataframe_map_full_path_name = (Path(application_configs_dir) 
+                                    / dataframe_map_file_name)
+
+    # Verifica se a chave com o nome do arquivo dataframe_map_file_name existe
+    # no dicionário dataframe_map_dict.
     if dataframe_map_file_name in dataframe_map_dict.keys():
+      # Se existe uma chave com o nome do arquivo dataframe_map_file_name,
+      # então basta usarmos o dataframe dado pela referência desta chave ao
+      # fazer o mapeamento da variável user_arg_name. A referência para o
+      # dataframe jpa lido é copiada em df_map.
       df_map = dataframe_map_dict[dataframe_map_file_name]
     else:
+      # Se a chave dataframe_map_file_name com o nome do arquivo com a tabela
+      # de mapeamento não existir no dicionário dataframe_map_dict, usa a
+      # função read_csv do pandas para ler a tabela no formato CSV e criar um
+      # objeto DataFrame do Pandas com a tabela lida. Uma referência ao
+      # dataframe lido é colocada em df_map.
       df_map = pd.read_csv(dataframe_map_full_path_name) 
 
-      # TODO: Deixei esta depuração, habilitada pela variável de ambiente APPOPTIMIZER_DEBUG.
-      # TODO: Podemos tirar todas as depurações no futuro.
-      # TODO: Ínicio do código de depuração:
+      # TODO: Deixei esta depuração, habilitada pela variável de ambiente
+      # APPOPTIMIZER_DEBUG, para mostrar a tabela de mapeamento lida. Podemos
+      # tirar todas as depurações no futuro. 
+      # Imprime a tabela no formato CSV com os mapeamentos lida do arquivo 
+      # dataframe_map_file_name e convertida para um DataFrame do Pandas,
+      # mostrando o nome do arquivo dataframe_map_file_name e a tabela
+      # lida, usando a referência ao dataframe com a tabela colocada em df_map. 
       if debug_code:
         print(f"➡️  Dataframe de mapeamento {dataframe_map_file_name}: \n\n")
         print(df_map.to_markdown(tablefmt="grid"))
-      # TODO: Fim do código de depuração.
-        
+
+      # Cria uma chave com o nome dataframe_map_file_name do arquivo com a
+      # tabela de mapeamento lida e associa esta chave à referência ao objeto,
+      # com o dataframe com a tabela lida, dada em df_map.
       dataframe_map_dict[dataframe_map_file_name] = df_map
 
-    # Cria a condicional para fazer a procura no dataframe de mapeamento.
+    # Cria uma lista vazia a partir da qual será montada a condicional para
+    # buscar, no dataframe com os mapeamentos dado em df_map, as colunas com
+    # os valores das variáveis de aplicção definidas pelo elemento sdo segundo 
+    # (posição 1 de args) até o último elemento em args. A condional será uma
+    # string para procurar a linha correta, com os valores das variáveis dadas
+    # a partir da segunda posição da tupla, adequada para ser usada pela função
+    # query do Pandas, sendo que cda elemento da lista será uma das condições
+    # a serem buscadas.
     list_search = []
-    for user_option in args[1:]:
-      list_search.append(f"{user_option}.astype('str') == '{getattr(required_applicaion_params, user_option)}'")  
 
+    # Cria a parte da condiconal para cada variável da aplicação dada a partir
+    # do segudo elemento da tupla args.
+    for user_option in args[1:]:
+      # Obtém o valor associado a opção dada pelo elemento atual avaliado, que
+      # deveria ser o nome de uma das variáveis em required_applicaion_params.
+      # Se nenhum erro ocorrer, criamos a condição user_option == valor, em que
+      # o valor é o valor para a variável de aplicação, definida pelo usuário,
+      # dados pelo atributo user_option da tupla nomeada
+      # required_applicaion_params, retornado pela função getattr. Se o nome da
+      # variável de aplicação não existir, getattr gerará uma exceção KeyError.
+      # Depois de criada a string com a condição, ela é adicionada a lista
+      # list_search com todas as condições que devem ser verificadas (como 
+      # estaos procurando as linhas das variáveis de aplicação, definidas pelo
+      # usuário, dadas a partir do segundo elemento da tupla arqs, existirá
+      # uma condição para cada um desses elementos).
+      list_search.append(
+          f"{user_option}.astype('str') == "
+          f"'{getattr(required_applicaion_params, user_option)}'"
+      )
+
+    # Cria a string de condição, usando a operação join com a string " and ",
+    # implicando que a string final conterá todos os elementos da lista
+    # list_search, que são cada uma das condições necessárias para encontrar a
+    # linha correta com o mapeamento, pela operação "and" que indicará na 
+    # condição final que todas as condições definidas pelas strings da lista
+    # list_search deverão ser verdadeiras.
     str_search = ' and '.join(list_search)
 
+    # Usa a função query do Pandas para descobrir a linha, que deverá ser
+    # única do dataframe com os valores das variáveis de aplicação 
+    # definidas a partir do segundo elemento da tupla args, sendo os valores
+    # definidos pelo usuário para essas variáveis de aplicação dados na tupla
+    # nomeada required_applicaion_params. A refeência ao dataframe resultante
+    # da busca feita em query é armazenado em result_df.
     result_df = df_map.query(str_search).reset_index(drop=True)
+
+    # Se o dataframe armazenado em result_df estiver vazio, então a tabela de
+    # mapeamento não tem uma linha para mapear todos os parâmetros da aplicação
+    # defidos a partir do segundo elemento da tupla args, definidos na tupla
+    # nomeada required_applicaion_params.
     if result_df.empty:
+      # Se a busca não apresentou resultados, vamos criar uma mensagem
+      # informando o problema de não ser possível fazer o mapeamemto, o que não
+      # deveria ocorrer. A não existẽncia de um mapeamento indica que a tabela
+      # com os mapeamentos está incompleta, e isso precisa ser reportado ao
+      # suporte resposável pelo scipt de otimização.
       list_erros = []
       for user_option in args[1:]:
         option_value = getattr(required_applicaion_params, user_option)
@@ -982,9 +1099,14 @@ def convert_user_params(required_applicaion_params, conversions,
         print(f"Valores inválidos dados para as opções: {', '.join(list_erros)}")
       mapped_value = None
     else:  
+      # TODO: O que fazer se mais de um mapeamento existir? Devemos dar um
+      # erro? Eu escolhia a primeira linha, mas nçao sei se é a melhor
+      # abodagem, pois não deveria existir duas ou mais possibilidades de
+      # mapeamemto,
       mapped_value = result_df.loc[0, user_arg_name]  
         
     return mapped_value
+  
   try:
     converted_user_params = {}
     for variable in conversions:
