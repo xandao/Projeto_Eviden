@@ -863,22 +863,7 @@ def convert_user_params(required_applicaion_params, conversions,
                         conversão ocorrer, retorna None para informar que
                         pelo menos uma conversão não foi feita.
   """
-  # Dicionário com os dataframes usados pela conversão "map" que faz um 
-  # mapeamento, para garantir que eles sejam lidos uma única vez se forem 
-  # usados em mais de um mapeamento. Neste dicionário, cada chave é o nome do
-  # arquivo que contém um dataframe usado para mapear um conjunto de parâmetros
-  # da aplicação, definidos pelos usuários, nos parâmetros da aplicação
-  # correspondentes usados ao fazer as predições nos modelos. Um exemplo é o 
-  # benchmark de teste NPB do NAS. Se não fosse um benchmark, o usuário poderia
-  # fornecer um das aplicações do benckmark consideradas ao treinar os modelos,
-  # ou seja, bt-mz, lu-mz e sp-mz, e uma das classes usadas ao treinar os
-  # modelos, A, B, C ou D. Neste caso, o dataframe mapeará cada combinação de
-  # benckmark e classe nos parametros relevantes sobre as aplicações e que
-  # foram considerados ao treinar os modelos, Zone X, Zone Y, Iterations,
-  # Grid X, Grid Y e Grid Z, como mostrado na tabela do nosso artigo estendido
-  # do SSCAD.
-  dataframe_map_dict = {}
-  
+
   def copy_func(*args):
     """
       Função para simplesmente copiar o valor de uma variável de aplicação
@@ -960,6 +945,8 @@ def convert_user_params(required_applicaion_params, conversions,
       # variável da aplicação passada pelo usuário.
       print(f"❌ Erro ao converter a variável {args[0]}! O caminho "
             f"{file_path.resolve()} é um diretório!")
+
+      # Como não podemos obter o tamanho de um diretório, retornamos None.
       return None
     else:
       # Se o caminhio nao for um arquivo e nem um diretório, também o usuário
@@ -972,6 +959,10 @@ def convert_user_params(required_applicaion_params, conversions,
       print(f"❌ Erro ao converter a variável {args[0]}! O caminho "
             f"{file_path.resolve()} não existe ou não é um arquivo e nem um "
             "diretório!")
+
+      # Como não podemos obter o tamanho de um objeto do sistema de arquivos
+      # com um tipo desconhecido ou que efetivamente não existe, retornamos
+      # None.
       return None
 
   def map_func(user_arg_name, *args):
@@ -982,6 +973,32 @@ def convert_user_params(required_applicaion_params, conversions,
     será gerada pelo mapeamento porque, ao contrário das outras operações, 
     precisamos saber do nome da variável de destino para acessar a coluna
     correta com os valores do mapeamento dessa variável.
+
+    Parâmetros:
+         user_arg_name: Nome da variável que será mapeada, ou seja, para a qual
+                        iremos usar a tabela de mapeamento para obter o seu
+                        valor, de acordo com os valores das variáveis de
+                        aplicação cujos nomes são passados a partir do segundo
+                        elemento da tupla args definida a segir. O nome da
+                        variável precisa ser fornecido para saber qual coluna
+                        da tabela de mapeamento deveremos considerar.
+         args (tuple): Tupla em que o primeiro elemento é o nome do arquivo com
+                       a tabela com os mapeamentos das variáveis da aplicação
+                       definidas pelo usuário nas variáveis de aplicação 
+                       efetivamente usadas ao treinar os modelos, e as strings
+                       com os nomes das variáveis de aplicação definidas pelo
+                       usuário cujos valores serão usados ao fazer o mepamento.
+ 
+       Retorna: 
+          int | float | None: O valor mapeado para a variável de aplicação,
+                              efetivamente usada para terinar os modelos, cujo
+                              nome foi dado em user_arg_name, se nenhum erro
+                              ocorrer durante o mapeamento. O tipo no caso de
+                              não existirem erros dependerá do valor definido
+                              para a variável user_arg_name na tabela de
+                              mapeamento. Se algum erro ocorrer durante o 
+                              mapeamento, retorna None.
+  
     """
  
     # O primeiro elemento da tupla args é o nome do arquivo com a tabela no
@@ -1088,122 +1105,533 @@ def convert_user_params(required_applicaion_params, conversions,
       # deveria ocorrer. A não existẽncia de um mapeamento indica que a tabela
       # com os mapeamentos está incompleta, e isso precisa ser reportado ao
       # suporte resposável pelo scipt de otimização.
+
+      # Lista com os erros que ocorreram, ou seja, os valores das variáveis em
+      # args para os quais os valores, dados em required_applicaion_params, não
+      # existem na tabela de mapeamento, o que impossibilitou o mapeamento de
+      # ser feito.
       list_erros = []
+
+      # Vamos verificar para quais variáveis da aplicação cujos nomes foram 
+      # dados a partir do segundo elemento da tupla args, para qual(is) 
+      # dessa(s) variáveis não existe o valor da variável deinido, pelo
+      # usuário, na tupla required_applicaion_params.
       for user_option in args[1:]:
+        # Obtem o valor da variável de aplicação atualmente avaliada 
+        # user_option a partir da tupla nomeada required_applicaion_params,
+        # usado a função getattr do Python. Novamente, um nome errado irá gerar
+        # a exceção KeyErro que será capturada e o erro reportado.
         option_value = getattr(required_applicaion_params, user_option)
+
+        # Verifica se o valor não está na coluna associdada à variável de 
+        # apliçação com o nome user_options na tabela de mapeamentos df_map, 
+        # pois se o valor não exsitir, então a variável user_option foi uma das
+        # responsáveis pela falha em encontrar um mapeamento.
         if option_value not in df_map[user_option].values:
+          # Adiciona a variável da aplicação que impediu o mapeamento, junto
+          # com o valor dessa variável definido pelo usuário. 
           list_erros.append(f"{user_option} = {option_value}")
+
+      # Imprime a lista com todas as variávels. Separei a impressão de acordo
+      # com o tamanho da lista para evitar usar (s), (es) ou (ões) em todas as
+      # palavras da frase indicando o erro.
       if len(list_erros) == 1:    
-        print(f"Valor inválido dado para a opção: {list_erros[0]}")
+        # Frase quando somente uma variável da aplucação impediu o mapeamento.
+        print(f"❌ Valor inválido dado para a opção: {list_erros[0]}")
       else:                
-        print(f"Valores inválidos dados para as opções: {', '.join(list_erros)}")
-      mapped_value = None
-    else:  
-      # TODO: O que fazer se mais de um mapeamento existir? Devemos dar um
-      # erro? Eu escolhia a primeira linha, mas nçao sei se é a melhor
-      # abodagem, pois não deveria existir duas ou mais possibilidades de
-      # mapeamemto,
-      mapped_value = result_df.loc[0, user_arg_name]  
-        
-    return mapped_value
+        # Frase quando mais de uma variável da aplucação impediu o mapeamento.
+        print(f"❌ Valores inválidos dados para as opções: "
+              "{', '.join(list_erros)}")
   
+      # Como não podemos fazer o mapeamento devido à não existirem mapeamentos
+      # para todas as variáveis de aplicação definidos pelo usuário em 
+      # required_applicaion_params na tabela mapeamento, retornamos None.
+      mapped_value = None
+    elif len(result_df) == 1:
+      # Para o mapeamento ser correto, não deveria, na tabela de mapeamentos,
+      # existir dois mapeamentos para um mesmo conjunto de valores das
+      # variáveis da aplicação definidas em required_applicaion_params, 
+      # considerando as variáveis desta tupla nomeada definidas a partir do
+      # segundo elemento de args.
+      mapped_value = result_df.loc[0, user_arg_name]  
+
+      # Como encontramos um unico mapeamento, retornamos o seu valor.
+      return mapped_value
+    else:
+      # A tabela result_df tem mais de uma linha, o que significa que temos 
+      # mais de um possível mapeamento, o que não deveria ocorrer, pois o
+      # mapeamento deve ser único. Neste caso, indicamos o erro para o usuário,
+      # imprimindo o resultado que informa que existem dois ou mais
+      # mapeamentos.
+      print(f"❌ A tabela de mapeamento {dataframe_map_file_name} está "
+            "definindo mais de um mapeamento para as variáveis da aplicação "
+            "passados pelo usuário, como indicado na tabela a seguir")
+      print("\n", result_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
+            sep="")
+      print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+      # Como não podemos fazer o mapeamento devido à ambiguidade, retornamos
+      # None.
+      return None
+
+  # Agora vamos começar o código da função principal, que usará as outras 
+  # funções auxiliares definidas anteriormente
+
+  # Dicionário com os dataframes usados pela conversão "map" que faz um 
+  # mapeamento, para garantir que eles sejam lidos uma única vez se forem 
+  # usados em mais de um mapeamento. Neste dicionário, cada chave é o nome do
+  # arquivo que contém um dataframe usado para mapear um conjunto de parâmetros
+  # da aplicação, definidos pelos usuários, nos parâmetros da aplicação
+  # correspondentes usados ao fazer as predições nos modelos. Um exemplo é o 
+  # benchmark de teste NPB do NAS. Se não fosse um benchmark, o usuário poderia
+  # fornecer um das aplicações do benckmark consideradas ao treinar os modelos,
+  # ou seja, bt-mz, lu-mz e sp-mz, e uma das classes usadas ao treinar os
+  # modelos, A, B, C ou D. Neste caso, o dataframe mapeará cada combinação de
+  # benckmark e classe nos parametros relevantes sobre as aplicações e que
+  # foram considerados ao treinar os modelos, Zone X, Zone Y, Iterations,
+  # Grid X, Grid Y e Grid Z, como mostrado na tabela do nosso artigo estendido
+  # do SSCAD.
+  dataframe_map_dict = {}
+
+  # Usamos o block try-except para capturar eventuais erros, como um arquivo
+  # inexistente ou uma chave inválida, que possam ser gerados por um possível
+  # erro no código. O código final nunca deveria geare esses erros, pois isso
+  # indicaria um erro no código do script de otimização, já que possíveis erros
+  # do usuário nos valores dos parâmetros da aplicação que ele definiu deveriam
+  # ser detectados pelas funções de conversão cujos códigos foram descritos
+  # anteriormente. Todos os erros, se ocorrerem, são reportados informando aos
+  # usuários para entrarem em contado com o suporte repassando a mensagem de
+  # erro gerada.
   try:
+    # Cria o dicionário que armazenará as variáveis de aplicação mapeadas a
+    # partir das variãveis de aplicações denifidas pelo usuário na lista com
+    # as converões.
     converted_user_params = {}
+
+    # Agora vamos tratar de cada uma das conversões dadas no dicionário 
+    # conversions. Para isso, como conversions é um dicionário em que cada
+    # chave é o nome da variável de aplicação a ser convertida a partir da
+    # conversão cujos dados estão na tupla referênciada pela chave, vamos então
+    # percorrer cada chave do dicionário, sendo a chave para a qual faremos a
+    # conversão em cada passo armazenada em variable.
     for variable in conversions:
+      # Vamos agora fazer a conversão para a variável de aplicação variable,
+      # usando um ou mais dos valores das variáveis da aplicação definidas pelo
+      # usuário e dados na tupla conversions. 
       conversion_info = conversions[variable]
+
+      # Como vimos na definição dessa função de conversão das variáveis de
+      # aplicação, o primeiro elemento da tupla é a string que identifica a
+      # conversão a ser feita, como indicado na descrição no início da função.
       conversion_type = conversion_info[0]
+
+      # Também como vimos na definição da função, os outros elementos da tupla
+      # serão os parâmetros usados pela conversão definida por conversion_type.
       conversion_args = conversion_info[1:]
+
+      # Dicionário auxiilar usado para executar as funções de conversão, sendo
+      # que a função partial do Python é usada para executar a função quando
+      # não desejamos invocar a função no momento da sua definição, no caso, da
+      # associação da função à chave que identifica a conversão. Isso foi feito
+      # para facilitar a adicição de novas funções de conversão que sejam 
+      # necessárias nu futuro, sem necessitar o uso de uma sequência 
+      # if-elif-...-elif-else que dependeria de quantas conversões existem, ou
+      # do uso da nova estrutura match-case do Pythom que somente existe após a
+      # versão 3.10 da linguagem.
       conversion_types = {
         'copy': partial(copy_func, *conversion_args),
         'filesize': partial(filesize_func, *conversion_args),
         'map':  partial(map_func, variable, *conversion_args),
       }
 
+      # Como cada chave do dicionário conversion_types associa o nome da
+      # conversão a uma função a ser executada, então usamos a chave 
+      # conversion_type, com o nome da conversão, para executar a função
+      # correta de conversão. Note que após acessar o diretório, usamos os 
+      # parênteses de chamada de uma função sem parâmetros. Este é o modo de
+      # chamar uma função definida pelp partial quando não são necessaŕios
+      # parâmetros adicionais além dos definidos quando o partial foi usado.
+      # O valor retornado pela conversão correta é armazenado em
+      # converted_value. Note que uma conversão inexistente, que seria um erro
+      # no arquivo de configuração da aplicação para a qual o usuário deseja
+      # otimizar, irá gerar uma exceção KeyErro que será capturada e o erro
+      # reportado ao usuário, recomendando que ele entre em contato com o
+      # suporte responsável pelo script.
       converted_value = conversion_types[conversion_type]()
+
+      # Se a função de conversão retornar none para uma das variáveis de
+      # aplicação a serem convertidas, paramos o processo de conversão e 
+      # retornamos None.
+      # TODO: Talez possamos postergar isso até retornar o dicionário 
+      # converted_user_params e fazer as vericações quando o dicionário for
+      # retornado, pois isso permitiria descobrir mais de um erro cometido pelo
+      # usuário.
       if converted_value is None:
+        # Se a conversão atual não pode ser feita devido a existẽncia de erros,
+        # retorna None ao invés do diconário converted_user_params com as
+        # variáveis de aplicação e seus valores convertidos.
         return None
+      
+      # Como a conversão para a variável de aplicação variable foi feita com
+      # sucesso, armazena o valor converted_value desta conversão no
+      # dicionário converted_user_params.
       converted_user_params[variable] = converted_value
 
+    # Como todas as conversões foram feitas com sucesso, retorna o dicionário 
+    # converted_user_params com cada variável de aplicação e o seu valor
+    # convertido.
     return converted_user_params
+
+  # Um dos arquivos usados na conversão não foi encontrado. Esta exceção
+  # deveria somente ocorrer ao ler uma das tabelas de mapeamento, pois a
+  # conversão que retorna o tamanho do arquivo verifica se ele existe.
   except FileNotFoundError as e:
     print(f"❌ O arquivo {e.filename} nao foi encontrado.")
-    print(f"❌ Por favor, avise o erro ao adistrador do sistema o erro: {e.strerror}!")
+    print("❌ Por favor, avise o erro ao adistrador do sistema o erro: "
+          f"{e.strerror}!")
+
+    # Como oocorreu una exceção inesperada, retorna None ao invés do 
+    # dicionário com os valores convertidos das variáveis de aplicação.
     return None
+  # Não foi possível acessar um dos arquivos, devido a um erro de permissão de
+  # acesso ao arquivo.
   except PermissionError as e:
     print(f"❌ Erro de permissão ao acessar o arquivo {e.filename}.")
-    print(f"❌ Por favor, avise o erro ao adistrador do sistema o erro: {e.error}.")
+    print("❌ Por favor, avise o erro ao adistrador do sistema o erro: "
+          f"{e.error}.")
+
+    # Como oocorreu una exceção inesperada, retorna None ao invés do 
+    # dicionário com os valores convertidos das variáveis de aplicação.
     return None
+  # Não foi possível acessar um dos arquivos, devido a um erro de leitura ao
+  # acessar o arquivo.
   except IOError as e:
     print(f"❌ Erro de I/O ao ler o arquivo {e.filename}!")
     print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
     print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como oocorreu una exceção inesperada, retorna None ao invés do 
+    # dicionário com os valores convertidos das variáveis de aplicação.
     return None
+
+  # Ocorreu um erro ao acessar uma chave de um dicionaŕio ou um campo de uma
+  # tupla nomeada. Este erro não deveria ocorrer, e indica um erro no código do
+  # script de otimização ou no arquivo de configuração da aplicação que o
+  # usuário está tentando otimizar.
   except KeyError as e:
     print(f"❌ Erro interno ao processar o valor da opção {e.args}.")
     print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como oocorreu una exceção inesperada, retorna None ao invés do 
+    # dicionário com os valores convertidos das variáveis de aplicação.
     return None
+
+  # Ocorreu uma exceção inesperada ao tentar fazer as conversões, provavelmente
+  # devido a um erro no código do script de otimização.
   except Exception as e:
-    print(f"❌ Erro desconhecido ao processar o valor da opção {', '.join(e.args)}")
+    print("❌ Erro desconhecido ao processar o valor da opção "
+          f"{', '.join(e.args)}")
     print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como oocorreu una exceção inesperada, retorna None ao invés do 
+    # dicionário com os valores convertidos das variáveis de aplicação.
     return None
 
 def generate_submission_script(template_file_path, template_params):
+  """
+  Função para gerar o script de submissão para uma aplicação, a partir
+  de um arquivo de template para a aplicação, definido pelo caminho
+  template_file_path, utilizando os recursos definidos pelas valores das
+  variáveis de configuração da melhor sugestão de configuração obtida
+  pelo script de otimização, o tempo estimado de execução e a partição a
+  ser usada para a submissão do job, que será definida a partir do tempo
+  de execução e das sugestões de configuração, o uso máximo de memória e
+  se a execução é ou não exclusiva. Também são passados todos os 
+  parâmetros da aplicação definidos pelo usuário, que serão passados
+  para o script de submissão como parâmetros da aplicação, e o nome do 
+  job, que será usado para identificar o job submetido, como foi 
+  definido pelo usuário na linha de comando do script de otimização. 
+  A função retorna este script de submissão em uma string com o script
+  de submissão.
+
+  Parâmetros:
+    template_file_path (Path): Caminho completo do arquivo de template
+                               do script de submissão para a aplicação a 
+                               ser otimizada, que será usado para
+                               gerar o script de submissão final.
+    template_params (dict): Dicionário com as variáveis de configuração
+                            da melhor sugestão de configuração obtida
+                            pelo script de otimização, o tempo estimado
+                            de execução e a partição a ser usada para a
+                            submissão do job, o nome do job e todos os
+                            parâmetros da aplicação definidos pelo 
+                            usuário.
+
+  Retorna:
+    str: String com o script de submissão gerado a partir do arquivo de
+         template e das variáveis de configuração da melhor sugestão de
+         configuração obtida pelo script de otimização, o tempo estimado
+         de execução, a partição a ser usada para a submissão do job, o
+         uso máximo de memória, se a execução é ou não exclusiva, e o
+         nome do job e todos os parâmetros da aplicação definidos pelo
+         usuário.
+  """
+
   def format_size(size_in_bytes):
+    """
+    Função para formatar o tamanho de um arquivo em bytes para uma string
+    com o tamanho em uma unidade mais legível, como K, M, G, T ou P. A
+    função recebe o tamanho em bytes e retorna uma string com o tamanho 
+    formatado, arredondado para cima e com a unidade apropriada.
+
+    Parâmetros:
+      size_in_bytes (int): Tamanho do arquivo em bytes.
+
+    Retorna:
+      str: String com o tamanho do arquivo formatado, arredondado para
+           cima, e com a unidade apropriada (B, K, M, G, T ou P
+    """
+
+    # Definimos a lista de labels para as unidades de medida, sendo B 
+    # para bytes, K para kilobytes, M para megabytes, G para gigabytes, 
+    # T para terabytes e P para petabytes. 
     labels = ['B', 'K', 'M', 'G', 'T', 'P']
+
+    # Inicializamos o índice do label em 0, que corresponde a bytes.
     label_index = 0
 
-    # Continua divindo pór 1024 até encontrar a escala correta
+    # Enquanto o tamanho em bytes for maior ou igual a 1024 e o índice
+    # do label for menor que o tamanho da lista de labels menos 1, 
+    # dividimos o tamanho em bytes por 1024 e incrementamos o índice do
+    # label. Isso nos permite encontrar a unidade de medida apropriada
+    # para o tamanho do arquivo, até o limite de petabytes, em que
+    # paramos de dividir o tamanho em bytes por 1024.=, implicando que
+    # para o sufixo P, podemos ter um tamanho maior que 1024 antes do
+    # sufixo.
     while size_in_bytes >= 1024 and label_index < len(labels) - 1:
+      # Dividimos o tamanho em bytes por 1024 para converter para a
+      # próxima unidade de medida.
       size_in_bytes = size_in_bytes / 1024.0
+
+      # Incrementamos o índice do label para usar a próxima unidade de
+      # medida na lista de labels.
       label_index += 1
 
-    # Retorna o tamanho formatado.
+    # Retorna o tamanho formatado como uma string, arredondado para
+    # cima e com a unidade apropriada.
     return f"{np.ceil(size_in_bytes):.0f}{labels[label_index]}"
   
   def format_time(time_in_seconds):
+    """
+    Função para formatar o tempo em segundos para uma string no formato
+    "HH:MM:SS", se o número de dias for zero (ou seja, time_in_seconds é
+    menor do que 86400 segundos), ou no formato "D-HH:MM:SS" em caso 
+    contrário, sendo D o número de dias, HH o número de horas, MM o 
+    número de minutos e SS o número de segundos.
+
+    Parâmetros:
+      time_in_seconds (int): Tempo em segundos. 
+
+    Retorna:
+      str: String com o tempo formatado no formato "HH:MM:SS" se o
+           número de segundos for menor que 86400, ou no formato 
+           "D-HH:MM:SS", em caso contrário, sendo  D o número de dias, 
+           HH o número de horas, MM o número de minutos e SS o número de
+           segundos.
+    """
+
+    # Calcula o número de dias, que será igual ao número de segundos 
+    # dividido por 86400, que é o número de segundos em um dia. O 
+    # operador // é usado para fazer a divisão inteira, que permite 
+    # obter o número de dias sem considerar os segundos restantes em um
+    # dia não completo. 
     days = time_in_seconds // 86400
+
+    # Calcula o número de horas, que será igual ao número de segundos
+    # restantes após a divisão por 86400, dividido por 3600, que é
+    # o número de segundos em uma hora. O operador % é usado para obter
+    # o número de segundos restantes após a divisão por 86400, e o 
+    # operador // é usado para fazer a divisão inteira, que permite 
+    # obter o número de horas sem considerar os segundos restantes em 
+    # uma hora não completa.
     hours = (time_in_seconds % 86400) // 3600
+
+    # Calcula o número de minutos, que será igual ao número de segundos
+    # restantes após a divisão por 3600, dividido por 60, que é o
+    # número de segundos em um minuto. O operador % é usado para obter
+    # o número de segundos restantes após a divisão por 3600, e o
+    # operador // é usado para fazer a divisão inteira, que permite
+    # obter o número de minutos sem considerar os segundos restantes em
+    # um minuto não completo.
     minutes = ((time_in_seconds % 86400) % 3600) // 60
+
+    # Calcula o número de segundos restantes após a divisão por 60, que
+    # é o número de segundos em um minuto. O operador % é usado para
+    # obter o número de segundos restantes após a divisão por 60.
     seconds = time_in_seconds % 60
+
+    # Monta a string com o tempo formatado, que inicialmente será 
+    # composta por "D-" se o número de dias, armazenado na variável
+    # days, for maior que zero, ou uma string vazia em caso contrário, 
+    # pois o formato usado pelo SLURM não exige o número de dias se ele
+    # for zero.
     prefix = f"{days}-" if days > 0 else ""
+
+    # Retorna a string com o tempo formatado no formato "HH:MM:SS" se o
+    # número de segundos for menor que 86400, ou no formato 
+    # "D-HH:MM:SS", em caso contrário, utilizando o prefixo de dias
+    # armazenado na variável prefix, e formatando os números de horas, 
+    # minutos e segundos com dois dígitos, usando o operador de 
+    # formatação de strings do Python, que permite preencher com zeros 
+    # à esquerda se necessário (o operador :02 indica que o número 
+    # deve ter pelo menos dois dígitos, e se tiver menos, será 
+    # preenchido com zeros à esquerda).
     return f"{prefix}{hours:02}:{minutes:02}:{seconds:02}"
           
-  # Salva em uma string o conteúdo do arquivo de template.
+  # Salva em uma string o conteúdo do arquivo de template para o script
+  # de submissão da aplicação, definido pelo caminho 
+  # template_file_path.
   template_content = template_file_path.read_text(encoding="utf-8")
 
-  # Altera o campo número de nós
+  # Agora vamos substituir os campos do template pelos parâmetros de
+  # configuração do script de submissão definidos no dicionário 
+  # template_params, que contém os parâmetros da melhor sugestão de 
+  # configuração, o tempo estimado de execução, a partição a ser usada
+  # para a submissão do job, o nome do job e todos os parâmetros da 
+  # aplicação definidos pelo usuário. 
+
+  # Para alterar o número de nós, primeiramente verificamos se existe a
+  # chave 'nodes' no dicionário associado à chave 'suggestion_params' 
+  # dentro do dicionário template_params. Se a chave existir, usamos o 
+  # valor associado a ela; caso contrário, usamos o valor padrão 1. 
+  # Isso é feito usando o método get do dicionário, que retorna o valor 
+  # associado à chave se ela existir, ou um valor padrão se não existir,
+  # que neste caso será 1.
   number_of_nodes = template_params['suggestion_params'].get('nodes', 1)
-  template_content = template_content.replace("<<number_of_nodes>>", f"{number_of_nodes}")
 
-  # Altera o campo =umero de processos
+  # Altera o campo número de nós no conteúdo do template, substituindo a
+  # string "<<number_of_nodes>>" pelo valor de number_of_nodes, que foi
+  # obtido como descrito anteriormente, usando o método replace da 
+  # classe str.
+  template_content = template_content.replace("<<number_of_nodes>>", 
+                                              f"{number_of_nodes}")
+
+  # Para alterar o número de processos por nó, primeiramente verificamos
+  # se existe a chave 'process' no dicionário associado à chave 
+  # 'suggestion_params'  dentro do dicionário template_params. Se a 
+  # chave existir, usamos o valor associado a ela; caso contrário, 
+  # usamos o valor padrão 1. Isso novamente é feito usando o método get 
+  # do dicionário, usando o valor padrão 1 caso a chave não exista.
   number_of_process = template_params['suggestion_params'].get('process', 1)
-  template_content = template_content.replace("<<number_of_process_per_node>>", f"{number_of_process}")
 
-  # Altera o campo ntasks (igual ao produto de número de nós e número de processos por nó)
-  template_content = template_content.replace("<<total_tasks>>", f"{number_of_nodes * number_of_process}")
+  # Altera o campo número de nós no conteúdo do template, substituindo a
+  # string "<<number_of_process_per_node>>" pelo valor de 
+  # number_of_process, que foi obtido como descrito anteriormente, 
+  # usando o método replace da classe str.
+  template_content = template_content.replace("<<number_of_process_per_node>>", 
+                                              f"{number_of_process}")
 
-  # Altera o campo número de threads
+  # Altera o campo número de tarefas , substituindo a string 
+  # "<<total_tasks>>" pelo produto do número de nós, armazenado em 
+  # number_of_nodes, e o número de processos por nó, armazenado em
+  # number_of_process, usando o método replace da classe str.
+  template_content = template_content.replace("<<total_tasks>>", 
+                                              f"{(number_of_nodes 
+                                                  * number_of_process)}")
+
+  # Para alterar o número de threads por processo, primeiramente
+  # verificamos se existe a chave 'threads' no dicionário associado à 
+  # chave 'suggestion_params'  dentro do dicionário template_params.
+  # Se a chave existir, usamos o valor associado a ela; caso contrário, 
+  # usamos o valor padrão 1. Isso novamente é feito usando o método get 
+  # do dicionário, usando o valor padrão 1 caso a chave não exista.
   number_of_threads = template_params['suggestion_params'].get('threads', 1)
-  template_content = template_content.replace("<<threads_per_process>>", f"{number_of_threads}")
 
-  # Altera o campo nme_do_job
-  template_content = template_content.replace("<<job_name>>", template_params['job_name'])
+  # Altera o campo número de nós no conteúdo do template, substituindo a
+  # string "<<threads_per_process>>" pelo valor de 
+  # number_of_threads, que foi obtido como descrito anteriormente, 
+  # usando o método replace da classe str.
+  template_content = template_content.replace("<<threads_per_process>>", 
+                                              f"{number_of_threads}")
 
-  # Altera o campo dos outros par+ametros.
-  template_content = template_content.replace("<<application_params>>", ' '.join(template_params['application_params']))
+  # Altera o campo nome do job, fornecido pelo usuário na linha de 
+  # comando do script de otimização, substituindo a
+  # string "<<job_name>>" pelo valor de  da chave 'job_name' do 
+  # dicionário template_params, que armazena este nome do job,usando o 
+  # método replace da classe str.
+  template_content = template_content.replace("<<job_name>>", 
+                                              template_params['job_name'])
+
+  # Altera o campo com os parâmetros da aplicação, fornecidos pelo
+  # usuário na linha de comando do script de otimização, substituindo a
+  # string "<<application_params>>" pelo valor de  da chave 
+  # 'application_params' do dicionário template_params, que armazena 
+  # estes parâmetros da aplicação em uma lista. Como os parâmetros da 
+  # aplicação são passados como uma lista de strings, e precisamos 
+  # juntar essas strings em uma única string, separadas por espaços, 
+  # então usamos o método join da classe str para criar uma string com 
+  # todos os parâmetros da aplicação separados por espaços.
+  template_content = template_content.replace(
+    "<<application_params>>", 
+    ' '.join(template_params['application_params'])
+  )
   
-  # Altera a partição a ser usada
-  template_content = template_content.replace("<<partition>>", f"{template_params['partition']}")
+  # Altera o campo com a partição a ser usada para a submissão do job,
+  # obitida a partir do tempo estimado de execução e das sugestões de
+  # configuração, substituindo a string "<<partition>>" pelo valor de
+  # da chave 'partition' do dicionário template_params, que armazena a
+  # partição a ser usada para a submissão do job, usando o método
+  # replace da classe str.
+  template_content = template_content.replace(
+    "<<partition>>",
+    f"{template_params['partition']}"
+  )
 
-  # Altera o tempo máximo de execução
-  template_content = template_content.replace("<<max_time>>", f"{format_time(template_params['max_time'])}")
+  # Altera o campo com o tempo máximo de execução, obtido a partir do 
+  # tempo estimado de execução e das sugestões de configuração. Como o
+  # tempo máximo de execução é dado em segundos, precisamos formatá-lo
+  # para o formato "D-HH:MM:SS" ou "HH:MM:SS", dependendo do número de 
+  # dias, usando a função format_time definida anteriormente. A
+  # alteração é feita substituindo a string "<<max_time>>" pelo valor
+  # formatado do tempo máximo de execução obtido pela função 
+  # format_time, usando o método replace da classe str.
+  template_content = template_content.replace(
+    "<<max_time>>", 
+    f"{format_time(template_params['max_time'])}"
+  )
 
-  # Altera o tipo de execução, compartilhada (----oversubscribe) ou exclusiva (--exclusive).
-  template_content = template_content.replace("<<execution_type>>", "exclusive" if template_params['exclusive'] else "oversubscribe")
+  # Altera o tipo de execução do script de submissão, que pode ser 
+  # compartilhada (--oversubscribe) ou exclusiva (--exclusive), 
+  # dependendo do valor da chave 'exclusive' do dicionário 
+  # template_params, que foi definida de acordo com o esquema da
+  # partição escolhida. Se o valor for True, a execução será exclusiva; 
+  # caso contrário, será compartilhada. A alteração é feita substituindo
+  # a string "<<execution_type>>" pelo valor apropriado, usando o método
+  # replace da classe str.
+  template_content = template_content.replace(
+    "<<execution_type>>", 
+    "exclusive" if template_params['exclusive'] else "oversubscribe"
+  )
 
-  # Altera o uso máxumo de memória
-  template_content = template_content.replace("<<max_memory>>", f"{format_size(template_params['max_memory'] * 1024)}")
+  # Altera o campo uso máximo de memória, obtido a partir do valor da
+  # chave 'max_memory' do dicionário template_params, que armazena o
+  # valor máximo de memória a ser usado para a submissão do job, também 
+  # obtido a partir do esquema da partição escolhida. Como o valor de 
+  # memória é dado em kilobytes no arquivo de configuração da aplicação, 
+  # precisamos formatá-lo para uma unidade mais legível, como K, M, G, T
+  # ou P, usando a função format_size definida anteriormente, 
+  # multiplicando o valor por 1024 para convertê-lo para bytes antes de
+  # chamar a função format_size, pois a função espera que o tamanho 
+  # esteja em bytes. A alteração é feita substituindo a string 
+  # "<<max_memory>>" pelo valorformatado obtido pela função format_size, 
+  # usando o método replace da classe str. 
+  template_content = template_content.replace(
+    "<<max_memory>>", 
+    f"{format_size(template_params['max_memory'] * 1024)}"
+  )
 
+  # Retorna o conteúdo do script de submissão gerado a partir do arquivo
+  # de template, como descrito anteriormente, em uma string do Python.
   return template_content
 
 # JobName, JobID, [Parâmetros da Sugestão: RAxML, NAS -> "NNodes", "Processo p/ no", "Thread p/ proc.";
@@ -1217,11 +1645,29 @@ def generate_submission_script(template_file_path, template_params):
 # se o job já terminou e, em caso, positivo, adicionar as informações relevantes obtidas pelo sacct aos
 # dados do job.
 
-def submission_log(application_name, system_args, user_args, suggestion_params, all_user_params):
+def submission_log(application_name, system_args, user_args, suggestion_params,
+                    all_user_params):
+  """
+  Função para gerar o log de submissão do job para a aplicação, que será
+  usado para monitorar o job submetido, e que será salvo em um arquivo de
+  log. A função recebe o nome da aplicação, os argumentos do sistema, os
+  argumentos do usuário, os parâmetros da sugestão de configuração e 
+  todos os parâmetros da aplicação definidos pelo usuário
+  """
   pass  
 
-def optimize_application(configs_file_path, system_config, applications_config, user_config, 
-                         application_args, predictors_info_config, user_args):
+def optimize_application(configs_file_path, system_config, applications_config, 
+                         user_config, application_args, predictors_info_config, 
+                         user_args):
+  """
+  Função principal do script de otimização, que recebe os argumentos do
+  sistema, os argumentos do usuário, os parâmetros da sugestão de configuração 
+  e todos os parâmetros da aplicação definidos pelo usuário, e que será usada 
+  para otimizar a execução da aplicação, gerando o script de submissão para a
+  aplicação, que será salvo em um arquivo de log. A função retorna True se a
+  otimização foi bem-sucedida, ou False caso contrário.
+  """
+
   # Verifica se o usuário deseja somente listar as aplicações
   application_name = None
   try:
