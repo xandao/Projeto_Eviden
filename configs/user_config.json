@@ -1,11 +1,7 @@
 {
   "collect_consumed_energy": false,
   "default_script_name": "script.sh",
-  "users_activity": {
-    "enable": true,
-    "data_file_prefix": "executed_jobs_data",
-    "data_file_dir": "logs"
-  },
+  "enable_submission_log": true,
   "slurm": {
     "submission_program": "sbatch",
     "submission_message": ".*Submitted batch job (\\d+).*"

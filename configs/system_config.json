@@ -3,5 +3,6 @@
   "templates_path": "templates",
   "dataset_path": "data",
   "applications_path": "applications",
+  "logs_path": "logs",
   "predictors_info_config_filename": "predictors_info.json"
 }

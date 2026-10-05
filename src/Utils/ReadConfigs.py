@@ -35,6 +35,7 @@ class ReadSystemConfig:
         "templates_path": {"type": "string"},
         "dataset_path": {"type": "string"},
         "applications_path": {"type": "string"},
+        "logs_path": {"type": "string"},
         "predictors_info_config_filename": {"type": "string"}
     }
   }
@@ -409,7 +410,8 @@ class ReadApplicationsConfigs:
                     },
                     "minContains": 1,
                     "maxContains": 1
-                }
+                },
+                "log_file": {"type": "string"}
             }
         }
     }
@@ -604,7 +606,7 @@ class ReadUserConfig:
     "required": [
         "collect_consumed_energy", 
         "default_script_name", 
-        "users_activity", 
+        "enable_submission_log", 
         "slurm" 
     ],
     "properties": {
@@ -614,15 +616,7 @@ class ReadUserConfig:
             "type": "array", 
             "items": {"type": "string"}
         },
-        "users_activity": {
-            "type": "object", 
-            "required": ["enable", "data_file_prefix", "data_file_dir"],
-            "properties": {
-                "enable": {"type": "boolean"},
-                "data_file_prefix": {"type": "string"},
-                "data_file_dir": {"type": "string"},
-            }
-        },
+        "users_activity": {"type": "boolean"}, 
         "slurm": {
             "type": "object", 
             "required": ["submission_program", "submission_message"],
