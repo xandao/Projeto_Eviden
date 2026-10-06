@@ -2157,12 +2157,12 @@ class SuggestionsPredictor:
 		# Cria uma variável auxiliar user_applicaion_params com os
 		# parâmetros da aplicação passados pelo usuário, ordenados e
 		# convertidos para uma lista.
-		user_applicaion_params = sorted(user_applicaion_params.keys())
+		user_applicaion_params_keys = sorted(user_applicaion_params.keys())
 
 		# Cria uma variável auxiliar self_params com os parâmetros da
 		# aplicação usados ao treinar o modelo, ordenados e convertidos
 		# para uma lista.
-		self_params = sorted(self.application_params.keys())
+		self_params_keys = sorted(self.application_params.keys())
 
 		# Verifica se os parâmetros dd aplicação definodos pelo usuário e 
 		# passados como chaves no dicionário user_applicaion_params são
@@ -2173,10 +2173,11 @@ class SuggestionsPredictor:
 		# verificar se os parâmetros da aplicação passados pelo usuário são
 		# os mesmos parâmetros usados ao treinar o modelo, e se não forem,
 		# gera uma exceção do tipo KeyError.
-		if (user_applicaion_params != self_params):
+		if (user_applicaion_params_keys != self_params_keys):
 			raise KeyError("Os parâmetros de aplicação "
 									   f"{', '.join(user_applicaion_params)} inválidos! "
-										 f"Deveriam ser os parâmerros {', '.join(self_params)}")
+										 "Deveriam ser os parâmerros "
+										 f"{', '.join(self_params_keys)}")
 
 		# Constrói o X usado para fazer a predição da variável alvo do
 		# modelo auxiliar para escolher a melhor sugestão de configuração. 

@@ -495,19 +495,6 @@ def process_script_args():
     # verificar se ele passou um nome da aplicação e pelo menos um
     # parâmetro da aplicação, pois precisamos de no mínimo um parâmetro
     # da aplicação para treinar o preditor para a aplicação;
-    if len(application_args) > 1:
-      # Como temos uma linha de comando do script de otimização
-      # aparentemente válida, com os parâmetros do script de otimização
-      # e o nome da aplicação e pelo menos um parâmetro, então a função 
-      # parse_args do objeto analisador da linha de comando parser é
-      # usada para processar e salvar os parâmetros do script de 
-      # otimização definidos pelo usuário e retornar eles em uma tupla
-      # nomeada com a sua referência armazenada em user_args.
-      user_args = parser.parse_args(script_args)
-    else:
-      # Como o usuário não passou pelo menos o nome da aplicação e um
-      # parâmetro, definimos user_args como None.
-      user_args = None
   else:
     # Se o separador não estiver na lista, então todos os parâmetros
     # serão atribuídos a lista de parâmetros do script de otimização.
@@ -519,19 +506,27 @@ def process_script_args():
 
     # Como não foi usado o separador, então não foi passado o nome da
     # aplicação e nem a lisra de argumentos. 
-    application_args = []
+    application_args = None
 
-    # Como o usuário nõa passou o nome da aplicação e seus parâmetros,
-    # definimos user_args como None.
-    user_args = None
+  # Processa os parâmetros passados ao script de otimização, que inclui
+  # os parâmtros relacionados ao script de submissão baseado na melhor
+  # sugestão de configuração, e outros parâmetros, como o para listar as
+  # aplicações que podem ser otimizadas.
+  user_args = parser.parse_args(script_args)
 
-  # Se o campo user_args for None, então o usuário tentou executar o 
+  # Verifica se o usuário não passou um parâmetro que não necessita do
+  # nome da aplicação e seus parâmetros. No momento, a opção de listar
+  # as aplicações que podem ser otimiadas é a única opção que não 
+  # precisa do nome da aplicação.
+  ignore_application_name = not user_args.list
+
+  # Se application_args for None, então o usuário tentou executar o 
   # script sem usar o separador "--" ou não passou pelo menos o nome da
   # aplicação e um parâmetro da aplicação depois dele. Então, precisamos
   # informar o erro e mostrar a ajuda do script de otimização, que pode
   # ser mostrada pela função print_help do analisador da linha de
   # comando parser.
-  if user_args is None:
+  if application_args is None and ignore_application_name:
       print("Não foi definido o nome da aplicação e pelo menos um argumento "
             "da aplicação!")
       parser.print_help()
@@ -1732,9 +1727,9 @@ def generate_submission_script(template_file_path, template_params):
 def submission_log(application_args, system_args, log_params):
   """
   Função para gerar o log de submissão do job para a aplicação, que será
-  usado para monitorar o job submetido, e que será salvo em um arquivo de
-  log. A função recebe o nome da aplicação, os argumentos do sistema, os
-  argumentos do usuário, os parâmetros da sugestão de configuração e 
+  usado para monitorar o job submetido, e que será salvo em um arquivo
+  de log. A função recebe o nome da aplicação, os argumentos do sistema,
+  os argumentos do usuário, os parâmetros da sugestão de configuração e 
   todos os parâmetros da aplicação definidos pelo usuário
   """
 
@@ -1759,13 +1754,14 @@ def submission_log(application_args, system_args, log_params):
   # submissões feitas para a aplicação cujas configurações estão em
   # application_args.
   try:
-    log_filepath = (base_files_path / Path(system_args['logs_dir']) 
+    log_filepath = (base_files_path / Path(system_args['logs_path']) 
                     / f"{application_args['user']['log_file']}")
     if log_filepath.is_file():
-      # O arquivo com os logs de otimização dos usuários para a aplicação
-      # a ser otimizada existe, e acessível e é um arquivo. Logo, vamos
-      # ler o arquivo para um Dataframe para depois atualizá-lo com os
-      # dados do trabalho submetido para a aplicação otimizada.
+      # O arquivo com os logs de otimização dos usuários para a
+      # aplicação a ser otimizada existe, e acessível e é um arquivo.
+      # Logo, vamos ler o arquivo para um Dataframe para depois
+      # atualizá-lo com os dados do trabalho submetido para a aplicação
+      # otimizada.
       logs_df = pd.read_csv(log_filepath, sep=',', usecols=logs_columns)
     elif log_filepath.is_dir():
       # Se o caminhio for um diretório, 
@@ -1901,8 +1897,6 @@ def optimize_application(configs_file_path, system_config, applications_config,
       # Caso não deseje listar as aplucações, precisamos fornecer uma aplicaçao, pois o usuário deseja otimizar o uso dos reursos.
       if not application_args:
         print("❌ Não foi fornecido o nome da aplicação a ser otimizada e os seus parâmetros de execução.")
-        print("❌ Este erro não deveria ser mostrado!")
-        print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
         return False
       
       # Diretorio dos arquivos de configuração das aplicações.
@@ -1951,6 +1945,7 @@ def optimize_application(configs_file_path, system_config, applications_config,
       
       # Se o usuário definir pelo menos uma opção, usa a configuração customizada com as outras opções com valores defaault se não definidas
       # pelo usuário.    
+   
       if use_custom_config:
         custom_suggestions = {}
         for suggestion_name in applications_config[application_id]['user']['suggestions_map']:
@@ -1973,19 +1968,22 @@ def optimize_application(configs_file_path, system_config, applications_config,
       # Processa os patâmetros usados pela aplicação para o preditor. 
       user_application_params = convert_user_params(required_applicaion_params, applications_config[application_id]['user']['conversions'], 
                                                     application_configs_dir_path)  
+ 
       if user_application_params is None:
         return False
 
       # Lê o preditor usado para fazer a melhor sugestão dos parâmetros de execução da aplicação.
       predictor_path = base_files_path / Path(system_config['predictors_path']) / predictors_info_config[application_id]
       predictor = SuggestionsPredictor.load_predictor(predictor_path)
+
       suggestion = predictor.get_suggestion(user_application_params, custom_suggestions, verbose=debug_code)
 
       # Cria o mapeamento reverso para a impressao
       suggestion_map = applications_config[application_id]['user']['suggestions_map']
       reversed_suggestions_map = {v:k for k, v in suggestion_map.items()}
       suggestion_mapped = {reversed_suggestions_map[k]:v for k,v in suggestion['Suggestion'].items()}
-      
+
+
       # Obtém o caminho do arquivo de template, se as opçoes. 
       if user_args.run or not user_args.suggestion:
         if user_args.verbose:
@@ -2112,59 +2110,60 @@ def optimize_application(configs_file_path, system_config, applications_config,
               print(f"\n\n➡️  stderr de execução de {submission_program}:\n\n")
               print(result.stderr)        
 
-            # Gera o log de submissão do job para a aplicação, que será
-            # usado para monitorar o job submetido, e que será salvo em
-            # um arquivo de no formato csv.
+            if user_config['enable_submission_log']:
+              # Gera o log de submissão do job para a aplicação, que será
+              # usado para monitorar o job submetido, e que será salvo em
+              # um arquivo de no formato csv.
 
-            # Primeiramente copiamos todos os campos do dicionário 
-            # template_params, usados para gerar o script de submossão,
-            # com exceção do campo 'application_params' e do campo 
-            # 'suggestion_params', pois precisamos usar os parâmetros da
-            # aplicação e da sugestão de configuração, pois esses são os
-            # nomes usados ao treinar os modelos. Também removemos o
-            # campo 'application_name', pois existe um arquivo de log
-            # diferente para cada aplicação. 
-            logs_params = {
-                k: v
-                for k, v in template_params.items()
-                if k not in [
-                  'application_params', 'suggestion_params', 'application_name'
-                ]
-            }            
-        
-            # Adiciona ao dicionário logs_params os parâmetros da 
-            # melhor sugestão de configuração.
-            logs_params.update(suggestion['Suggestion'])
+              # Primeiramente copiamos todos os campos do dicionário 
+              # template_params, usados para gerar o script de submossão,
+              # com exceção do campo 'application_params' e do campo 
+              # 'suggestion_params', pois precisamos usar os parâmetros da
+              # aplicação e da sugestão de configuração, pois esses são os
+              # nomes usados ao treinar os modelos. Também removemos o
+              # campo 'application_name', pois existe um arquivo de log
+              # diferente para cada aplicação. 
+              logs_params = {
+                  k: v
+                  for k, v in template_params.items()
+                  if k not in [
+                    'application_params', 'suggestion_params', 'application_name'
+                  ]
+              }            
+          
+              # Adiciona ao dicionário logs_params os parâmetros da 
+              # melhor sugestão de configuração.
+              logs_params.update(suggestion['Suggestion'])
 
-            # Adiciona ao dicionário logs_params os parâmetros da
-            # aplicação definidos pelo usuário.
-            logs_params.update(vars(required_applicaion_params))
+              # Adiciona ao dicionário logs_params os parâmetros da
+              # aplicação definidos pelo usuário.
+              logs_params.update(vars(required_applicaion_params))
 
-            # Agora adiconamos os parâmetros da aplicação convertidos,
-            # que são os parâmetros usados pelos treinamentos ao
-            # construir o preditor de aplicação e por este preditor ao
-            # escolher a melhorsugestão de configuração.
-            logs_params.update(user_application_params)
+              # Agora adiconamos os parâmetros da aplicação convertidos,
+              # que são os parâmetros usados pelos treinamentos ao
+              # construir o preditor de aplicação e por este preditor ao
+              # escolher a melhorsugestão de configuração.
+              logs_params.update(user_application_params)
 
-            # Adicioma ao dicionário logs_params o tempo predito para a
-            # sugestão de configuração.
-            if 'Time' in suggestion.keys():
-              logs_params[f'predicted {applications_config[application_id]["estimated_parameters"]["time"]}'] = suggestion['Time']
+              # Adicioma ao dicionário logs_params o tempo predito para a
+              # sugestão de configuração.
+              if 'Time' in suggestion.keys():
+                logs_params[f'predicted {applications_config[application_id]["estimated_parameters"]["time"]}'] = suggestion['Time']
 
-            # Adicioma ao dicionário logs_params o menor valor predito
-            # para variável alvo usada pelo modelo auxiliar ao fazer as
-            # predições (nos testes atuais, estamos usando o EDP).
-            logs_params[f'predicted {applications_config[application_id]["estimated_parameters"]["suggestion"]}'] = suggestion['y_pred_min']
+              # Adicioma ao dicionário logs_params o menor valor predito
+              # para variável alvo usada pelo modelo auxiliar ao fazer as
+              # predições (nos testes atuais, estamos usando o EDP).
+              logs_params[f'predicted {applications_config[application_id]["estimated_parameters"]["suggestion"]}'] = suggestion['y_pred_minimum']
 
-            # Por fim, adicionamos o ID do job submetido ao dicionário
-            # logs_params.
-            logs_params['JobID'] = job_id
+              # Por fim, adicionamos o ID do job submetido ao dicionário
+              # logs_params.
+              logs_params['JobID'] = job_id
 
-            # Chama a função submission_log para gerar o log de
-            # submissão do trabalho para a aplicação otimizada pelo
-            # usuário
-            submission_log(application_args, system_config, 
-                           logs_params)
+              # Chama a função submission_log para gerar o log de
+              # submissão do trabalho para a aplicação otimizada pelo
+              # usuário
+              submission_log(applications_config[application_id], system_config, 
+                            logs_params)
         except subprocess.CalledProcessError as e:
           # This will print the actual error from the terminal command
           print("❌ Não foi possṕivel executar o comando {submission_program}!")
