@@ -1588,8 +1588,10 @@ def generate_submission_script(template_file_path, template_params):
   # string "<<number_of_nodes>>" pelo valor de number_of_nodes, que foi
   # obtido como descrito anteriormente, usando o método replace da 
   # classe str.
-  template_content = template_content.replace("<<number_of_nodes>>", 
-                                              f"{number_of_nodes}")
+  template_content = template_content.replace(
+    "<<number_of_nodes>>", 
+    f"{number_of_nodes}"
+  )
 
   # Para alterar o número de processos por nó, primeiramente verificamos
   # se existe a chave 'process' no dicionário associado à chave 
@@ -1603,16 +1605,19 @@ def generate_submission_script(template_file_path, template_params):
   # string "<<number_of_process_per_node>>" pelo valor de 
   # number_of_process, que foi obtido como descrito anteriormente, 
   # usando o método replace da classe str.
-  template_content = template_content.replace("<<number_of_process_per_node>>", 
-                                              f"{number_of_process}")
+  template_content = template_content.replace(
+    "<<number_of_process_per_node>>", 
+    f"{number_of_process}"
+  )
 
   # Altera o campo número de tarefas , substituindo a string 
   # "<<total_tasks>>" pelo produto do número de nós, armazenado em 
   # number_of_nodes, e o número de processos por nó, armazenado em
   # number_of_process, usando o método replace da classe str.
-  template_content = template_content.replace("<<total_tasks>>", 
-                                              f"{(number_of_nodes 
-                                                  * number_of_process)}")
+  template_content = template_content.replace(
+    "<<total_tasks>>",
+    f"{(number_of_nodes * number_of_process)}"
+  )
 
   # Para alterar o número de threads por processo, primeiramente
   # verificamos se existe a chave 'threads' no dicionário associado à 
@@ -1626,16 +1631,20 @@ def generate_submission_script(template_file_path, template_params):
   # string "<<threads_per_process>>" pelo valor de 
   # number_of_threads, que foi obtido como descrito anteriormente, 
   # usando o método replace da classe str.
-  template_content = template_content.replace("<<threads_per_process>>", 
-                                              f"{number_of_threads}")
+  template_content = template_content.replace(
+    "<<threads_per_process>>", 
+    f"{number_of_threads}"
+  )
 
   # Altera o campo nome do job, fornecido pelo usuário na linha de 
   # comando do script de otimização, substituindo a
   # string "<<job_name>>" pelo valor de  da chave 'job_name' do 
   # dicionário template_params, que armazena este nome do job,usando o 
   # método replace da classe str.
-  template_content = template_content.replace("<<job_name>>", 
-                                              template_params['job_name'])
+  template_content = template_content.replace(
+    "<<job_name>>",
+    template_params['job_name']
+  )
 
   # Altera o campo com os parâmetros da aplicação, fornecidos pelo
   # usuário na linha de comando do script de otimização, substituindo a
@@ -1724,7 +1733,8 @@ def generate_submission_script(template_file_path, template_params):
 # positivo, adicionar as informações relevantes obtidas pelo sacct aos
 # dados do job.
 
-def submission_log(application_args, system_args, log_params):
+def submission_log(application_args, system_args, log_params, 
+                   verbose=False):
   """
   Função para gerar o log de submissão do job para a aplicação, que será
   usado para monitorar o job submetido, e que será salvo em um arquivo
@@ -1763,6 +1773,12 @@ def submission_log(application_args, system_args, log_params):
       # atualizá-lo com os dados do trabalho submetido para a aplicação
       # otimizada.
       logs_df = pd.read_csv(log_filepath, sep=',', usecols=logs_columns)
+
+      # Como já existe um dataframe com os logs, vamos atualizá-lo com
+      # os dados do trabalho submetido para a aplicação otimizada, que
+      # estão em log_params.
+      logs_df = pd.concat([logs_df, pd.DataFrame([log_params])])
+
     elif log_filepath.is_dir():
       # Se o caminhio for um diretório, 
       print("❌ Erro ao ler o arquivo com os logs para a aplicaçao "
@@ -1785,14 +1801,20 @@ def submission_log(application_args, system_args, log_params):
       # disponibiliada para ser otimizada pelo script. Logo, deveremos
       # criar um dataframe vazio com as colunas definidas em
       # logs_columns.
-      logs_df = pd.DataFrame(columns=logs_columns)
-
-    # Uma vez criado ou lido o DataFrame com os logs das submissões
-    # feitas para a aplicação, vamos atualizá-lo com os dados do
-    # trabalho submetido para a aplicação otimizada, que estão em 
-    # log_params.
-    logs_df = pd.concat([logs_df, pd.DataFrame([log_params])])
-
+      logs_df = pd.DataFrame(log_params, index=[0])
+    
+    # Se a verbosidade estiver habilitada, imprime o dataframe 
+    # atualizado com os logs da aplicação para a otimização que foi 
+    # feita (a última linha da tabela), e as outras otimizações 
+    # anteriores, se existirem. Esta variável deve ser setada, na função
+    # de otimização, pela variável de ambiente para depuração do código,
+    # pois não tem sentido o usuário ver este dataframe.
+    if verbose:
+      print("⚠️ Dataframe com os logs das otimizações feitas pelo script de "
+            f"otimização para a aplicação {application_name}:")
+      print("\n", logs_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
+            sep="")
+   
     # Salva o DataFrame atualizado com os logs das submissões feitas
     # para a aplicação otimizada em um arquivo .csv, que será criado se
     # ainda não existir, ou sobrescrito se já existir, usando o
@@ -2163,7 +2185,7 @@ def optimize_application(configs_file_path, system_config, applications_config,
               # submissão do trabalho para a aplicação otimizada pelo
               # usuário
               submission_log(applications_config[application_id], system_config, 
-                            logs_params)
+                            logs_params, debug_code)
         except subprocess.CalledProcessError as e:
           # This will print the actual error from the terminal command
           print("❌ Não foi possṕivel executar o comando {submission_program}!")

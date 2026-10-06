@@ -549,7 +549,7 @@ class FilterOutliers:
 		# a função apply sobre o grupo para gerar o DataFrame final, do 
 		# seguinte modo:
 		#
-		#- Primeiramente a função, para cada DataFrame associado a um grupo
+		# -Primeiramente a função, para cada DataFrame associado a um grupo
 		# descrito anteriormente, utilizando a função make_outliers_filter 
 		# passando como parâmetros outliers_limit e filter_variables, 
 		# substituirá este DataFrame por um outro DataFrame em que, para
@@ -558,14 +558,14 @@ class FilterOutliers:
 		# para cada variável de filtragem, nomeada pelo nome dado em
 		# filter_variables, se o valor da repetição para esta variável é
 		# (True) ou não (False) um outlier.
-		#- Depois, para cada  grupo, o seu DataFrame será concatedado ao
+		# -Depois, para cada  grupo, o seu DataFrame será concatedado ao
 		# novo DataFrame gerado pela função, inicialmente vazio, sendo que
 		# o índice de cada repetição do teste associado ao grupo será, antes
 		# da concatenação, substituído por um índice definido pelos valores
 		# das variáveis em input_variables, usadas para deifnir o grupo, e
 		# o índice dessa repetição no conjunto de dados dados.
 		outlier_masks = ( 
-			dados.groupby(input_variables)
+			dados.groupby(input_variables)[filter_variables]
 			.apply(
 				self.make_outliers_filter(
 					outliers_limit, filter_variables
