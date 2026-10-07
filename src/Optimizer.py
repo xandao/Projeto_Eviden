@@ -1728,11 +1728,93 @@ def submission_log(application_config, system_config, suggestion,
                    user_application_params, application_args, job_id, 
                    verbose=False):
   """
-  Função para gerar o log de submissão do job para a aplicação, que será
-  usado para monitorar o job submetido, e que será salvo em um arquivo
-  de log. A função recebe o nome da aplicação, os argumentos do sistema,
-  os argumentos do usuário, os parâmetros da sugestão de configuração e 
-  todos os parâmetros da aplicação definidos pelo usuário
+  Função para gerar o log de submissão do trabalho para a aplicação, 
+  quando esse trabalho for automaticamente submetido pelo usuário, pois
+  os dados do trabalho submetido, como por exemplo o tempo de execução o
+  consumo de energia, e o EDP, serão usados como novos dados de
+  execuções reais para treinamentos futuros dos modelos. Para cada 
+  aplicação que pode ser otimizada pelo script de otimização e para a
+  qual um usuário usou o script para otimizá-la será salvo, no log desta
+  aplicação, um arquivo no formato .csv com as linhas com cada execução
+  da aplicação otimizada e as colunas as informações referentes às
+  variáveis relaciondas à execução da aplicação. As informações salvas
+  serão às relacionadas a prórpia submissão do trabalho, como no nome do
+  trabalho, a partição usada, o tempo máximo de execução nesta partição,
+  o uso máximo de memória, se o trabalho deve ou não ser executado de
+  modo exclusivo, as variáveis relacionadas à melhor sugestão de
+  configuração (por exemplo, número de nós, processos por nó e threads
+  por processo) que terão os mesmos nomes usados ao treinar o modelo da
+  aplicação, às variáveis da aplicação definidas pelo usuário ao oimizar
+  a execução da aplicação, as variáveis que foram obtidas pelas
+  convwersões das variáveis de aplicação que foram fornecidas pelo
+  usuário e que são efetivamente usadas ao treinar o modelo da
+  aplicação, o tempo de execução estimado ao executar a alicação usando
+  os parâmetros da aplicação convertidos e a melhor sugestão de
+  configuração, e o valor mínimo da variável alvo (no nossos estudos, a
+  EDP) usada pelo modelo auxiliar ao escolher a melhor sugestão de
+  configuração, o identificador do trabalho, que será usado
+  posteriormente para obter as informações referentes à execução deste
+  trabalho e necessárias para treinar o modelo considerando as 
+  informações obtidas pela execução desse trabalho, e todos os 
+  parâmetros da aplicação passados pelo usuário, incluindo os usados
+  para obter os parâmetros convertidos e efetivamente usados ao treinar
+  os modelos.
+
+  Parâmetros:
+    application_config (dict): Dicionário com as configurações gerais da
+                               aplicação que está sendo otimizada pelo
+                               script. Vamos usar a chave 'name' nas 
+                               possíveis mensagens de erro e o
+                               dicionário referenciado pela chave 'user'
+                               para obter as informações sobre as 
+                               varáveis alvo do modelo, com o objetivo
+                               de criar colunas com nomes que facilitem
+                               a identificação dessas variáveis alvo.
+    system_config (dict): Dicionário com as configurações gerais
+                          relacionadas aos scripts de otrimização e de
+                          treinamento. No caso da função, iremos usar
+                          chave 'logs_path' com o nome do diretório em
+                          que os logs são armazenados.  
+    suggestion (dict): Dicionário com as informações referentes à melhor
+                       sugestão de confiuração. Vamos usar a chave 
+                       'suggestion' com os valores das variáveis de
+                       configuração da melhor sugestão de configuração,
+                       a chave 'time' com o tempo de execução estimado
+                       para a melhor sugestão, e a chave 
+                       'y_pred_mininum' com o melhor valor da variável
+                       alvo usado ao escolher a melhor sugestão de
+                       configuração, que foi o valor predito
+                       considerando essa sugestão. 
+    template_params (dict): Dados referentes ao script de submissão não
+                            relacionados as variáveis de configuração,
+                            ou seja, o tempo máximo de execução, o uso
+                            máximo de memória, se o trabalho é ou não
+                            exclusivo, e a partição usada.
+    required_applicaion_params: Objeto do tipo NameSpace retorado pela
+                                função parser do objeto da classe 
+                                argparse.ArgumentParser com os
+                                parâmetros da aplicação que o usuário
+                                precisa necessariamente fornecer para
+                                ser possível otimizar a aplicação.
+    user_application_params (dict): Dicionário com os parâmetros da
+                                    aplicação obtidos por conversões a
+                                    partir dos parâmetros obrigatórios
+                                    da aplicação fornecedos pelo usuário
+                                    e passados no objeto
+                                    required_applicaion_params.  
+    application_args list[str]: Lista com todos os parâmetros da 
+                                aplicação passados pelo usuário,
+                                incluindo os usados e convertidos ao
+                                escolher a melhor sugestão de
+                                configuração.
+    job_id (int): Identificador do trabalho submetido ao SLURM pelo 
+                  programa de submissão, por exemplo, o sbatch.
+
+
+    Retorna:
+      bool: True se o arquivo de log foi atualizado com sucesso, ou 
+            False se algum erro ocorreu ao criar (o primeiro log da
+            aplicação) ou acessar o arquivo de log.    
   """
 
   # Armazena uma referência para o nome da aplicação atualmente sendo
@@ -1841,6 +1923,9 @@ def submission_log(application_config, system_config, suggestion,
             f"{application_name}! O caminho {log_filepath.resolve()} é um "
             "diretório!")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+      # Como o caminho do arquivo de log aponta na verdade para um
+      # diretório, o que não deveria ocorrer, então retornamos False.
       return False
 
     elif log_filepath.exists():
@@ -1849,6 +1934,10 @@ def submission_log(application_config, system_config, suggestion,
             f"{application_name}! O caminho {log_filepath.resolve()} é um "
             "arquivo especial do sistema operacional!")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+      # Como o caminho do arquivo de log aponta na verdade para um
+      # objeto que não é um arquivo e nem um diretório, o que não 
+      # deveria ocorrer, então retornamos False.
       return False
     else:
       # Este caso é quando o caminho é inválido, vamos partir da suposição
@@ -1877,6 +1966,9 @@ def submission_log(application_config, system_config, suggestion,
     # método to_csv.
     logs_df.to_csv(log_filepath, sep='|', index=False, mode='w')
 
+    # Como conseguimos atualizar o arquivo de log da aplicação com
+    # sucesso, então retornamos True.
+    return True
   except FileNotFoundError as e:
     print(f"❌ O arquivo {e.filename} nao foi encontrado.")
     print("❌ Por favor, avise o erro ao adistrador do sistema o erro: "
