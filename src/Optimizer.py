@@ -2052,6 +2052,13 @@ def find_application_config(applications_config, application_name):
       break
   return application_id
 
+def list_applications(applications_config, script_config):
+  for application_id in sorted(applications_config.keys()):
+    print(f"➡️  Aplicação {application_id}, possíveis nomes para os "
+          f"executáveis: {', '.join(script_config['executable_names'])}")
+  return True
+
+
 def optimize_application(configs_file_path, system_config, applications_config, 
                          user_config, application_args, predictors_info_config, 
                          user_args):
@@ -2068,13 +2075,13 @@ def optimize_application(configs_file_path, system_config, applications_config,
   application_name = None
   try:
     if user_args.list:
-        for application_id in sorted(applications_config.keys()):
-          print(f"➡️  Aplicação {application_id}, possíveis nomes para os executáveis: {', '.join(script_config['executable_names'])}")
-        return True
+      return list_applications(applications_config, script_config)
     else:
-      # Caso não deseje listar as aplucações, precisamos fornecer uma aplicaçao, pois o usuário deseja otimizar o uso dos reursos.
+      # Caso não deseje listar as aplucações, precisamos fornecer uma 
+      # aplicaçao, pois o usuário deseja otimizar o uso dos reursos.
       if not application_args:
-        print("❌ Não foi fornecido o nome da aplicação a ser otimizada e os seus parâmetros de execução.")
+        print("❌ Não foi fornecido o nome da aplicação a ser otimizada e os "
+              "seus parâmetros de execução.")
         return False
       
       # Diretorio dos arquivos de configuração das aplicações.
@@ -2092,7 +2099,8 @@ def optimize_application(configs_file_path, system_config, applications_config,
       application_id = find_application_config(applications_config,
                                                application_name)
       if application_id is None:
-        print(f"⚠️  A otimização para a aplicação {application_name} ainda não é suportada!")  
+        print(f"⚠️  A otimização para a aplicação {application_name} ainda "
+              "não é suportada!")  
         return False
 
       # Para facilitar o acesso, define uma variável com uma referência
@@ -2116,8 +2124,13 @@ def optimize_application(configs_file_path, system_config, applications_config,
       ajuda = parser_application.add_argument_group("Ajuda")
       ajuda.add_argument("-h", "--help", action="help", help="Mostra esta mensagem de ajuda e sai.")
       for param in applicatiom_params.keys():
-        opcoes.add_argument(*applicatiom_params[param]['params'], required=True, help=applicatiom_params[param]['help'], 
-                            type=get_type(applicatiom_params[param]['type']), dest=param)
+        opcoes.add_argument(
+          *applicatiom_params[param]['params'], 
+          required=True, 
+          help=applicatiom_params[param]['help'], 
+          type=get_type(applicatiom_params[param]['type']), 
+          dest=param
+        )
 
       # Converte os argumentos da aplicação para o dicionário a ser usado pela função de predição.                                  
       required_applicaion_params, other_applicatios_params = parser_application.parse_known_args(application_args[1:])
@@ -2127,7 +2140,7 @@ def optimize_application(configs_file_path, system_config, applications_config,
       use_custom_config = False
       for suggestion_name in script_config['suggestions_map']:
         if not hasattr(user_args, suggestion_name):
-          print(f"❌ A configuração necessária {suggestion_name} não existe nas opções do script para a aplcação {application_id}.")
+          print(f"❌ A configuração necessária {suggestion_name} não existe nas opções do script para a aplicação {application_id}.")
           print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
           return False
         elif getattr(user_args, suggestion_name) is not None:
