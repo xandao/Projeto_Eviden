@@ -2047,7 +2047,9 @@ def submission_log(application_config, system_config, suggestion,
 def find_application_config(applications_config, application_name):
   application_id = None
   for application_id_aux in applications_config.keys():
-    if application_name in applications_config[application_id_aux]['user']['executable_names']:
+    if application_name in (
+      applications_config[application_id_aux]['user']['executable_names']
+    ):
       application_id = application_id_aux
       break
   return application_id
@@ -2058,6 +2060,237 @@ def list_applications(applications_config, script_config):
           f"executáveis: {', '.join(script_config['executable_names'])}")
   return True
 
+def get_custom_configurations(application_name, application_id, 
+                              script_config, user_args, 
+                              application_partitions_list):
+  # Se o usuário definir pelo menos uma opção, usa a configuração 
+  # customizada com as outras opções com valores defaault se não 
+  # definidas pelo usuário.    
+
+  # Verifica se o usuário usou as opções número de nós, de processos por nó, e de threads por processo.
+  # Primeiramemte verifica se o usuário definiu alguma das opções de configuração;
+  use_custom_config = False
+  for suggestion_name in script_config['suggestions_map']:
+    if not hasattr(user_args, suggestion_name):
+      print(f"❌ A configuração necessária {suggestion_name} não existe nas "
+            f"opções do script para a aplicação {application_id}.")
+      print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+      return False
+    elif getattr(user_args, suggestion_name) is not None:
+      use_custom_config = True
+
+  if use_custom_config:
+    custom_configurations = {}
+    for suggestion_name in script_config['suggestions_map']:
+      suggestion_value = getattr(user_args, suggestion_name)
+      custom_params = get_options_suggestion(suggestion_value)
+      if custom_params is None:
+        print(f"❌ Erro de sintaxe ao processar a opção --{suggestion_name} "
+              f"com o valor {suggestion_value}!")
+        return False
+      max_value_custom_params = max(custom_params)
+      max_possible_value = max(
+        [partition[suggestion_name] for partition in application_partitions_list]
+      )
+      if max_value_custom_params > max_possible_value:
+        application_partitions_names = {partition['partition'] for partition in application_partitions_list}
+        print("⚠️  Descartando todos os valores para a opção \033[31m"
+              f"{suggestion_name}\033[0m maiores do que {max_possible_value} "
+              "permitidos pelas possíveis partições \033[1;34m"
+              f"{', '.join(application_partitions_names)}\033[0m da aplicação "
+              f"{application_name}!")
+        
+        custom_params = [
+          custom_value for custom_value in custom_params 
+            if custom_value <= max_possible_value
+        ]                 
+
+      custom_configurations[
+        script_config['suggestions_map'][suggestion_name]
+      ] = custom_params
+  else:
+    custom_configurations = None
+
+  return custom_configurations
+
+def process_application_params(application_name, script_config, 
+                               application_configs_dir_path):
+  
+  # Processa os parâmetros da aplicação.
+  parser_application = argparse.ArgumentParser(
+    description="Esta ajuda descreve os parâmetros da aplicação que "
+                "precisam ser obrigatoriamente definidos.", 
+    prog=application_name, 
+    add_help=False, 
+    formatter_class=CustomFormatter
+  )
+  application_params = script_config['user_options']
+  opcoes = parser_application.add_argument_group("Opções principais")
+  ajuda = parser_application.add_argument_group("Ajuda")
+  ajuda.add_argument(
+    "-h", "--help", 
+    action="help", 
+    help="Mostra esta mensagem de ajuda e sai."
+  )
+  for param in application_params.keys():
+    opcoes.add_argument(
+      *application_params[param]['params'], 
+      required=True, 
+      help=application_params[param]['help'], 
+      type=get_type(application_params[param]['type']), 
+      dest=param
+    )
+
+  # Converte os argumentos da aplicação para o dicionário a ser usado
+  # pela função de predição.                                  
+  (
+    required_applicaion_params, other_applicatios_params
+  ) = parser_application.parse_known_args(application_args[1:])
+
+  # Processa os patâmetros usados pela aplicação para o preditor. 
+  user_application_params = convert_user_params(required_applicaion_params, 
+                                                script_config['conversions'], 
+                                                application_configs_dir_path)  
+  
+  return (required_applicaion_params, other_applicatios_params, 
+          user_application_params)
+
+def get_template_params(application_name, user_args, application_args, 
+                        application_partitions_list, suggestion, 
+                        reversed_suggestions_map):
+
+  suggestion_mapped = {
+    reversed_suggestions_map[k]:v 
+    for k,v in suggestion['Suggestion'].items()
+  }
+
+  # Cria o dicionário com as informações para construir o script de 
+  # submissão (fiz o dicionário para tornar a função independente de como os parâmetros são gerados).
+  #list_partitions = script_config['slurm']
+  template_params = {
+    'application_name': application_name,
+    'suggestion_params': suggestion_mapped,
+    'job_name':  application_name if user_args.jobname is None else user_args.jobname,
+    'application_params': application_args[1:],
+  }
+
+  # Verifica se existe o tempo predito para a sugestão.
+  if 'Time' in suggestion.keys():
+    # Aproxima o tempo para o maior tempo inteiro.
+    predicted_time = np.ceil(suggestion['Time'])
+  else:  
+    predicted_time = 0
+  # Verifica quais partições podem ser usadas pela sugestão.
+  valid_partitions_list = []
+  for partition in application_partitions_list:
+    # Descobre quais partições podem executar a aplicação.
+    valid_partition = partition['max_time'] >= predicted_time
+    for suggestion_name in suggestion['Suggestion']:
+      partition_suggestion_name = reversed_suggestions_map[suggestion_name]
+      valid_partition = valid_partition and partition[partition_suggestion_name] >= suggestion['Suggestion'][suggestion_name]
+    if valid_partition:
+      valid_partitions_list.append(partition)
+
+  # Se existirem partições, escolhe a com o menor tempo (portanto, mas próximo do tempo da aplicação, já que todas as partiçoes da lista)
+  if valid_partitions_list:                                           
+    # A partição escolhida será a com menor tempo máximo.
+    partition_used = min(valid_partitions_list, key=lambda partition: partition['max_time'] - predicted_time)
+  else:   
+    # A partição usada será a default (para evitar erros, a partição default deveria ser a com todos os recursos que sugerimos com 
+    # os valores. A list compreension deveria retornar somente um gerador com somente um elemento, obtido com o next, 
+    # pois o validados do JSON deveria impedir mais de uma partição com o dafault igual a true e também todas as partições com 
+    # o default igual a false.
+    partition_used = next([partition for partition in application_partitions_list if partition["dafault"]])
+    # Verifica se o tempo da partição é maior do que o temṕo predito, e sá um aviso se isso ocorrer
+    if predicted_time > partition_used['max_time']:
+      print(f"⚠️  O tempo predito aproximado {predicted_time} é maior do que o tempo máximo {partition_used['max_time']} de execução da partição {partition_used['partition']}!")
+
+  # define os dados para gerar o script de confuguração.
+  template_params['partition'] = partition_used['partition']
+  template_params['max_time'] = partition_used['max_time']
+  template_params['max_memory'] = partition_used['max_memory']  
+  template_params['exclusive'] = partition_used['exclusive']  
+
+  return template_params
+
+
+def submit_submission_script(script_file_name, template_content):
+  try:
+    remove_temp_file = False
+    job_id = None
+    if script_file_name is None:
+        remove_temp_file = True
+        with tempfile.NamedTemporaryFile(mode='w+t', delete=False) as temp:
+            temp.write(template_content)
+            script_file_name = temp.name 
+
+        # TODO: Depois podemos remover, se necessário, este código de 
+        # depuração.
+        # TODO: Início.
+        if debug_code:
+          print(f"➡️  Arquivo temporário {script_file_name} criado para "
+                "armazenar o script de submissão.")
+        # TODO: Fim  
+  
+    # Executa o sbatch se a opção -r ou --run foi usada
+    submission_program = user_config["slurm"]["submission_program"]
+    result = subprocess.run([submission_program, f"{script_file_name}"], capture_output=True, text=True, check=True)   
+
+    print("➡️  Script de submissão submetido com sucesso!")
+
+    # Imprime para o usuário o ID do job submetido.
+    # Extrai o ID da saída do sbatch
+    job_id_regex = re.compile(user_config['slurm']['submission_message']) 
+    resultado = re.search(job_id_regex, result.stdout)
+    job_id = resultado.group(1) 
+    print(f"➡️  O trabalho foi submetido com o identificador {job_id}.")
+
+    # TODO: Depois podemos remover, se necessário, este código de depuração.
+    # TODO: Início.
+    if debug_code:
+      print(f"➡️  O código de retorno da execução do programa de submissão {submission_program} foi {result}")
+      print("➡️  O campo returncode do objeto CompletedProcess deveria ser 0, pois um valor diferente de 0 deveria gerar a exceção subprocess.CalledProcessError.")
+    # TODO: Fim  
+
+    # Imprime a saída da execução do programa de submissão do script.
+    # TODO: Está correto isso ser um vernose? Talvez usar a variáel global debug_code?        
+    if user_args.verbose:
+      print(f"➡️  stdout da execução de {submission_program}:\n\n")
+      print(result.stdout)
+      print(f"\n\n➡️  stderr de execução de {submission_program}:\n\n")
+      print(result.stderr)        
+
+  except subprocess.CalledProcessError as e:
+    # This will print the actual error from the terminal command
+    print("❌ Não foi possṕivel executar o comando {submission_program}!")
+    print("❌ Código de saída:", e.returncode)
+    print("❌ mensagem de erro:", e.stderr)
+  except FileNotFoundError:
+    print(f"❌ O programa {submission_program} não foi achado no sistema!")
+    print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+  except IOError as e:
+    print(f"❌ Não foi possível criar o arquivo temporário. {e.filename}")
+    print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
+    print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+  finally:
+    # Se criamos um arquivo temporario, removemos depois de usarmos.
+    if remove_temp_file:
+      # TODO: Depois podemos remover, se necessário, este código de depuração.
+      # TODO: Início.
+      if debug_code:
+        print(f"➡️  Tentando remover o arquivo temporário {script_file_name}.")
+      # TODO: Fim  
+      try:
+        if os.path.exists(script_file_name):
+          os.remove(script_file_name)    
+        if debug_code:
+          print(f"➡️  Arquivo temporário {script_file_name} removido com sucesso.")
+      except OSError as e:
+        if debug_code:
+          print(f"⚠️  Não foi possível remover o arquivo {e.filename}")
+          print(f"⚠️  Código do erro: {e.errno}; Mensagem: {e.strerror}!")
+        Status = False
+  return job_id
 
 def optimize_application(configs_file_path, system_config, applications_config, 
                          user_config, application_args, predictors_info_config, 
@@ -2113,135 +2346,66 @@ def optimize_application(configs_file_path, system_config, applications_config,
       # otimização;
       script_config = application_config['user']
 
-      application_partitios_list = script_config['slurm']
-      names_application_partitioms = {partition['partition'] for partition in application_partitios_list}
+      application_partitions_list = script_config['slurm']
 
-      # Processa os parâmetros da aplicação.
-      parser_application = argparse.ArgumentParser(description="Esta ajuda descreve os parâmetros da aplicação que precisam ser obrigatoriamente definidos.", prog=application_name,
-                                                  add_help=False, formatter_class=CustomFormatter)
-      applicatiom_params = script_config['user_options']
-      opcoes = parser_application.add_argument_group("Opções principais")
-      ajuda = parser_application.add_argument_group("Ajuda")
-      ajuda.add_argument("-h", "--help", action="help", help="Mostra esta mensagem de ajuda e sai.")
-      for param in applicatiom_params.keys():
-        opcoes.add_argument(
-          *applicatiom_params[param]['params'], 
-          required=True, 
-          help=applicatiom_params[param]['help'], 
-          type=get_type(applicatiom_params[param]['type']), 
-          dest=param
-        )
+      (
+        required_applicaion_params, other_applicatios_params, 
+        user_application_params
+      ) = process_application_params(application_name, script_config, 
+                                     application_configs_dir_path)
 
-      # Converte os argumentos da aplicação para o dicionário a ser usado pela função de predição.                                  
-      required_applicaion_params, other_applicatios_params = parser_application.parse_known_args(application_args[1:])
-
-      # Verifica se o usuário usou as opções número de nós, de processos por nó, e de threads por processo.
-      # Primeiramemte verifica se o usuário definiu alguma das opções de configuração;
-      use_custom_config = False
-      for suggestion_name in script_config['suggestions_map']:
-        if not hasattr(user_args, suggestion_name):
-          print(f"❌ A configuração necessária {suggestion_name} não existe nas opções do script para a aplicação {application_id}.")
-          print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
-          return False
-        elif getattr(user_args, suggestion_name) is not None:
-          use_custom_config = True
-      
-      # Se o usuário definir pelo menos uma opção, usa a configuração customizada com as outras opções com valores defaault se não definidas
-      # pelo usuário.    
-   
-      if use_custom_config:
-        custom_suggestions = {}
-        for suggestion_name in script_config['suggestions_map']:
-          suggestion_value = getattr(user_args, suggestion_name)
-          custom_params = get_options_suggestion(suggestion_value)
-          if custom_params is None:
-            print(f"❌ Erro de sintaxe ao processar a opção --{suggestion_name} com o valor {suggestion_value}!")
-            return False
-          max_value_custom_params = max(custom_params)
-          max_possible_value = max([partition[suggestion_name] for partition in application_partitios_list])
-          if max_value_custom_params > max_possible_value:
-            print(f"⚠️  Descartando todos os valores para a opção \033[31m{suggestion_name}\033[0m maiores do que {max_possible_value} "
-                  f"permitidos pelas possíveis partições \033[1;34m{', '.join(names_application_partitioms)}\033[0m da aplicação "
-                  f"{application_name}!")
-            custom_params = [custom_value for custom_value in custom_params if custom_value <= max_possible_value]                 
-
-          custom_suggestions[script_config['suggestions_map'][suggestion_name]] = custom_params
-      else:  
-        custom_suggestions = None
-      # Processa os patâmetros usados pela aplicação para o preditor. 
-      user_application_params = convert_user_params(required_applicaion_params, script_config['conversions'], 
-                                                    application_configs_dir_path)  
- 
       if user_application_params is None:
         return False
 
-      # Lê o preditor usado para fazer a melhor sugestão dos parâmetros de execução da aplicação.
-      predictor_path = base_files_path / Path(system_config['predictors_path']) / predictors_info_config[application_id]
+      custom_suggestions = get_custom_configurations(
+        application_name, 
+        application_id, 
+        script_config, user_args,
+        application_partitions_list
+      )
+
+      # Lê o preditor usado para fazer a melhor sugestão dos parâmetros
+      # de execução da aplicação.
+      predictor_path = (base_files_path 
+                        / Path(system_config['predictors_path']) 
+                        / predictors_info_config[application_id]
+      )
       predictor = SuggestionsPredictor.load_predictor(predictor_path)
 
-      suggestion = predictor.get_suggestion(user_application_params, custom_suggestions, verbose=debug_code)
+      suggestion = predictor.get_suggestion(user_application_params, 
+                                            custom_suggestions, 
+                                            verbose=debug_code)
 
       # Cria o mapeamento reverso para a impressao
-      suggestion_map = script_config['suggestions_map']
-      reversed_suggestions_map = {v:k for k, v in suggestion_map.items()}
-      suggestion_mapped = {reversed_suggestions_map[k]:v for k,v in suggestion['Suggestion'].items()}
-
+      suggestions_map = script_config['suggestions_map']
+      reversed_suggestions_map = {
+        v:k for k, v in suggestions_map.items()
+      }
 
       # Obtém o caminho do arquivo de template, se as opçoes. 
       if user_args.run or not user_args.suggestion:
         if user_args.verbose:
-          SuggestionsPredictor.print_suggestion(suggestion, suggestion_map=reversed_suggestions_map, show_time=True,
-                                                show_score=True, show_X=True, show_y_pred=True)
+          SuggestionsPredictor.print_suggestion(
+            suggestion, 
+            suggestion_map=reversed_suggestions_map, 
+            show_time=True,
+            show_score=True, 
+            show_X=True, 
+            show_y_pred=True
+          )
 
-        # Cria o dicionário com as informações para construir o script de submissão (fiz o dicionário para tornar a função
-        # independente de como os parâmetros são gerados).
-        list_partitions = script_config['slurm']
-        template_params = {
-          'application_name': application_name,
-          'suggestion_params': suggestion_mapped,
-          'job_name':  application_name if user_args.jobname is None else user_args.jobname,
-          'application_params': application_args[1:],
-        }
+        template_params = get_template_params(application_name, user_args, 
+                                              application_args, 
+                                              application_partitions_list,
+                                              suggestion, 
+                                              reversed_suggestions_map)
 
-        # Verifica se existe o tempo predito para a sugestão.
-        if 'Time' in suggestion.keys():
-          # Aproxima o tempo para o maior tempo inteiro.
-          predicted_time = np.ceil(suggestion['Time'])
-        else:  
-          predicted_time = 0
-        # Verifica quais partições podem ser usadas pela sugestão.
-        valid_partitions_list = []
-        for partition in list_partitions:
-          # Descobre quais partições podem executar a aplicação.
-          valid_partition = partition['max_time'] >= predicted_time
-          for suggestion_name in suggestion['Suggestion']:
-            partition_suggestion_name = reversed_suggestions_map[suggestion_name]
-            valid_partition = valid_partition and partition[partition_suggestion_name] >= suggestion['Suggestion'][suggestion_name]
-          if valid_partition:
-            valid_partitions_list.append(partition)
-
-        # Se existirem partições, escolhe a com o menor tempo (portanto, mas próximo do tempo da aplicação, já que todas as partiçoes da lista)
-        if valid_partitions_list:                                           
-          # A partição escolhida será a com menor tempo máximo.
-          partition_used = min(valid_partitions_list, key=lambda partition: partition['max_time'] - predicted_time)
-        else:   
-          # A partição usada será a default (para evitar erros, a partição default deveria ser a com todos os recursos que sugerimos com 
-          # os valores. A list compreension deveria retornar somente um gerador com somente um elemento, obtido com o next, 
-          # pois o validados do JSON deveria impedir mais de uma partição com o dafault igual a true e também todas as partições com 
-          # o default igual a false.
-          partition_used = next([partition for partition in list_partitions if partition["dafault"]])
-          # Verifica se o tempo da partição é maior do que o temṕo predito, e sá um aviso se isso ocorrer
-          if predicted_time > partition_used['max_time']:
-            print(f"⚠️  O tempo predito aproximado {predicted_time} é maior do que o tempo máximo {partition_used['max_time']} de execução da partição {partition_used['partition']}!")
-
-        # define os dados para gerar o script de confuguração.
-        template_params['partition'] = partition_used['partition']
-        template_params['max_time'] = partition_used['max_time']
-        template_params['max_memory'] = partition_used['max_memory']  
-        template_params['exclusive'] = partition_used['exclusive']  
-
-        template_file_path = base_files_path / Path(system_config['templates_path']) / script_config['script_template_name']
-        template_content = generate_submission_script(template_file_path, template_params)
+        template_file_path = (base_files_path 
+                              / Path(system_config['templates_path']) 
+                              / script_config['script_template_name']
+        )
+        template_content = generate_submission_script(template_file_path, 
+                                                      template_params)
 
         if user_args.verbose:      
           print("➡️  Script de submissão: \n")
@@ -2250,23 +2414,7 @@ def optimize_application(configs_file_path, system_config, applications_config,
 
         # Salva no arquivo passado como parâmetro ou o nome default definido no arquivo de cofiguração do usuário
         # Se o usuário não fornecer um nome pela opção -s ou --script, cria um arquivo temporário.
-        if user_args.script is None and user_args.run:
-          try:
-            with tempfile.NamedTemporaryFile(mode='w+t', delete=False) as temp:
-                temp.write(template_content)
-                script_file_name = temp.name 
-
-            # TODO: Depois podemos remover, se necessário, este código de depuração.
-            # TODO: Início.
-            if debug_code:
-              print(f"➡️  Arquivo temporário {script_file_name} criado para armazenar o script de submissão.")
-            # TODO: Fim  
-          except IOError as e:
-            print(f"❌ Não foi possível criar o arquivo temporário. {e.filename}")
-            print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
-            print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
-            return False
-        else:
+        if user_args.script or not user_args.suggestion:
           # Salva o script de su
           try:
             if user_args.script is None:
@@ -2283,83 +2431,39 @@ def optimize_application(configs_file_path, system_config, applications_config,
             print(f"❌ Erro de I/O ao ler o arquivo {script_file_name}!")
             print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
             return False
-        try:
-          if user_args.run:
-            # Executa o sbatch se a opção -r ou --run foi usada
-            submission_program = user_config["slurm"]["submission_program"]
-            result = subprocess.run([submission_program, f"{script_file_name}"], capture_output=True, text=True, check=True)   
+        else:
+          script_file_name = None
 
-            print("➡️  Script de submissão submetido com sucesso!")
+        if user_args.run:
+          job_id = submit_submission_script(script_file_name, 
+                                            template_content)
+          if job_id is not None and user_config['enable_submission_log']:
+            # Gera o log de submissão do trabalho da aplicação
+            # otimizada, que será usado para monitorar o trabalho
+            # submetido, e que será salvo em um arquivo de no formato
+            # csv, com todas as informações referentes à otimização do
+            # trabalho (melhor sugestão de configuração, parâmetros da
+            # aplicação passados pelo usuário e parâmetros da
+            # aplicação convertidos, nome do trabalho, tempo de
+            # execução estimado para a melhor configuração, menor 
+            # da variável alvo do modelo auxiliar usado para descobrir
+            # a melhor sugestão e ID do trabalho ao ser submetido pelo
+            # sbatch).
 
-            # Imprime para o usuário o ID do job submetido.
-            # Extrai o ID da saída do sbatch
-            job_id_regex = re.compile(user_config['slurm']['submission_message']) 
-            resultado = re.search(job_id_regex, result.stdout)
-            job_id = resultado.group(1) 
-            print(f"➡️  O trabalho foi submetido com o identificador {job_id}.")
-
-            # TODO: Depois podemos remover, se necessário, este código de depuração.
-            # TODO: Início.
-            if debug_code:
-              print(f"➡️  O código de retorno da execução do programa de submissão {submission_program} foi {result}")
-              print("➡️  O campo returncode do objeto CompletedProcess deveria ser 0, pois um valor diferente de 0 deveria gerar a exceção subprocess.CalledProcessError.")
-            # TODO: Fim  
-    
-            # Imprime a saída da execução do programa de submissão do script.
-            # TODO: Está correto isso ser um vernose? Talvez usar a variáel global debug_code?        
-            if user_args.verbose:
-              print(f"➡️  stdout da execução de {submission_program}:\n\n")
-              print(result.stdout)
-              print(f"\n\n➡️  stderr de execução de {submission_program}:\n\n")
-              print(result.stderr)        
-
-            if user_config['enable_submission_log']:
-              # Gera o log de submissão do trabalho da aplicação
-              # otimizada, que será usado para monitorar o trabalho
-              # submetido, e que será salvo em um arquivo de no formato
-              # csv, com todas as informações referentes à otimização do
-              # trabalho (melhor sugestão de configuração, parâmetros da
-              # aplicação passados pelo usuário e parâmetros da
-              # aplicação convertidos, nome do trabalho, tempo de
-              # execução estimado para a melhor configuração, menor 
-              # da variável alvo do modelo auxiliar usado para descobrir
-              # a melhor sugestão e ID do trabalho ao ser submetido pelo
-              # sbatch).
-
-              submission_log(application_config, 
-                             system_config, suggestion, template_params,
-                             required_applicaion_params, 
-                             user_application_params,
-                             application_args[1:], job_id, debug_code)
-        except subprocess.CalledProcessError as e:
-          # This will print the actual error from the terminal command
-          print("❌ Não foi possṕivel executar o comando {submission_program}!")
-          print("❌ Código de saída:", e.returncode)
-          print("❌ mensagem de erro:", e.stderr)
-        except FileNotFoundError:
-          print(f"❌ O programa {submission_program} não foi achado no sistema!")
-          print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
-        finally:
-          # Se criamos um arquivo temporario, removemos depois de usarmos.
-          if user_args.script is None and user_args.run:
-
-            # TODO: Depois podemos remover, se necessário, este código de depuração.
-            # TODO: Início.
-            if debug_code:
-              print(f"➡️  Tentando remover o arquivo temporário {script_file_name}.")
-            # TODO: Fim  
-            try:
-              if os.path.exists(script_file_name):
-                os.remove(script_file_name)    
-              if debug_code:
-                print(f"➡️  Arquivo temporário {script_file_name} removido com sucesso.")
-            except OSError as e:
-              if debug_code:
-                print(f"➡️  Não foi possível remover o arquivo {e.filename}")
-                print(f"➡️  Código do erro: {e.errno}; Mensagem: {e.strerror}!")
+            submission_log(application_config, 
+                            system_config, suggestion, template_params,
+                            required_applicaion_params, 
+                            user_application_params,
+                            application_args[1:], job_id, debug_code)
       else:
-        SuggestionsPredictor.print_suggestion(suggestion, suggestion_map=reversed_suggestions_map, show_score=user_args.verbose, 
-                                              show_X=user_args.verbose, show_y_pred=user_args.verbose, show_time=user_args.verbose)
+        SuggestionsPredictor.print_suggestion(
+          suggestion, 
+          suggestion_map=reversed_suggestions_map, 
+          show_score=user_args.verbose, 
+          show_X=user_args.verbose, 
+          show_y_pred=user_args.verbose, 
+          show_time=user_args.verbose
+        )
 
       return True
   except KeyError as e:
