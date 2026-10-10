@@ -531,7 +531,7 @@ def process_script_args():
             "da aplicação!")
       parser.print_help()
 
-  # Retorna a tupla composta pela tupla nomeada com os parâmetros do
+  # Retorna a tupla composta pela objeto NameSpace com os parâmetros do
   # scriptr de otimização, se o usuário usou o separador da aplicação
   # e passou pelo menos dois parâmetros, pois precisamos usar pelo menos
   # um parâmetro da aplicação, ou None se os parâmetros não foram
@@ -828,20 +828,19 @@ def convert_user_params(required_applicaion_params, conversions,
          GridZ dada no artigo estendido do SSCAD.
 
   Parâmetros:
-    required_applicaion_params (named_tuple): Tupla nomeada com todos os
-                                              parâmetros da aplicaçaõ e
-                                              os seus valores, passados
-                                              pelo usuário como
-                                              parâmetros da aplucação na
-                                              linha de comando do script
-                                              de otimização. Os
-                                              parâmetros são obtidos
-                                              usando um objeto da classe
-                                              argparse.ArgumentParser do
-                                              Python, a mesma usadas
-                                              para processar os
-                                              parâmetros do script de
-                                              otimização.       
+    required_applicaion_params (NameSpace): Objeto com todos os
+                                            parâmetros da aplicaçaõ e
+                                            os seus valores, passados
+                                            pelo usuário como parâmetros
+                                            da aplucação na linha de
+                                            comando do script de
+                                            otimização. Os parâmetros
+                                            são obtidos usando um objeto
+                                            da classe 
+                                            argparse.ArgumentParser do
+                                            Python, a mesma usadas para
+                                            processar os parâmetros do
+                                            script de otimização.       
     conversions: (dict[tuple]): lista com as conversões a serem feitas, 
                                 baseadas nas variáveis de aplicação
                                 definidas em required_applicaion_params,
@@ -1790,12 +1789,15 @@ def submission_log(application_config, system_config, suggestion,
                             ou seja, o tempo máximo de execução, o uso
                             máximo de memória, se o trabalho é ou não
                             exclusivo, e a partição usada.
-    required_applicaion_params: Objeto do tipo NameSpace retorado pela
-                                função parser do objeto da classe 
-                                argparse.ArgumentParser com os
-                                parâmetros da aplicação que o usuário
-                                precisa necessariamente fornecer para
-                                ser possível otimizar a aplicação.
+    required_applicaion_params (NameSpace): Objeto do tipo NameSpace
+                                            retorado pela função parser
+                                            do objeto da classe 
+                                            argparse.ArgumentParser com
+                                            os parâmetros da aplicação
+                                            que o usuário precisa 
+                                            necessariamente fornecer
+                                            para ser possível otimizar a
+                                            aplicação.
     user_application_params (dict): Dicionário com os parâmetros da
                                     aplicação obtidos por conversões a
                                     partir dos parâmetros obrigatórios
@@ -1939,6 +1941,7 @@ def submission_log(application_config, system_config, suggestion,
       # objeto que não é um arquivo e nem um diretório, o que não 
       # deveria ocorrer, então retornamos False.
       return False
+
     else:
       # Este caso é quando o caminho é inválido, vamos partir da suposição
       # de que o arquivo não existe, significando que este pode ser o
@@ -1969,6 +1972,7 @@ def submission_log(application_config, system_config, suggestion,
     # Como conseguimos atualizar o arquivo de log da aplicação com
     # sucesso, então retornamos True.
     return True
+  
   except FileNotFoundError as e:
     print(f"❌ O arquivo {e.filename} nao foi encontrado.")
     print("❌ Por favor, avise o erro ao adistrador do sistema o erro: "
@@ -1977,6 +1981,7 @@ def submission_log(application_config, system_config, suggestion,
     # Como oocorreu una exceção inesperada, retorna None ao invés do 
     # dicionário com os valores convertidos das variáveis de aplicação.
     return None
+
   # Não foi possível acessar um dos arquivos, devido a um erro de
   # permissão de acesso ao arquivo.
   except PermissionError as e:
@@ -1987,6 +1992,7 @@ def submission_log(application_config, system_config, suggestion,
     # um erro ao tentar gerar o log de submissão do trabalho para a
     # aplicação do usuário otimizada pelo script de otimização..
     return False
+
   # Não foi possível acessar um dos arquivos, devido a um erro de
   # leitura ao acessar o arquivo.
   except IOError as e:
@@ -1998,6 +2004,9 @@ def submission_log(application_config, system_config, suggestion,
     # um erro ao tentar gerar o log de submissão do trabalho para a
     # aplicação do usuário otimizada pelo script de otimização..
     return False
+
+  # Devido a um erro no código, foi tentado o acesso de um campo de um
+  # objeto referenciado por uma chave inexistente.
   except KeyError as e:
     if application_name is None:
       print("❌ Erro ao processar uma das estruturas indexadas por chave, a "
@@ -2012,6 +2021,9 @@ def submission_log(application_config, system_config, suggestion,
     # um erro ao tentar gerar o log de submissão do trabalho para a
     # aplicação do usuário otimizada pelo script de otimização..
     return False
+
+  # Quando tentamos acessar um objeto, um erro no código tentou acessar
+  # um atributo que não existe no objeto.
   except AttributeError as e:
     print("❌ Erro ao acessar um dos objetos internos do script, um dos "
           "seus atributo não existe, ao otimizar a aplicação "
@@ -2023,6 +2035,9 @@ def submission_log(application_config, system_config, suggestion,
     # um erro ao tentar gerar o log de submissão do trabalho para a
     # aplicação do usuário otimizada pelo script de otimização..
     return False
+
+  # Quando tentamos usar algum valor, um valor incorreto nçao suportado
+  # ou fora de uma faixa de valore, foi usado.
   except ValueError as e:
     print("❌ Erro ao inicializar ou usar estruturas internas do script, ao "
           f"fazer a otimização para a aplicação {application_name}!")
@@ -2033,6 +2048,8 @@ def submission_log(application_config, system_config, suggestion,
     # um erro ao tentar gerar o log de submissão do trabalho para a
     # aplicação do usuário otimizada pelo script de otimização..
     return False
+
+  # Ocorreu alguma outra exceção inesperada.
   except Exception as e:
     print("❌ Erro desconhecido ao fazer a otimização da aplicação "
           f"{application_name}!")
@@ -2045,13 +2062,81 @@ def submission_log(application_config, system_config, suggestion,
     return False
 
 def find_application_config(applications_config, application_name):
+  """
+  Função para procurar e retornar a chave referenciando as configurações
+  de uma aplicação identificada pelo seu executável, que pode ser um dos
+  nomes de executáveis dados na lista referenciada pela chave 
+  'executable_names' do dicionário refenciado pela chave 'user' do 
+  dicionário com as configurações de uma aplicação. Será escolhida a
+  primeira aplicação para a qual o nome do executável está na sua lista
+  de executáveis logo, para evitar inconsistências, duas aplicações 
+  diferentes, mesmo que sejam variações da mesma aplicação, por exemplo,
+  compiladas para usar somente MPI ou MPI com OpenMP, não podem ter o 
+  mesmo nome para o executável.
+
+  applications_config (dict): Dicionário com todas as configurações das
+                              aplicações que podem ser otimizadas pelo
+                              script de otimização, sendo que cada
+                              chave, associada e identificando uma
+                              aplicação, tem uma referência para o
+                              dicionário com as configurações dessa
+                              aplicação.
+  application_name (str): Nome de um dos possíveis arquivos executáveis
+                          da aplicação, passados pelo usuário como o 
+                          primerio parâmetro da aplicação, que
+                          identifica a aplicação que o usuário está
+                          tentando otimizar (o parâmetro que vem logo
+                          após do separador '--').
+
+  Retorna:
+    str | None: String com o nome que identifica a aplicação, ou seja, a
+                chave no dicionário applications_config com a referência
+                para o dicionário com as configurações da aplicação que 
+                possui como possíveis nomes de executáveis o nome dado
+                em application_name. Se application_name não for achado
+                em nenhum dos nomes de executáveis, considerando cada
+                aplicação definida pelas chaves do dicionário
+                applications_config, então será retornado None para
+                indicar que esta aplicação não é ainda suportada e
+                portanto não pode ser otimizada.
+  """
+
+  # Iniializa a variável que armazenará a chave da aplucação no
+  # dicionário applications_config com None, inicialmente indicando que
+  # a aplicação cujo executável é passado em application_name não é
+  # suportada.
   application_id = None
+
+  # Para verificar se application_name é um possível nome de executável
+  # de uma das aplcações suportadas, precisamos percorrer todas as
+  # chaves do dicionário applications_config.
   for application_id_aux in applications_config.keys():
+    # Verifica se application_name é um dos executáveis da aplicação
+    # para a qual estamos verificando os seus possíveis executáveis,
+    # identificada pela chave application_id_aux. Para fazer isso, basta
+    # verificar se a string application_name está dentro (é uma das
+    # strings, usando o operador in) da lista definida pela chave
+    # 'executable_names' do dicionário referenciado pela chave 'user',
+    # comctodos os possíveis nomes dos executáveis para a aplicação
+    # identificada por application_id_aux.
     if application_name in (
       applications_config[application_id_aux]['user']['executable_names']
     ):
+      # Se o application_name for um dos nomes dos executáveis, então
+      # encontramos a chave no dicionário applications_config, ou seja,
+      # a string application_id_aux. Logo, definimos application_id, com
+      # a chave da aplicação para a referência application_id_aux, com o
+      # nome da chave da aplicação, e encerramos a verificação, pois já
+      # encontramos a chave identificando a aplucação a ser otimizada.
       application_id = application_id_aux
       break
+
+  # Retorna a variável application_id, que terá a chave do dicionário
+  # applications_config com a refência da configuração da aplicação a
+  # ter a sua execução otimizada se application_name for um dos
+  # possíveis executáveis de uma das aplicações ou None em caso
+  # contrário, para indicar que a aplucação não pode ter a sua execução
+  # otimizada.
   return application_id
 
 def list_applications(applications_config, script_config):
