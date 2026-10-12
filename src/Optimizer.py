@@ -2088,7 +2088,7 @@ def find_application_config(applications_config, application_name):
                             usuário como o primerio parâmetro da
                             aplicação, que identifica a aplicação que o
                             usuário está tentando otimizar (o parâmetro
-                            que vem logo após do separador '--').
+                            que vem logo após do separador '--'). 
 
   Retorna:
     str | None: String com o nome que identifica a aplicação, ou seja, a
@@ -2190,59 +2190,294 @@ def get_custom_configurations(application_name, application_id,
                               application_partitions_list):
   """
   Função para verificar se o usuário passou opções customizadas para as
-  possíveis sugestões de configuração. 
-  """
-  # Se o usuário definir pelo menos uma opção, usa a configuração 
-  # customizada com as outras opções com valores defaault se não 
-  # definidas pelo usuário.    
+  possíveis sugestões de configuração. Para cada opção customizada
+  associada a um dos componentes de uma sugestão de configuração, 
+  verifica se uma foi passada e, para todos os parâmetros dessa opção, 
+  verifica se cada parâmetro está no formato i:e:s, usando a função
+  get_options_suggestion e, se não ocorreram erros ao vericar os
+  parâmetros (ou seja get_options_suggestion retornou None), associa a
+  lista de possíveis valores à opção de configuração customizada que
+  está sendo avaliada. No momento, temos até três possíveis 
+  cnfigurações de recursos de possíveis configurações, para as quais o 
+  usuário escolheu valores customozados, número de nos (nodes), número
+  de processos por nó (process) e número de threads por processo 
+  (threads). As possíveis componentes de uma configuração estão 
+  definidas na chave 'sugestions_map' do dicionário script_config com 
+  as configurações da aplicação que estamos otimizando a execução
+  associadas ao script de submissão (a chave 'user' do dicionário com
+  as configurações dessa aplicação).
 
-  # Verifica se o usuário usou as opções número de nós, de processos por
-  # nó, e de threads por processo. Primeiramemte verifica se o usuário
-  # definiu alguma das opções de configuração.
+  Parâmetros:
+    application_name (str): Nome da aplicação passado na linha de
+                            comando do script pelo usuário. Este
+                            parâmetro é usado para informar um erro de
+                            sintaxe em uma das strings, no formato 
+                            i:e:s, passadas pelo usuário.
+    application_id (str): Nome da aplicação usado internamente pelo 
+                          script, que é a chave, no dicionário com as
+                          configurações de todas as aplicações, para
+                          acessar o dicionário com a configuração da
+                          aplicação definida por application_id. Este 
+                          parâmetro é usado para que o usuário reporte,
+                          devido a um erro inesperado, o nome correto ao
+                          administrador do sistema:
+    script_config (dict): Dicionário com as configurações da aplicação
+                          definida internamente pelo swu nome
+                          application_id, com as configurações desta
+                          aplicação para o script de otimização. É a
+                          chave 'user' do dicionário com as
+                          configurações dessa aplicação:
+    user_args (NameSpace): Objeto da classe NameSpace com os parâmetros
+                           do script, que terão os valores passados pelo
+                           usuário, se ele definiu o parâmetro, ou o 
+                           valor default, se o usuário não definiu o 
+                           parâmetro. Como uma configuração, no momento
+                           pode ter um número de nóss (nodes), número de
+                           processos por nó (process) e número de 
+                           threads por processo (thrads), é obrigatória 
+                           a existência desses parâmetros no objeto 
+                           NameSpace.
+    application_partitions_list list[dict]: Lista com is dicionarios
+                                            definindo as partições que
+                                            podem ser usadas, sendo que
+                                            uma partição pode ocorrer
+                                            mais de uma vez na lista,
+                                            devido a diferentes limites
+                                            de uso dos recursos. A lista
+                                            é somente usada para 
+                                            clarificar ativos sobre
+                                            valores que não podem ser
+                                            escolhidos, listando todas
+                                            as partições que estão
+                                            disponíveis.
+
+  Retorna:
+    tuple: Uma tupla com dos elementos, o primeiro um booleano que será
+           True se os valores customizados para cada componente da
+           configuração foram definidos corretamente e sem erros de
+           sintaxe, sendo que neste caso o segundo elemento será um
+           dicionário que definirá, para cada chave associada a uma das
+           componentes de uma configuração e tendo o seu nome, a lista
+           de valores customiados definidos pelo usuário nas opções do
+           script de otimização. Se algum erro ocorrer, como uma 
+           componente de configuração que mão existe ou uma string no
+           formato incorreto para uma das configurações, o primeiro
+           elemento da tupla será False e o segundo parâmetro será None.
+           Finalmente, se o usuário não definir nenhuma componente da
+           configuração, será retornado True para o primeiro parâmetro e
+           None para o segundo.
+  """
+
+  # Inicializa a variável que inicará se o usuáruo definiu pelo menos
+  # uma das componentes da configuraçõ para False. Se alguma componente
+  # for definida, mudaremos como veremos a variável para True.
   use_custom_config = False
+
+  # Para cada componente de uma configuração que é definida ao executar
+  # a aplicação para a qual estamos otimizando a sua execução, definida
+  # pela variável script_config, que por sua vez é a referência da 
+  # chave 'user' do dicionário com as configurações da aplicação, vamos
+  # processar a lista de valores e obter a lista final de valores
+  # cuatomizados.
   for suggestion_name in script_config['suggestions_map']:
+    # Os parâmetros do script passados pelo usuário estão no objeto
+    # NameSpace user_args. È obrigatório que exista a configuração 
+    # definida pelo nome suggestion_name nos parâmetros do script, mesmo
+    # que o usuário efetivamente não defina o parâmetro, pois neste caso
+    # o seu valor seria None e a lista de parâmetros com uma única
+    # string "1" seria usada pela função get_options_suggestion ao fazer
+    # as conversões.
     if not hasattr(user_args, suggestion_name):
+      # Se não existir a opção suggestion_name, então existe um erro no
+      # arquivo de configuração da aplicação, pois é exigida uma opção
+      # de configuração de um recurso que ainda não foi implementada.
       print(f"❌ A configuração necessária {suggestion_name} não existe nas "
             f"opções do script para a aplicação {application_id}.")
       print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+      # Neste caso, retorna False no primeiro parâmetro, para indicar
+      # que um erro ocorreu ao tentar obter a lista de valores
+      # customizados para uma das componentes de uma configuração, e
+      # retornamos None na posição em que retornaríamos o dicionário,
+      # definido mais a seguir no código, com as configurações 
+      # customizadas para cada componmente de uma configuração.
       return False, None
     elif getattr(user_args, suggestion_name) is not None:
+      # Se o usuário definiu um conjunto de valores customizados no 
+      # formato i:e:s para a componente suggestion_name da configuração,
+      # então pelo menos uma componente foi definida e vamos retornar
+      # um dicionário com as configurações customizadas. As outras 
+      # componentes de configuração não definidas usarão a lista com uma
+      # única string '1'. Devido a uma opção ter sido definida, a 
+      # suggestion_name, a variável é alterada para True.
       use_custom_config = True
 
+  # Se suggestion_name for Truie, então o usuário, como observado pela
+  # avaliação do código anterior, definiu pelo menos uma componente de
+  # uma configuração. 
   if use_custom_config:
+    # Inicializa a variável custom_configurations com a referência para
+    # a lista de valores customizados para cada componente de uma
+    # configuração para um dicionário vazio.
     custom_configurations = {}
+
+    # Como determinamos que o usuário definiu uma lista de strings no
+    # formato i:e:s para pelo menos uma componente de uma configuração
+    # então, para cada componente de uma configuração, definida pela
+    # variável script_config que descrevemos anteriormente, vamos 
+    # processar a lista de strings no formato i:e:s, usando a função
+    # get_options_suggestion, lembrando que se e é otimido, é
+    # considerado que é 1, s é omitido, é considerado que é s, e que se
+    # s é omitido, é considerado igual a 1.
     for suggestion_name in script_config['suggestions_map']:
+      # Obtém a lista de strings no formato i:e:s, usando a função do
+      # Python getattr sobre o objeto da classe NameSpace, para a opção
+      # identificada pela string suggestion_name, para obter a
+      # referência desta lista e armazenar esta referência na variável
+      # suggestion_value
       suggestion_value = getattr(user_args, suggestion_name)
+
+      # Depois de obtida a lista com as strings no formato i:e:s, usa a
+      # função get_options_suggestion para processar essa lista e 
+      # retornar a lista com os possíveis valores customizados e
+      # definidos pelo usuário, para a componente de uma configuração
+      # definida pelo nome suggestion_name e armazena o retorno da 
+      # função que poderá ser uma referência para a lista se nenhum erro
+      # ocorreu ao processar a lista com as strings, ou none em caso
+      # contrário, e armazena o retorno na variável custom_params.
       custom_params = get_options_suggestion(suggestion_value)
+
+      # Se custom_params for None, então ocorreu algum erro ao processar
+      # a lsita de stirng no formato i:e:s para a componente com o nome
+      # suggestion_name.
       if custom_params is None:
+        # Como ocorreu um erro ao processar a lista, mostra o nome da
+        # componente para o qual o processamento da lista de strings 
+        # gerou um erro, indicando o nome da componente e a lista com as
+        # strings.
         print(f"❌ Erro de sintaxe ao processar a opção --{suggestion_name} "
               f"com o valor {suggestion_value}!")
+
+        # Como ocorreu um erro ao processar a lista de strings para uma
+        # das componentes, retornamos uma tupla com False para o
+        # primeiro elemento e None para o segundo.
         return False, None
+
+      # Agora que obtemos com sucesso a lista com os possíveis valores
+      # para a componente de uma configurão definida pelo nome
+      # suggestion_name, obtemos primeiramente o maior valor desta
+      # lista, para verificar se é possível ter esse maior valor.
       max_value_custom_params = max(custom_params)
-      max_possible_value = max([
-        partition[suggestion_name] for partition in application_partitions_list
-      ])
+
+      # Agora obtemos o maior valor possível para a componente definida
+      # pelo nome suggestion_name considerando todas as possíveis 
+      # esquemas de  partições dados na lista 
+      # application_partitions_list, sendo que pode existir mais de uma
+      # entrada para cada partição, pois podem definidos diversos
+      # limites de recursos para uma partição, com o objetivo de minizar
+      # o tempo na fila de espera ao escolher como tempo máximo o tempo
+      # mais próximo do tempo estimado para a melhor sugestão de
+      # configuração que o script escolheu para a aplicação.
+      # Verificamos, como antes, se a componente, definida pelo nome
+      # suggestion_name existe, e indicamos novamente um erro informando
+      # que a componente suggestion_name definida na condiguração da
+      # aplicação, não foi definida no dicionário de uma das partições
+      # definidas no arquivo de configuração da aplicação.
+      try:
+        max_possible_value = max(
+          [
+            partition[suggestion_name] 
+              for partition in application_partitions_list
+          ]
+        )
+      except KeyError:
+        print(f"❌ A configuração necessária {suggestion_name} não existe nas "
+              "configurações de uma das partições da lista de partições da "  
+              f"aplicação {application_id}.")
+        print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+        # Neste caso, retorna False no primeiro parâmetro, para indicar
+        # que um erro ocorreu ao tentar obter um valor de um dos
+        # componentes em uma dos dicionários com informações das
+        # partiçẽos que podem ser usadas pela aplicação, e None na
+        # posição em que retornaríamos o dicionário com as configurações 
+        # customizadas para cada componmente de uma configuração.
+        return False, None
+
+      # Agora, verificamos se o valor máximo da lista para a componente
+      # de nome suggestion_name, é maior do que o valor máximo suportado
+      # por uma das possíveis esquemas de partição que podem ser usados
+      # pela aplicação.
       if max_value_custom_params > max_possible_value:
+        # Se o valor máximo for maior, então nem todos os valores da
+        # lista customizada pelo usuário podem ser usados. Neste caso,
+        # ao invés de dar erro, vamos reportar os valores incorretos,
+        # informando ao usuário que eles seráo desconsiderados.
+
+        # Para melhorar a legibilidade do aviso, varremos a lista com os
+        # esquemas de partições para a aplicação para descobrir todas as
+        # partições diferentes que podem ser usadas e construiḿos, 
+        # usando o list comprehension do Python, a lista cuja referência
+        # é armezanda na variável application_partitions_names, com os 
+        # nomes de todas as partições.
         application_partitions_names = {
           partition['partition'] for partition in application_partitions_list
         }
+
+        # Imprime a mensaem informando ao usuário que vamos
+        # desconsiderar, para a componente definida pelo nome
+        # suggestion_name, todos os valores maiores que o maior valor
+        # que pode ser usado para essa componente, qiue foi armazenado 
+        # em max_possible_value. Assim como nas outras mensagens, usamos
+        # o nome da aplicação usado pelo usuário na linha de comando do
+        # script e passado em application_name, e mostramos a lista com
+        # todas as possíveis partições, como informações adicionais.
         print("⚠️  Descartando todos os valores para a opção \033[31m"
               f"{suggestion_name}\033[0m maiores do que {max_possible_value} "
               "permitidos pelas possíveis partições \033[1;34m"
               f"{', '.join(application_partitions_names)}\033[0m da aplicação "
               f"{application_name}!")
-        
+
+        # Depois de mostrar a mensagem, vamos manter, usando o list
+        # comprehension do Python, somente os valores da lista
+        # referência está em custom_params, que são iguais ou menores do
+        # que max_possible_value.
         custom_params = [
           custom_value for custom_value in custom_params 
             if custom_value <= max_possible_value
         ]                 
 
+      # Agora que processamos corretamente as lista de strings no
+      # formato i:e:s para a componente com o nome suggestion_name, 
+      # assim como removemos possíveis valores inválidos, vamos agora
+      # armazenar a lista customizada, cuja referência está na variável
+      # custom_params, na chave associada a componente da configuração,
+      # sendo o nome da chave precisa ser o nome usado para a componente
+      # ao treinar os modelos (porque precisamos usar os mesmos nomes
+      # nas predições que usamos nos treinamentos), nome esse que é
+      # obtido a partir do nome suggestion_name, usando o dicionaŕio de
+      # mapeamento 'suggestions_map' que mapeia cada nome da uma
+      # componente no correspondente usado ao treinar o modelo, do
+      # dicionário script_config com as configurações do script de 
+      # otimização para a aplicação.
       custom_configurations[
         script_config['suggestions_map'][suggestion_name]
       ] = custom_params
   else:
+    # Como o usuário não definiu nenhuma das componentes de uma
+    # configuração, então não temos valores customizados para as
+    # componentes da configuração, e com isso a variável 
+    # custom_configurations será definida para None.
     custom_configurations = None
 
+  # Retorna uma tupla cujo primeiro elemento é True, pois nenhum erro
+  # ocorreu ao processar a lista de strings com confiurações otimizadas
+  # para uma configuração, se uma lista foi definida. Se pelo menos uma
+  # lista foi defiida par uma componente, retorna o dicionário com os
+  # valores otimizados para as componentes, usando como chaves os nomes
+  # dessas compomentes usados ao treinar os modelos para a aplicação, 
+  # rerenciado por custom_configurations. Se nenhuma lista foir definida
+  # retorna None porque neste caso custom_configurations é None. 
   return True, custom_configurations
 
 def process_application_params(application_name, script_config, 
