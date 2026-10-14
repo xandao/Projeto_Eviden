@@ -1886,7 +1886,7 @@ def submission_log(application_config, system_config, suggestion,
       k: v
       for k, v in template_params.items()
       if k not in [
-        'application_params', 'suggestion_params', 'application_name'
+        'application_params', 'suggestion_params'
       ]
   }            
 
@@ -2712,20 +2712,128 @@ def get_template_params(application_name, user_args, application_args,
                         application_partitions_list, suggestion, 
                         reversed_suggestions_map):
   """
+  Função para gerar os parâmetros como as informações referentes à 
+  execução otimizada da aplucação pelo script, usados pela função
+  generate_submission_script para gerar o script de submissão final para
+  o usuário a partir do modelo do script de submissão dessa aplicação. 
+  Neste template, como veremos, existirão campos definindo todos os
+  dados referentes a um script de submissão do SLURM, como os
+  componentes da melhor sugestão de configuração (para o RAxML, número
+  de nós, processos por nó e threads por processo), tempo máximo de
+  execução, usu máximo de memória, a partição a ser usada, o nome do
+  trabalho definido pelo usuário, se a execução é ou não exclusiva, e
+  os parâmetros da aplicação passados pelo usuário ao usar o script de
+  otimização após o nome que identifica a aplicação.
+
+  Parâmetros:
+    application_name (str): Nome da aplicação passado na linha de
+                            comando do script pelo usuário. Este
+                            parâmetro é usado para mostrar o nome da
+                            aplicação usado pelo usuário na linha de
+                            comando do script ao mostrar a ajuda com os
+                            parâmetros que precisam obrigatoriamente ser
+                            passados pelo usuário.
+    user_args (NameSpace): Objeto da classe NameSpace com os parâmetros
+                           do script, que terão os valores passados pelo
+                           usuário, se ele definiu o parâmetro, ou o 
+                           valor default, se o usuário não definiu o 
+                           parâmetro. Foi passado para sabermos se o
+                           usuário definiu a opção "-j" ou "--jobname"
+                           com o nome do trabalho no script de
+                           submissão.
+    application_args list[str]: Lista com todos os parâmetros da 
+                                aplicação passados pelo usuário,
+                                incluindo os usados e convertidos ao
+                                escolher a melhor sugestão de
+                                configuração. A lista contpem somente os
+                                argumentos da aplicação.
+    application_partitions_list list[dict]: Lista com is dicionarios
+                                            definindo as partições que
+                                            podem ser usadas, sendo que
+                                            uma partição pode ocorrer
+                                            mais de uma vez na lista,
+                                            devido a diferentes limites
+                                            de uso dos recursos. A lista
+                                            é somente usada para 
+                                            clarificar ativos sobre
+                                            valores que não podem ser
+                                            escolhidos, listando todas
+                                            as partições que estão
+                                            disponíveis.
+    suggestion (dict): Objeto com as informações referentes a melhor
+                       sugestão de configuração obtida pelo script de
+                       otimização.
+    reversed_suggestions_map (dict): Dicionário que mapeia, para cada
+                                     componente de uma configuração
+                                     como a melhor sugestão, o nome
+                                     usado ao treinar os modelos, para o
+                                     nome usado quando o usuário define
+                                     valores para a componente.
+
+    Retorna:
+      dict: Dicionário em que a chave é uma das configurações
+            necessárias para gerar o script de submissão com a execução
+            otimizada para a aplicação, e a referência da chave depende
+            da configuração definida pela chave. Existem as seguintes
+            chaves:
+
+            'application_name': Nome da aplicação, como passado pelo
+                                usuário na linha de comando.
+            'suggestion_params': dicionário com a melor sugestão de
+                                 configuração escolhida pelo script de
+                                 otimização, mas na qual as componentes
+                                 são referenciadas usando os nomes das
+                                 opções correspondentes do script ao
+                                 invés dos nomes usados ao treinar os
+                                 modelos para a aplicação.  
+            'job_name': Nome do trabalho quando o script de submisssão 
+                        for submetido. Se o usuário passar um nome pela
+                        opção "-j" ou "--jobname" o script, será o nome
+                        passado mas, se o usuário não passar o nome, 
+                        será o nome da aplicação passado pelo usuário e
+                        dado em application_name.
+            'application_params': Lista de parâmetros da aplicação. É
+                                  a lista application_args sem o
+                                  primeiro elemento da lista, o nome da
+                                  aplicação passado pelo usuário.
+            'partition': Partição na qual o trabalho será submetido.
+            'max_time': Tempo máximo que o trabalho submetido pode
+                        executar.
+            'max_memory': Quantidade máxima de memória que o trabalho
+            'exclusive': Valor booleano que indica se o trabalho tem
+                         execução exclusiva (True) ou não (False).
   """
+
+  # Cria um dicionário com a melhor sugestão de configuração, sendo cada
+  # chave uma das componentes dessa sugestão, e o valor refernciado pela
+  # chave o valor escolhido pelo script de otimização para esta
+  # componnte. O uso do dicionário reversed_suggestions_map, em que cada
+  # cahve maoeia o nome da componente usado ao treinar o modelo no nome
+  # da compunente usada pelo script de otimização, ocorre para evitar
+  # que o script de otimização dependa dos nomes dados às componentes ao
+  # treinar os modelos da aplicação. No momento, temos as seguintes
+  # componentes que podem compor uma sugestão (o uso de todas dependerá
+  # da aplicação sendo otimizada):
+  #
+  # 'nondes' : Número de nós da melhor sugestõ de configuração.
+  # 'process': Número de processos por nõ da melhor sugestõ de
+  #            configuração.
+  # 'threads': Número de threads por processo da melhor sugestõ de
+  #            configuraçaõ.
   suggestion_mapped = {
     reversed_suggestions_map[k]:v 
     for k,v in suggestion['Suggestion'].items()
   }
 
   # Cria o dicionário com as informações para construir o script de 
-  # submissão (fiz o dicionário para tornar a função independente de como os parâmetros são gerados).
-  #list_partitions = script_config['slurm']
+  # submissão e para o log da aplicação. Os campos inicializados quando
+  # o dicionário é criado são:
+  # 'application_name': Nome da aplicação passado pelo usuário, usado
+  #                     nas impressões das mensagens de erro.
   template_params = {
-    'application_name': application_name,
     'suggestion_params': suggestion_mapped,
     'job_name':  application_name if user_args.jobname is None else user_args.jobname,
-    'application_params': application_args[1:],
+    'application_params': application_args,
   }
 
   # Verifica se existe o tempo predito para a sugestão.
@@ -2952,7 +3060,7 @@ def optimize_application(configs_file_path, system_config, applications_config,
         )
 
       template_params = get_template_params(application_name, user_args, 
-                                            application_args, 
+                                            application_args[1:], 
                                             application_partitions_list,
                                             suggestion, 
                                             reversed_suggestions_map)
