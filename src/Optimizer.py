@@ -2263,7 +2263,7 @@ def get_custom_configurations(application_name, application_id,
                           devido a um erro inesperado, o nome correto ao
                           administrador do sistema:
     script_config (dict): Dicionário com as configurações da aplicação
-                          definida internamente pelo swu nome
+                          definida internamente pelo seu nome
                           application_id, com as configurações desta
                           aplicação para o script de otimização. É a
                           chave 'user' do dicionário com as
@@ -2828,108 +2828,370 @@ def get_template_params(application_name, user_args, application_args,
   # Cria o dicionário com as informações para construir o script de 
   # submissão e para o log da aplicação. Os campos inicializados quando
   # o dicionário é criado são:
-  # 'application_name': Nome da aplicação passado pelo usuário, usado
-  #                     nas impressões das mensagens de erro.
+  # 'suggestion_params': Referência para o dicionário descrito
+  #                      anteriormente, e armazenado na variável 
+  #                      suggestion_mapped, que define, para cada
+  #                      componente da melhor sugestão de configuração,
+  #                      acesssada pela chave com onome deste componente
+  #                      no script de otimização, o valor desta 
+  #                      componente.
+  # 'job_name': Nome do trabalho a ser submetido, definido pelo usuário
+  #             pela opção -j ou --jobname do script, ou o nome da 
+  #             aplicação passado pelo usuário na linha de comando se o
+  #             usuário não usar as opções.  
+  # 'application_params': Lista dos parâmetros da apluicação passados
+  #                       pelo usuário na linha de comando do script de
+  #                       submissão (o nome da aplicação não está na
+  #                       lista).
   template_params = {
     'suggestion_params': suggestion_mapped,
     'job_name':  application_name if user_args.jobname is None else user_args.jobname,
     'application_params': application_args,
   }
 
-  # Verifica se existe o tempo predito para a sugestão.
+  # Verifica se existe o tempo predito para a sugestão, sendo que o
+  # tempo somente existirá se for definida a chave 'time' do dicionário
+  # 'estimated_parameters' do dicionário com as configurações da
+  # aplicação.
   if 'Time' in suggestion.keys():
-    # Aproxima o tempo para o maior tempo inteiro.
+    # Se existir um tempo em segundos estimado para a melhor sugestão de
+    # configuração, então vamos aproximar o tempo para o maior número
+    # inteiro de segundos mais próximo (o tempo estimado, devido ao modo
+    # que é calculado, em geral, não é um inteiro mas um número de ponto
+    # flutuante). Este tempo será usado para resttringir os esquemas da
+    # lista de esquemas que podem ser usados.
     predicted_time = np.ceil(suggestion['Time'])
   else:  
+    # Em caso contráio, vamos definir o tempo em 0, implicando que todos
+    # os squemas serão considerados..
     predicted_time = 0
-  # Verifica quais partições podem ser usadas pela sugestão.
-  valid_partitions_list = []
-  for partition in application_partitions_list:
-    # Descobre quais partições podem executar a aplicação.
+
+  # Ordena as partições, em ordem crscente, de acordo com os tempos de
+  # execução, para evitar que a ordem precise ser imposta ao
+  ordered_partitions_list =  sorted(application_partitions_list, 
+                                    key=lambda x: x["max_time"])
+
+  # Inicializa a variável partition_used com None, indicando que
+  # inicialmente nenhum esquema pode ser usado para executar a aplicação
+  # de acordo com a melhor sugestão de configuração e o tempo estimado
+  # para esta sugestçao, se o tempo foi estimado,
+  partition_used = None
+
+  # Verifica quais partições podem ser usadas para alocar os recursos
+  # necessários para a melhor sugestão de configuração e que podem 
+  # executa a aplicação se o modelo para predizer o tempo estimado foi
+  # definido. Para fazer isso, vamos varrer a lista e adicionar na
+  # lista valid_partitions_list somente os esquemas que podem ser
+  # usados.
+  for partition in ordered_partitions_list:
+    # Vamos agora verificar se o esquema definido no dicionário
+    # partition pode ser usado. Primeiramente, vamos ver se o tempo
+    # máximo do esquema, dado pela chave 'max_time', é maior ou igual ao
+    # tempo máximo, se ele foi estimado. Devido ao modo que 
+    # valid_partition é definido, ele será um booleando, e será True se
+    # o tempo máximo da partição for maior do que o tempo estimado para
+    # a melhor sugestão de configuração (que é 0 se não estimamos o
+    # tempo)), ou False em caso contrário. Note que se não existe um
+    # modelo para predizer o tempo, então valid_partition sempre será
+    # True, pois o tempo máximo do esquema sempre é maior do que 0.
     valid_partition = partition['max_time'] >= predicted_time
+
+    # Agora vamos verificar se o esquema permite alocar os recursos 
+    # necessários para executar a aplicação usando a melhor configuração
+    # sugerida. Para faver isso, verificamos se podem ser alocados os
+    # recursos definidos por cada componente.
     for suggestion_name in suggestion['Suggestion']:
+      # Vamos verificar se os recursos da componente definida em
+      # suggestion_name podem ser alocados pelo esquema partition. Como
+      # os nomes das componentes no dicionário 'Suggestion' do
+      # dicionário suggestion com as informações da melhor sugestão de
+      # configuração são os nomes das colunas das componentes usados ao
+      # treinar os modelos para a aplicação, precisamos primeiramente 
+      # mapeá-los nos nomes das componentes usados nas opções do script
+      # de otimização e nos esquemas ddas partiçoes, usando o dicionário
+      # reversed_suggestions_map que mapeia a chave com o nome da 
+      # componente ao treinar os modelos para o nome correspondente no
+      # esquema.
       partition_suggestion_name = reversed_suggestions_map[suggestion_name]
-      valid_partition = valid_partition and partition[partition_suggestion_name] >= suggestion['Suggestion'][suggestion_name]
+
+      # Agora que obtivemos o nome partition_suggestion_name da
+      # componente da melhor sugestão de configuração, vamos vericar,
+      # usando a chave com o mesmo nome da componente no esquema, se
+      # o valor máximo possíveis de recursos, definido pelo vlor desta
+      # chave em partition, é maior ou igual ao número de recursos 
+      # necessários para essa componente da melhor sugestão de
+      # configuração. A operação 'and' com o valor anterior de
+      # valid_partition é para contabilizar a verificação anterior, que
+      # pode ser a de uma componente (se a atualmente verificada não for
+      # a primeira), ou a verificação anterior do tempo estimado de
+      # execução, em caso contrário.
+      valid_partition = (valid_partition 
+                         and (partition[partition_suggestion_name] 
+                              >= suggestion['Suggestion'][suggestion_name]
+                             )
+                        )
+    # Depois de todas as verificações, se valid_partition ainda for
+    # True, então o esquema o tempo máximo de exexução do esquema é
+    # maior do que o tempo estimado, se foi predito ou 0, e é possível
+    # alocar todos os recursos necessários para executar a aplicação
+    # usando a partição deste esquema e a melhor sugestão de
+    # configuração. Como a lista com os esquemas foi ordenada de acordo
+    # com os tempos máximos de execução, este esquema tamém será o que
+    # tem o tempo de execução máximo mais próximo do tempo de execução
+    # estimado se ele foi definido, ou será o esquema que pode ser usado
+    # com o menor tempo máximo, se o tempo não foi estimado e foi
+    # definido com o valor default 0. 
+    # máximo de execução). 
     if valid_partition:
-      valid_partitions_list.append(partition)
+      # Como achamos o esquema válido e com o tempo mais pŕoximo do 
+      # tempo estimado se foi computado ou o com o menor tempo em caso
+      # contrário, então definimos partition_used com uma referência 
+      # para este esquema.
+      partition_used = partition
 
-  # Se existirem partições, escolhe a com o menor tempo (portanto, mas próximo do tempo da aplicação, já que todas as partiçoes da lista)
-  if valid_partitions_list:                                           
-    # A partição escolhida será a com menor tempo máximo.
-    partition_used = min(valid_partitions_list, key=lambda partition: partition['max_time'] - predicted_time)
-  else:   
-    # A partição usada será a default (para evitar erros, a partição default deveria ser a com todos os recursos que sugerimos com 
-    # os valores. A list compreension deveria retornar somente um gerador com somente um elemento, obtido com o next, 
-    # pois o validados do JSON deveria impedir mais de uma partição com o dafault igual a true e também todas as partições com 
-    # o default igual a false.
-    partition_used = next([partition for partition in application_partitions_list if partition["dafault"]])
-    # Verifica se o tempo da partição é maior do que o temṕo predito, e sá um aviso se isso ocorrer
+      # Como já escoljemos o esquema, então podemos para o laço de
+      # verificação dos esquemas, pois os outros esquemas válidos terão
+      # tempos maos distantes do tempo estimado ou terão tempo máximos
+      # de execução maiores devido a ordenadção da lista de esquemas.
+      break
+
+  # Verificamos se um esquema valido foi escolhido, o que ocorrerá se
+  # partition_used for diferente de None.
+  if partition_used is None:
+    # Como partition_used é None, então não existe um esquema válido na
+    # lista de esquemas da aplicação. A partição usada será a default 
+    # (para evitar erros, a partição default deveria ser a com todos os
+    # recursos que sugerimos com os valores. A list compreension deveria
+    # retornar somente um gerador com somente um elemento, obtido com o
+    # next, pois o validados do JSON deveria impedir mais de uma
+    # partição com o dafault igual a true e também todas as partições
+    # com o default igual a false.
+    partition_used = next(
+      [
+       partition for 
+       partition in application_partitions_list if partition["default"]
+      ]
+    )
+    # Verifica se o tempo da partição é maior do que o temṕo predito, e
+    # dá um aviso se isso ocorrer
     if predicted_time > partition_used['max_time']:
-      print(f"⚠️  O tempo predito aproximado {predicted_time} é maior do que o tempo máximo {partition_used['max_time']} de execução da partição {partition_used['partition']}!")
+      print(f"⚠️  O tempo predito aproximado {predicted_time} é maior do que "
+            f"o tempo máximo {partition_used['max_time']} de execução da "
+            f"partição {partition_used['partition']}!")
 
-  # define os dados para gerar o script de confuguração.
+  # Define a chave 'partition' do dicionario template_params com o nome
+  # da partição ao usar o melhor esquema partition_used escohido
+  # anteriormente.
   template_params['partition'] = partition_used['partition']
+
+  # Define a chave 'max_time' do dicionario template_params com o tempo
+  # máximo de execução ao usar o melhor esquema partition_used escohido
+  # anteriormente.
   template_params['max_time'] = partition_used['max_time']
+
+  # Define a chave 'max_memory' do dicionario template_params com o
+  # quantidade máxima de memória que pode ser alocadaa ao usar o melhor
+  # esquema partition_used escohido anteriormente.
   template_params['max_memory'] = partition_used['max_memory']  
+
+  # Define a chave 'exclusive' do dicionario template_params com o valor
+  # booleando que indica, ao usar o melhor esquema partition_used 
+  # escohido anteriormente, se a aplicação será executada exclusivamente
+  # (True) ou não (False) nos nós do supercomputador.
   template_params['exclusive'] = partition_used['exclusive']  
 
+  # Retorna o dicionário com as informações necessárias para gerar o
+  # script de submissão a partir do script modelo para a aplicação cuja
+  # execução está sendo otimizada, e pelo log dessa aplicação com as 
+  # otimizações feitas pelos ao otimizar a execução da aplicação.
   return template_params
 
 
-def submit_submission_script(script_file_name, template_content):
+def submit_submission_script(script_file_name, template_content, 
+                             user_config):
+  """
+  Função para executar um script de submissão gerado pelo script de
+  otimização, que precisará estar em um arquivo no sistema de arquivos
+  porque a submissão do script no sistema de gerenciamento do SLURM será
+  feita por um programa executado externamente, por default o sbatch. Se
+  script_file_name for uma string, então dará o caminho do arquivo com o
+  script de submissão (este arquivo será gerado se o usuário usar a
+  opção -s ou --script para salvar o script). Porém, se script_file_name
+  for None, então o script de submissão gerado, passado dentro da string
+  template_content, será salvo em um arquivo temporário que depois será
+  usado para submeter o script que estava armazenado na string 
+  template_content.
+
+  Parâmetros:
+    script_file_name (str | None): Se for uma string, caminho para o 
+                                   arquivo com o script de submissão
+                                   gerado pelo script de otimização, e
+                                   que será usado ao submeter o script.
+                                   Se for None, um arquivo temporário
+                                   será usado, com o conteúdo do script
+                                   armazenado na string
+                                   template_content.
+    template_content (str): String com o conteúdo do script de submissão
+                            gerado pelo script de otimização, usada
+                            quando o script não foi salvo em um arquivo
+                            pelo usuário, que será salvo em um arquivo
+                            temporário que será posteriormente usado
+                            para submeter o script.
+    user_config (dict): Dicionário com as configurações do script de
+                        otimização.
+
+  Retorna:
+    int | None: Se o script de submissão foi submetido ao SLURM com
+                sucesso pelo programa ecterno de submissão, definido na
+                chave 'submission_program' do dicionário 'slurm' do
+                arquivo de configuração user_config, retorna o
+                identificador do trabalho submetido. Em caso contrário,
+                ou seja, se a ocorreu algum erro ao submeter o script de
+                submissão, retorna None.
+  """
+
+  # O objetivo do bloco try é de capturar eventuais exceções que ocorram
+  # e mostrar as mensagens adequadas.
   try:
-    remove_temp_file = False
+    # Variável para salvar o ID do trabalho submetido, que é esperado
+    # ser retornado na tela pelo programa externo que faz a submissão do
+    # script;
     job_id = None
+
+    # Verificamos se um caminho do arquivo foi passado em
+    # script_file_name.
     if script_file_name is None:
+        # Como script_file_name é None, então o arquivo do script não
+        # foi salvo, então devemos criar um arquivo temporário para
+        # o script poder ser submetido pelo programa externo. Para
+        # garantir a remoção deste arquivo no bloco finally que sempre
+        # é executado, definimos a variável remove_temp_file com o valor
+        # True. 
         remove_temp_file = True
+
+        # Cria um arquivo temporário que será associado à variável temp.
         with tempfile.NamedTemporaryFile(mode='w+t', delete=False) as temp:
+            # Dentro do ambiente, usamos a função write do objeto para
+            # salvar o conteúdo do script de submissão salvo na string
+            # script_file_name no arquivo referenciado por temp.
             temp.write(template_content)
+
+            # Para poder usar o arquio, alteramos a veriável passada, 
+            # com o valor None, para a string com o caminho do arquivo
+            # temporário, dado pelo campo nome do objeto temp.
             script_file_name = temp.name 
 
-        # TODO: Depois podemos remover, se necessário, este código de 
-        # depuração.
-        # TODO: Início.
         if debug_code:
           print(f"➡️  Arquivo temporário {script_file_name} criado para "
                 "armazenar o script de submissão.")
-        # TODO: Fim  
-  
-    # Executa o sbatch se a opção -r ou --run foi usada
-    submission_program = user_config["slurm"]["submission_program"]
-    result = subprocess.run([submission_program, f"{script_file_name}"], capture_output=True, text=True, check=True)   
+    else:
+      # Como script_file_name não é None, então ele é o caminho para o
+      # arquivo do script de submissão que o usuário salbou usando a
+      # opção -s ou --script. Neste caso, não devemos remover o arquivo
+      # no bloco finally, então definimos remove_temp_file para False.
+      remove_temp_file = False
 
+    # Descobre o nome do programa externo que será usado para submeter
+    # o script de submissão armazenado no arquivo dado por 
+    # script_file_name e armazena uma referencia para o nome em
+    # submission_program. O seu nome está armazenado na chave  
+    # 'submission_program' do dicionário acessado pela chave 'slurm' do
+    # dicionário user_config com as configurações do script de
+    # otimização.
+    submission_program = user_config["slurm"]["submission_program"]
+
+    # Executa o programa para submeter o script de submissão usando o
+    # programa externo definido em submission_program, usando o método
+    # estático run da classe subprocess do Python usada para executar
+    # programas externos. O primeiro parâmetro é uma lista com os 
+    # parâmetros, como seriam digitados em um terminal, ou seja, o
+    # nome do programa que faz za aubmissão, submission_program, e o 
+    # seu parâmetro, o caminho para o arquivo com o script de submissão.
+    # O segundo parâmetro (capture_output) igual a True diz que
+    # desejamos capturar toda a saída do stdout e strerr gerada pelo
+    # programa externo, ou seja, a saída que seria gerada depois de
+    # executar o comando definido pelo primeiro parâmetro no terminal. O 
+    # terceiro parâmetro (text) igual a True indica que o arquivo
+    # temporário com a saída do programa externo deve ser aberto como 
+    # um arquivo de texto. Finalmente, o quarto parâmetro (check) igual
+    # a True define que a exceçao subprocess.CalledProcessError deve
+    # ser gerada se a retorno (acessado no terminal com $?) do programa
+    # externo de submissão for diferente de zero. o objeto result tem
+    # as informações referentes a execução so programa externo,
+    # incluindo a saída strdout em que estará a mensagem com a ID do
+    # trabalho se a submissão foi feita com sucesso.
+    result = subprocess.run([submission_program, f"{script_file_name}"], 
+                            capture_output=True, text=True, check=True)   
+
+    # Mensagem para informar que o script de submissão foi subetido com
+    # sucesso, pois uma falha na execução do script, como um erro gerado
+    # pelo programa externo de submissão, iria gerar a exceção
+    # subprocess.CalledProcessError, tratada a seguir em um bloco 
+    # expect.
     print("➡️  Script de submissão submetido com sucesso!")
 
-    # Imprime para o usuário o ID do job submetido.
-    # Extrai o ID da saída do sbatch
+    # Para obter o ID do trabalho da saída do programa de submissão, 
+    # precisamos saber como encontrar exatamente o ID nessa saída. A
+    # experssão regular armazanead na chave 'submission_message' do 
+    # diconário referenciado pela chave 'slurm' do dicionário, será
+    # usada para obter o ID nessa saída. A função compile da biblioteca
+    # re nativa do Python é usada para validar a expressão regular e
+    # retorná-la em um objeto que será salvo em job_id_regex.
     job_id_regex = re.compile(user_config['slurm']['submission_message']) 
+
+    # Depois de validada a expressão regular e armazenada no objeto 
+    # job_id_regex, ela é usada como parâmetro para a função de busca
+    # search da biblioteca re junto com a saída stdout do programa de
+    # submissão dada em result.stdout, que irá retornar os textos 
+    # armazenados em result.stdout que casam (match) com a expressão
+    # regular validada em job_id_regex. Todos os textos armazenados são
+    # rerornados no objeto retornado pela função search e armazenado
+    # em resultado.
     resultado = re.search(job_id_regex, result.stdout)
+
+    # Os textos casados retornados em resultado podem ser acessados pela
+    # função group do objeto resultado. O texto com o ID do trabalho
+    # será o segundo texto casado (o primeiro será )
     job_id = resultado.group(1) 
+
+    # Depois de obter o ID do trabalho submetido, imprime ele na tela.
     print(f"➡️  O trabalho foi submetido com o identificador {job_id}.")
 
-    # TODO: Depois podemos remover, se necessário, este código de depuração.
-    # TODO: Início.
+    # Impressão de depuraçõ para ver o código de retorno ao executar o
+    # programa externo que submete o trabalho. Como habilitamos a
+    # geração subprocess.CalledProcessError, o retorno deveria sempre
+    # ser 0.
     if debug_code:
-      print(f"➡️  O código de retorno da execução do programa de submissão {submission_program} foi {result}")
-      print("➡️  O campo returncode do objeto CompletedProcess deveria ser 0, pois um valor diferente de 0 deveria gerar a exceção subprocess.CalledProcessError.")
-    # TODO: Fim  
+      print("➡️  O código de retorno da execução do programa de submissão "
+            f"{submission_program} foi {result.returncode}")
+      print("➡️  O campo returncode do objeto CompletedProcess deveria ser 0, "
+            "pois um valor diferente de 0 deveria gerar a exceção "
+            "subprocess.CalledProcessError.")
 
-    # Imprime a saída da execução do programa de submissão do script.
-    # TODO: Está correto isso ser um vernose? Talvez usar a variáel global debug_code?        
+    # Imprime a saída da execução do programa de submissão do script, 
+    # primeiro a saída em stdout e depois a saída em stderr. No terminal
+    # as saídas são impressar juntas e intercaladas.
     if user_args.verbose:
+      # Imprime a saída do stdout da execução do programa de submissão.
       print(f"➡️  stdout da execução de {submission_program}:\n\n")
       print(result.stdout)
-      print(f"\n\n➡️  stderr de execução de {submission_program}:\n\n")
-      print(result.stderr)        
 
+      # Imprime a saída do stdee da execução do programa de submissão.
+      print(f"\n\n➡️  stderr de execução de {submission_program}:\n\n")
+      print(result.stderr)      
+
+  # Exceção gerada quando o programa externo de submissão termina a sua
+  # execução com erro, indicando que nçao foi possível submeter o script
+  # de submmissão.
   except subprocess.CalledProcessError as e:
-    # This will print the actual error from the terminal command
-    print("❌ Não foi possṕivel executar o comando {submission_program}!")
+    print("❌ Não foi possível executar o comando {submission_program}!")
     print("❌ Código de saída:", e.returncode)
     print("❌ mensagem de erro:", e.stderr)
+  #  
   except FileNotFoundError:
     print(f"❌ O programa {submission_program} não foi achado no sistema!")
     print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+  #  
   except IOError as e:
     print(f"❌ Não foi possível criar o arquivo temporário. {e.filename}")
     print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
@@ -2937,21 +3199,19 @@ def submit_submission_script(script_file_name, template_content):
   finally:
     # Se criamos um arquivo temporario, removemos depois de usarmos.
     if remove_temp_file:
-      # TODO: Depois podemos remover, se necessário, este código de depuração.
-      # TODO: Início.
       if debug_code:
         print(f"➡️  Tentando remover o arquivo temporário {script_file_name}.")
-      # TODO: Fim  
       try:
         if os.path.exists(script_file_name):
           os.remove(script_file_name)    
         if debug_code:
-          print(f"➡️  Arquivo temporário {script_file_name} removido com sucesso.")
+          print(f"➡️  Arquivo temporário {script_file_name} removido com "
+                "sucesso.")
       except OSError as e:
         if debug_code:
           print(f"⚠️  Não foi possível remover o arquivo {e.filename}")
           print(f"⚠️  Código do erro: {e.errno}; Mensagem: {e.strerror}!")
-        Status = False
+
   return job_id
 
 def optimize_application(configs_file_path, system_config, applications_config, 
