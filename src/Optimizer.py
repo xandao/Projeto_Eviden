@@ -186,14 +186,14 @@ def read_configs(verbose=False):
     # Lẽ o dicionário com as informações dos preditores, que é usado 
     # para ler os preditores usados para fazer a sugestão da melhor
     # configuração de execução das aplicações. Cada aplicação tem um
-    # preditor, com o nome dele associado a uma chave do dicionário,
-    # igual ao nome da aplicação e o valor sendo o nome do arquivo que 
-    # armazena o preditor no diretório de preditores. O caminho do 
-    # arquivo de configuração com as informações dos preditores é
-    # composto pelo diretório de configuração, o subdiretório definido
-    # na chave "predictors_path" do dicionário system_config e o nome do
-    # arquivo de configuração dos preditores definido na chave 
-    # "predictors_info_config_filename" do dicionário system_config. 
+    # preditor, com a chave do dicionário igual ao nome da aplicação, e 
+    # o valor sendo o nome do arquivo que armazena o preditor no 
+    # diretório de preditores. O caminho do arquivo de configuração com
+    # as informações dos preditores é composto pelo diretório de
+    # configuração, o subdiretório definido na chave "predictors_path"
+    # do dicionário system_config e o nome do arquivo de configuração
+    # dos preditores definido na chave "predictors_info_config_filename"
+    # do dicionário system_config. 
     predictors_info_config = PredictorsInfoConfig(
       verbose
     ).read_predictors_info_config(
@@ -1847,10 +1847,8 @@ def submission_log(application_config, system_config, suggestion,
                                     e passados no objeto
                                     required_applicaion_params.  
     application_args list[str]: Lista com todos os parâmetros da 
-                                aplicação passados pelo usuário,
-                                incluindo os usados e convertidos ao
-                                escolher a melhor sugestão de
-                                configuração.
+                                aplicação passados pelo usuário. A lista
+                                não inclue o nome da aplicação.
     job_id (int): Identificador do trabalho submetido ao SLURM pelo 
                   programa de submissão, por exemplo, o sbatch.
 
@@ -2200,31 +2198,56 @@ def list_applications(applications_config):
                                 uma aplicação, tem uma referência para o
                                 dicionário com as configurações dessa
                                 aplicação.
+
+  Retorna:
+    bool: True se foi possível mostrar a lista com todas as aplicações
+          que podem ter a suas execuções otimizadas pelo script de 
+          otimização, ou False em caso contrário.
   """
 
-  # Como desejamos mostrar a lista de aplicações, vamos varrer todas as
-  # chaves no dicionário applications_config com as configurações das
-  # aplicações, já que existe uma chave para cada aplicação que pode ter
-  # a sua execução otimizada com uma referência para o dicionário com as
-  # configurações da aplicação.
-  for application_id in sorted(applications_config.keys()):
-    # Armazena em application_config a referencia ao dicionário com as
-    # configurações da aplucação identificada pela chave application_id.
-    application_config = applications_config[application_id]
+  try:
+    # Como desejamos mostrar a lista de aplicações, vamos varrer todas
+    # as chaves no dicionário applications_config com as configurações
+    # das aplicações, já que existe uma chave para cada aplicação que
+    # pode ter a sua execução otimizada com uma referência para o
+    # dicionário com as configurações da aplicação.
+    for application_id in sorted(applications_config.keys()):
+      # Armazena em application_config a referencia ao dicionário com as
+      # configurações da aplucação identificada pela chave
+      # application_id.
+      application_config = applications_config[application_id]
 
-    # Imprime as informações sobre os possíveis executáveis que podem
-    # ser usados para identificar a aplicação, internamente identificada
-    # por application_id, ou seja, os executáveis que podem ser usados
-    # pelo usuário para indicar que deseja otimizar essa aplicaçãoa.
-    # Os executáveis estáo na chave 'executable_names' do dicionário
-    # referenciado pela chave 'user' do dicionário application_config
-    # com as configurações da aplicação. A mensagem impressa indica o
-    # identificador interno da aplucação, e os nomes dos executáveis que
-    # podem ser usados pelos usuários
-    print(f"➡️  Aplicação {application_id}, possíveis nomes para os "
-          f"executáveis: {
-            ', '.join(application_config['user']['executable_names'])
-            }")
+      # Imprime as informações sobre os possíveis executáveis que podem
+      # ser usados para identificar a aplicação, internamente
+      # identificada por application_id, ou seja, os executáveis que
+      # podem ser usados pelo usuário para indicar que deseja otimizar
+      # essa aplicação. Os executáveis estáo na chave 'executable_names'
+      # do dicionário referenciado pela chave 'user' do dicionário
+      # application_config com as configurações da aplicação. A mensagem
+      # impressa indica o identificador interno da aplucação, e os nomes
+      # dos executáveis que podem ser usados pelos usuários
+      print(f"➡️  Aplicação {application_id}, possíveis nomes para os "
+            f"executáveis: {
+              ', '.join(application_config['user']['executable_names'])
+              }")
+
+  # Devido a um erro no código, foi tentado o acesso de um campo de um
+  # objeto referenciado por uma chave inexistente ao listar as
+  # aplicações que podem ter as suas exwcuções otimizadas.
+  except KeyError as e:
+    print("❌ Erro ao processar uma das estruturas indexadas por chave, a "
+          f"chave {e.args[0]} não existe, ao listar as possíveis aplicações "
+          "que podem ter as suas execuções otimizadas")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como ocorreu uma exceção, retorna false para indicar que ocorreu
+    # um erro ao listar as aplcações que podem ter as suas execuções
+    # otimizadas.
+    return False
+
+  # Como conseguimos listar todas as aplicações que podem ter as suas
+  # execuções otimizadas pelo script de otimização, retornamos True.
+  return True
 
 def get_custom_configurations(application_name, application_id, 
                               script_config, user_args, 
@@ -2528,7 +2551,8 @@ def get_custom_configurations(application_name, application_id,
   # retorna None porque neste caso custom_configurations é None. 
   return True, custom_configurations
 
-def process_application_params(application_name, script_config, 
+def process_application_params(application_name, application_args, 
+                               script_config, 
                                application_configs_dir_path):
   """
   Função para ler e os argumentos da aplicação que precisam
@@ -2563,6 +2587,9 @@ def process_application_params(application_name, script_config,
                             comando do script ao mostrar a ajuda com os
                             parâmetros que precisam obrigatoriamente ser
                             passados pelo usuário.
+    application_args list[str]: Lista com todos os parâmetros da 
+                                aplicação passados pelo usuário. A lista
+                                não inclue o nome da aplicação.
     script_config (dict): Dicionário com as configurações da aplicação
                           definida internamente pelo swu nome
                           application_id, com as configurações desta
@@ -2681,7 +2708,7 @@ def process_application_params(application_name, script_config,
   # script).                               
   (
     required_applicaion_params, other_applicatios_params
-  ) = parser_application.parse_known_args(application_args[1:])
+  ) = parser_application.parse_known_args(application_args)
 
   # Depois de ter obtido os argumentos obrigatórios da aplicação, 
   # processa esses argumentos, fazendo as conversões necessárias para
@@ -2742,11 +2769,8 @@ def get_template_params(application_name, user_args, application_args,
                            com o nome do trabalho no script de
                            submissão.
     application_args list[str]: Lista com todos os parâmetros da 
-                                aplicação passados pelo usuário,
-                                incluindo os usados e convertidos ao
-                                escolher a melhor sugestão de
-                                configuração. A lista contpem somente os
-                                argumentos da aplicação.
+                                aplicação passados pelo usuário. A lista
+                                não inclue o nome da aplicação.
     application_partitions_list list[dict]: Lista com is dicionarios
                                             definindo as partições que
                                             podem ser usadas, sendo que
@@ -2845,7 +2869,11 @@ def get_template_params(application_name, user_args, application_args,
   #                       lista).
   template_params = {
     'suggestion_params': suggestion_mapped,
-    'job_name':  application_name if user_args.jobname is None else user_args.jobname,
+    'job_name': (
+      application_name 
+      if user_args.jobname is None 
+      else user_args.jobname
+    ),
     'application_params': application_args,
   }
 
@@ -3008,7 +3036,7 @@ def get_template_params(application_name, user_args, application_args,
 
 
 def submit_submission_script(script_file_name, template_content, 
-                             user_config):
+                             user_config, verbose=False):
   """
   Função para executar um script de submissão gerado pelo script de
   otimização, que precisará estar em um arquivo no sistema de arquivos
@@ -3039,6 +3067,10 @@ def submit_submission_script(script_file_name, template_content,
                             para submeter o script.
     user_config (dict): Dicionário com as configurações do script de
                         otimização.
+    verbose (bool): Habilita a verbosidade da função, para mostrar 
+                    informações sobre o stdout e o srderr da execução do
+                    programa externo para submeter o script de
+                    submissão.
 
   Retorna:
     int | None: Se o script de submissão foi submetido ao SLURM com
@@ -3171,7 +3203,7 @@ def submit_submission_script(script_file_name, template_content,
     # Imprime a saída da execução do programa de submissão do script, 
     # primeiro a saída em stdout e depois a saída em stderr. No terminal
     # as saídas são impressar juntas e intercaladas.
-    if user_args.verbose:
+    if verbose:
       # Imprime a saída do stdout da execução do programa de submissão.
       print(f"➡️  stdout da execução de {submission_program}:\n\n")
       print(result.stdout)
@@ -3187,31 +3219,73 @@ def submit_submission_script(script_file_name, template_content,
     print("❌ Não foi possível executar o comando {submission_program}!")
     print("❌ Código de saída:", e.returncode)
     print("❌ mensagem de erro:", e.stderr)
-  #  
+  # Exceção gerada se o nome do programa externo que faz a submissão,
+  # armazenado em submission_program, não existir.
   except FileNotFoundError:
     print(f"❌ O programa {submission_program} não foi achado no sistema!")
     print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
-  #  
+  except PermissionError as e:
+    print("❌ O uauário não tem permissão para usar o programa "
+          f"{submission_program} ou não tem permissão para criar arquivos "
+          "temporários!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+# Exceção que ocorre se algum erro de I/O ocorrer, pode ser quando 
+  # tentamos executar o programa externo que faz a submissão, ou um erro
+  # ao gerar o arquivo temporário.
   except IOError as e:
     print(f"❌ Não foi possível criar o arquivo temporário. {e.filename}")
     print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
     print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+  # Aqui vamos, se necessário, remover o arquivo temporário. Foi
+  # escolhido o finally porque este bloco é executado mesmo quando uma
+  # exceção ocorrer.
   finally:
-    # Se criamos um arquivo temporario, removemos depois de usarmos.
+    # Se criamos um arquivo temporario, então vamos removê-lo, pois já
+    # submetemos o arquivo usando o programa externo de submissão.
     if remove_temp_file:
+      # Mensagem de deburação para mostrar o nome do arquivo temporário
+      # que será removido, cuja referência ao nome copiamos para
+      # script_file_name (como foi necessário criar um arquiv
+      #  tenporário, script_file_name era inicialmente None, indicando
+      # qua o usuário não usou a opção -s ou --script para salvar o
+      # arquivo com o script de submissão).
       if debug_code:
         print(f"➡️  Tentando remover o arquivo temporário {script_file_name}.")
       try:
+        # Verifica se o arquivo temporário realmente existe, usando a 
+        # função exists da classe path da biblioteca os (que permite usar
+        # as funções das bibliotecas do sistema operacional).
         if os.path.exists(script_file_name):
+          # Se existir, remove o arquivo temporário, usando a função
+          # remove da biblioteca os, que chama a função do sistema
+          # operacional para remover o arquivo com o caminho
+          # script_file_name.
           os.remove(script_file_name)    
+
+        # Se a depuração estiver habilitada, gera um amensagem
+        # informando que o arquivo script_file_name foi removido com
+        # sucesso.  
         if debug_code:
           print(f"➡️  Arquivo temporário {script_file_name} removido com "
                 "sucesso.")
+
+      # Se agum erro ocorrer ao executar a função exists ou remove da
+      # biclioteca os, a exceção OSError é gerada.
       except OSError as e:
+        # Se a exceção OSError foi gerada, então ocorreu algum erro ao
+        # verificar a existência do arquivo temporário (exists) ou ao
+        # remover esse arquivo. Somente imprimimos a mensagem se a
+        # deburação não estiver habilitada, pois ainda não sei se é
+        # interessante o usuário ver umamensagem de um arquivo que ele
+        # nem sabia que existia.
         if debug_code:
           print(f"⚠️  Não foi possível remover o arquivo {e.filename}")
           print(f"⚠️  Código do erro: {e.errno}; Mensagem: {e.strerror}!")
 
+  # Retorna o identificador do trabalho se o programa externo de
+  # submissão conseguiu submeter o script de submissão sem erros, ou 
+  # None se não foi possível executar o script de submissão.
   return job_id
 
 def optimize_application(configs_file_path, system_config, applications_config, 
@@ -3219,41 +3293,146 @@ def optimize_application(configs_file_path, system_config, applications_config,
                          user_args):
   """
   Função principal do script de otimização, que recebe os argumentos do
-  sistema, os argumentos do usuário, os parâmetros da sugestão de configuração 
-  e todos os parâmetros da aplicação definidos pelo usuário, e que será usada 
-  para otimizar a execução da aplicação, gerando o script de submissão para a
-  aplicação, que será salvo em um arquivo de log. A função retorna True se a
-  otimização foi bem-sucedida, ou False caso contrário.
-  """
+  sistema, os argumentos do usuário, os parâmetros da sugestão de 
+  configuração e todos os parâmetros da aplicação definidos pelo
+  usuário, e que será usada para otimizar a execução da aplicação, 
+  gerando o script de submissão para a aplicação, que pode ser salvo
+  pelo usuário, submetendo o script de submissão, se o usuário assim
+  desejar, e salvando os dados referentes a otimização da execução, ou
+  seja, a melhor sugestão de configuração, os parâmetros obrigatorios da
+  aplicação, tando os passados pelo usuário ao script de otimização,
+  como os parâmetros, obtidos após as conversões, que serão efetivamente
+  usados pelo modelo que prediz a variável alvo cujo valor mínimo é
+  usado para escolher a sugestão (no momento, usamos o EDP), e pelo
+  modelo que estima o tempo de execução para a melhor sugestão de 
+  configuração e os parâmetros da aplicação convertidos (no moment, 
+  usamos o ElapsedRaw), o menor valor da variável alvo usado para
+  escolher a melhor sugestão, o nome do trabalho (dado pelo usuário ou
+  o nome da aplicação usado pelo usuário), o ID do trabalho retornado
+  pelo programa externo usado para subneter o script de submissão, e
+  todos os parâmetros da aplicação, separados por ",". O separador do
+  arquivo do log é o "|" e existe um arquivo de log para cada aplicação
+  cuja execução pode ser otimizada pelo script de submissão.
 
-  # Verifica se o usuário deseja somente listar as aplicações
+  Parâmetros:
+    configs_file_path (Path): Objeto da classe Path representando o
+                              caminho completo em que todas os arquivos
+                              de configuração são salvos.
+    system_config (dict): Dicionário com as configurações gerais
+                          relacionadas aos scripts de otrimização e de
+                          treinamento. No caso da função, iremos usar
+                          chave 'predictors_path' com o nome do
+                          diretório em que os arquivos pickle com os
+                          preditores para cada aplicação são 
+                          rmazenados, e a chave 'templates_path' com o
+                          nome do diretório em que são armazenados os
+                          arquivos modelo (template) do script de 
+                          submissão para cada aplicação que pode ter a
+                          sua execução otimizada pelo script de
+                          otimização.
+    applications_config (dict): Dicionário com todas as configurações
+                                das aplicações que podem ser otimizadas
+                                pelo script de otimização, sendo que
+                                cada chave, associada e identificando
+                                uma aplicação, tem uma referência para o
+                                dicionário com as configurações dessa
+                                aplicação.
+    user_config (dict): Dicionário com as configurações do script de
+                        otimização.
+    application_args list[str]: Lista com todos os parâmetros da 
+                                aplicação passados pelo usuário. A 
+                                lista inclui o primeiro parâmetro, o
+                                nome da aplicação.
+    predictors_info_config (dict): Dicionário com as informações dos
+                                   preditores, que é usado para ler os 
+                                   preditores usados para fazer a 
+                                   sugestão da melhor configuração de
+                                   execução das aplicações. Cada
+                                   aplicação tem um preditor, definido 
+                                   por uma chave do dicionário igual ao
+                                   nome da aplicação e o valor sendo o
+                                   nome do arquivo que armazena o
+                                   preditor no diretório de preditores.
+    user_args (NameSpace): Objeto da classe NameSpace com os parâmetros
+                           do script, que terão os valores passados pelo
+                           usuário, se ele definiu o parâmetro, ou o 
+                           valor default, se o usuário não definiu o 
+                           parâmetro. 
+    
+  Retorna:
+    bool: True se tivemos sucesso em fazer todas as tarefas necessárias
+          a otimização da execução da aplicação, como a leitura dos
+          parâmetros obrigatórios da aplicação, a conversão desses
+          parâmetros, a estimativa da melhor sugestão de configuração e
+          outors dados como, quando definido, o tempo estimado de
+          execução desta configuração, a geração dos parâmetros 
+          necessários para gerar o script de submissão, a submissão do
+          script se o usuário usou a opção -r ou --run, e a geração do
+          log quando o script é submetido. Se alguma das operações 
+          descritas anteriormente falhar, retorna False.
+   """
+
+  # Inicialmene, definimos o nome da aplicação para None, para adequar
+  # as mensagens das exceções geradas se uma delas ocorrer antes de
+  # obtermos o nome da aplicação.
   application_name = None
+  
   try:
-    # Caso não deseje listar as aplucações, precisamos fornecer uma 
-    # aplicaçao, pois o usuário deseja otimizar o uso dos reursos.
+    # Verifica se o uauário realmente passou parâmertros. Como já foi
+    # verificao na função a seguir, process_script_options, que 
+    # application_args não é None ou uma lista vazia, então 
+    # application_args sempre deveria ser uma lista não vazia.
     if not application_args:
+      # Como application_args é None ou tem uma lista vazia, o que não
+      # poderia ocorrer, existe neste caso um bug no script de
+      # otimização, então mostramos uma mensagem na tela informando para
+      # o usuário entrar em contato com o suporte informando o erro.
       print("❌ Não foi fornecido o nome da aplicação a ser otimizada e os "
             "seus parâmetros de execução.")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+      # Como application_args ser None ou uma lista vazia é inesperado,
+      # retornamos False porque não foi possível otimizar a execução da
+      # aplicação.
       return False
     
-    # Diretorio dos arquivos de configuração das aplicações.
+    # Determina o diretorio dos arquivos de configuração das aplicações.
+    # Ele será o subdiretório 'applications' do diretório base com
+    # todas as configurações usadas pelos scripts de otimização e de
+    # treinamento.
+    # TODO: Talvez seja interessante definir o nome como uma chave no
+    #       arquivo de configuração do sistema (o diretório também é
+    #       usado pelo script de treinamento).
     application_configs_dir_path = configs_file_path / 'applications'
 
-    # O nome da aplicação é o primeiro parâmetro da lista de
-    # parâmetros da apliação passados pelo usuário.
+    # O nome da aplicação é o primeiro parâmetro da lista de parâmetros
+    # da apliação passados pelo usuário, sendo o que segue o separador
+    # "--".
     application_name = application_args[0]
 
-    # Verifica, pelo nome da aplicação, dado como o primeiro rgumento
-    # dos parâmetros da aplicação passados pelo usuário, se existe
-    # uma configuração para esta applicação. Se existir, retorna a 
-    # ID (chave) desta applicação no dicionário applications_config.
-    # Em caso contrário, retorna None
+    # Usa a função find_application_config para verificar seo nome 
+    # aplicação, dado como o primeiro argumento dos parâmetros da
+    # aplicação passados pelo usuário, é uma aplicação que pode ser 
+    # otimizada e, caso seja, retorna a ID da aplicação no dicionário de
+    # configuração das aplicações, ou seja, a chave deste dicionário com
+    # a referência para o dicionário com as configurações dessa 
+    # aplicação. Em caso contráio, ou seja, a aplicação não é uma das 
+    # aplicações cuja execução pode ser otimiada, a função
+    # find_application_config retornará None.
     application_id = find_application_config(applications_config,
                                               application_name)
+
+    # Verifica se application_id é None, ou seja, se a aplicação não é
+    # uma das aplicações que podem ter a sua execução otimizada pelo
+    # script de otimização.
     if application_id is None:
+      # Como a aplicação não pode ter a sua execução otimizada, 
+      # informamos esta fato ao usuário.
       print(f"⚠️  A otimização para a aplicação {application_name} ainda "
             "não é suportada!")  
+
+      # Como a aplicação não pode ter a sua execução otimizada, então
+      # retornamos False porque não foi possível otimizar a execução.
       return False
 
     # Para facilitar o acesso, define uma variável com uma referência
@@ -3266,13 +3445,14 @@ def optimize_application(configs_file_path, system_config, applications_config,
     # otimização;
     script_config = application_config['user']
 
+    # **** PAREI AQUI ****
     application_partitions_list = script_config['slurm']
 
     (
       required_applicaion_params, other_applicatios_params, 
       user_application_params
-    ) = process_application_params(application_name, script_config, 
-                                    application_configs_dir_path)
+    ) = process_application_params(application_name, application_args[1:], 
+                                   script_config, application_configs_dir_path)
 
     if user_application_params is None:
       print("❌ Erro ao processar uma dos parâmetros da aplicação!")
@@ -3361,7 +3541,8 @@ def optimize_application(configs_file_path, system_config, applications_config,
 
       if user_args.run:
         job_id = submit_submission_script(script_file_name, 
-                                          template_content)
+                                          template_content, 
+                                          user_args.verbose)
         if job_id is not None and user_config['enable_submission_log']:
           # Gera o log de submissão do trabalho da aplicação
           # otimizada, que será usado para monitorar o trabalho
@@ -3431,6 +3612,86 @@ def optimize_application(configs_file_path, system_config, applications_config,
     print(f"❌ Parâmetros do erro: {e.args}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
 
+def process_script_options(configs_file_path, system_config, 
+                           applications_configs, user_config, 
+                           application_args,  predictors_info_config, 
+                           user_args):
+  """
+  Função
+
+  Parâmetros:
+    configs_file_path (Path): Objeto da classe Path representando o
+                              caminho completo em que todas os arquivos
+                              de configuração são salvos.
+    system_config (dict): Dicionário com as configurações gerais
+                          relacionadas aos scripts de otrimização e de
+                          treinamento. No caso da função, iremos usar
+                          chave 'predictors_path' com o nome do
+                          diretório em que os arquivos pickle com os
+                          preditores para cada aplicação são 
+                          rmazenados, e a chave 'templates_path' com o
+                          nome do diretório em que são armazenados os
+                          arquivos modelo (template) do script de 
+                          submissão para cada aplicação que pode ter a
+                          sua execução otimizada pelo script de
+                          otimização.
+    applications_config (dict): Dicionário com todas as configurações
+                                das aplicações que podem ser otimizadas
+                                pelo script de otimização, sendo que
+                                cada chave, associada e identificando
+                                uma aplicação, tem uma referência para o
+                                dicionário com as configurações dessa
+                                aplicação.
+    user_config (dict): Dicionário com as configurações do script de
+                        otimização.
+    application_args list[str]: Lista com todos os parâmetros da 
+                                aplicação passados pelo usuário. A 
+                                lista inclui o primeiro parâmetro, o
+                                nome da aplicação.
+    predictors_info_config (dict): Dicionário com as informações dos
+                                   preditores, que é usado para ler os 
+                                   preditores usados para fazer a 
+                                   sugestão da melhor configuração de
+                                   execução das aplicações. Cada
+                                   aplicação tem um preditor, definido 
+                                   por uma chave do dicionário igual ao
+                                   nome da aplicação e o valor sendo o
+                                   nome do arquivo que armazena o
+                                   preditor no diretório de preditores.
+    user_args (NameSpace): Objeto da classe NameSpace com os parâmetros
+                           do script, que terão os valores passados pelo
+                           usuário, se ele definiu o parâmetro, ou o 
+                           valor default, se o usuário não definiu o 
+                           parâmetro. 
+    
+  Retorna:
+    bool: True se tivemos sucesso em listar as aplicações que podem ser
+          otimizadas, se o usuário usou a opção -l ou -list, ou se o
+          usuário usou o script de otimização para efetivamente otimizar
+          a execução da aplicação, e False se a listagem não pode ser
+          gerada ou não foi possível otimizar a execução da aplicação.
+  """
+  # Processa os parâmetros da linha de comando
+  if user_args.list:
+    status = list_applications(applications_configs)
+    if not status:
+      print("❌ Erro ao listar as aplicações que podem ter as suas execuções "
+            "otimizadas pelo script de otimização!")
+  elif application_args:
+    status = optimize_application(configs_file_path, system_config, 
+                                  applications_configs, user_config, 
+                                  application_args, 
+                                  predictors_info_config, user_args)
+    if not status:
+      print("❌ Erro ao otimizar o script!")
+  else:
+    # Por enquanto, aqui seria o caso de não ser usada a opção -l ou 
+    # --list e de não serem passados o nome da aplicação e seus
+    # parâmetros.
+    status = True
+
+  return status   
+
 # Lê os arquivos de confoguração
 (
   configs_file_path, 
@@ -3460,15 +3721,9 @@ user_args, application_args = process_script_args()
 if user_args is None:
   exit(-2)
 
-
-# Processa os parâmetros da linha de comando
-if user_args.list:
-  list_applications(applications_configs)
-elif application_args:
-  status = optimize_application(configs_file_path, system_config, 
+status = process_script_options(configs_file_path, system_config, 
                                 applications_configs, user_config, 
                                 application_args, 
                                 predictors_info_config, user_args)
-  if not status:
-    print("❌ Erro ao otimizar o script!")
-    exit(-3)
+if not status:
+  exit(-3)
