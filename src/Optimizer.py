@@ -557,7 +557,7 @@ def process_script_args():
 
   # Verifica se o usuário não passou um parâmetro que não necessita do
   # nome da aplicação e seus parâmetros. No momento, a opção de listar
-  # as aplicações que podem ser otimiadas é a única opção que não 
+  # as aplicações que podem ser otimizadas é a única opção que não 
   # precisa do nome da aplicação.
   ignore_application_name = not user_args.list
 
@@ -913,20 +913,16 @@ def convert_user_params(required_applicaion_params, conversions,
                                   pela operação "map" serão armazenadas.
 
   Retorna: 
-    dict[int | float] | None: Se nenhum erro ocorrer durante as
-                              conversões, retorna um dicionário que
-                              define, para cada variável da aplicação
-                              usadas nos treinamentos e definida por
-                              uma das chaves no dicionário conversions
-                              com todas as variáveis de aplicação a
-                              serem convertidas e usadas nos
-                              treinamentos, o seu valor após a
-                              converção, que poderá ser um inteiro ou um
-                              número de ponto flutuante dependo da
-                              variável da aplicação. Porém, se algum
-                              erro de conversão ocorrer, retorna None
-                              para informar que pelo menos uma conversão
-                              não foi feita.
+    dict | None: Se nenhum erro ocorrer durante as conversões, retorna
+                 um dicionário que define, para cada variável da
+                 aplicação usadas nos treinamentos e definida por uma
+                 das chaves no dicionário conversions com todas as
+                 variáveis de aplicação a serem convertidas e usadas nos
+                 treinamentos, o seu valor após a converção, que poderá
+                 ser um inteiro ou um número de ponto flutuante dependo
+                 da variável da aplicação. Porém, se algum erro de
+                 conversão ocorrer, retorna None para informar que pelo
+                 menos uma conversão não foi feita.
   """
 
   def copy_func(*args):
@@ -2250,7 +2246,7 @@ def list_applications(applications_config):
   return True
 
 def get_custom_configurations(application_name, application_id, 
-                              script_config, user_args, 
+                              suggestions_map, user_args, 
                               application_partitions_list):
   """
   Função para verificar se o usuário passou opções customizadas para as
@@ -2266,10 +2262,7 @@ def get_custom_configurations(application_name, application_id,
   usuário escolheu valores customozados, número de nos (nodes), número
   de processos por nó (process) e número de threads por processo 
   (threads). As possíveis componentes de uma configuração estão 
-  definidas na chave 'sugestions_map' do dicionário script_config com 
-  as configurações da aplicação que estamos otimizando a execução
-  associadas ao script de submissão (a chave 'user' do dicionário com
-  as configurações dessa aplicação).
+  definidas no dicionário suggestions_map.
 
   Parâmetros:
     application_name (str): Nome da aplicação passado na linha de
@@ -2285,19 +2278,13 @@ def get_custom_configurations(application_name, application_id,
                           parâmetro é usado para que o usuário reporte,
                           devido a um erro inesperado, o nome correto ao
                           administrador do sistema:
-    script_config (dict): Dicionário com as configurações da aplicação
-                          definida internamente pelo seu nome
-                          application_id, com as configurações desta
-                          aplicação para o script de otimização. É a
-                          chave 'user' do dicionário com as
-                          configurações dessa aplicação. Nesta função,
-                          usamos a chave 'suggestion_map' que contém uma
-                          referência para um dicionário que define, para
-                          cada componente de uma configuração com o nome
-                          dado pela opção passada pelo script de
-                          otimização, o nome efetivamente usado para
-                          esta componente ao treinar os modelos para a
-                          aplicação.
+    suggestions_map (dict): Dicionário em que cada chave é o nome de
+                            uma das componentes da melhor sugestão de
+                            configuração na opção do script de
+                            otimização usada para customizar os valores
+                            desta componente e que, para cada chave, o
+                            valor dela é o nome da componente usado ao
+                            treinar os modelos para a aplicação.
     user_args (NameSpace): Objeto da classe NameSpace com os parâmetros
                            do script, que terão os valores passados pelo
                            usuário, se ele definiu o parâmetro, ou o 
@@ -2350,7 +2337,7 @@ def get_custom_configurations(application_name, application_id,
   # chave 'user' do dicionário com as configurações da aplicação, vamos
   # processar a lista de valores e obter a lista final de valores
   # cuatomizados.
-  for suggestion_name in script_config['suggestions_map']:
+  for suggestion_name in suggestions_map:
     # Os parâmetros do script passados pelo usuário estão no objeto
     # NameSpace user_args. È obrigatório que exista a configuração 
     # definida pelo nome suggestion_name nos parâmetros do script, mesmo
@@ -2400,7 +2387,7 @@ def get_custom_configurations(application_name, application_id,
     # get_options_suggestion, lembrando que se e é otimido, é
     # considerado que é 1, s é omitido, é considerado que é s, e que se
     # s é omitido, é considerado igual a 1.
-    for suggestion_name in script_config['suggestions_map']:
+    for suggestion_name in suggestions_map:
       # Obtém a lista de strings no formato i:e:s, usando a função do
       # Python getattr sobre o objeto da classe NameSpace, para a opção
       # identificada pela string suggestion_name, para obter a
@@ -2531,9 +2518,7 @@ def get_custom_configurations(application_name, application_id,
       # componente no correspondente usado ao treinar o modelo, do
       # dicionário script_config com as configurações do script de 
       # otimização para a aplicação.
-      custom_configurations[
-        script_config['suggestions_map'][suggestion_name]
-      ] = custom_params
+      custom_configurations[suggestions_map[suggestion_name]] = custom_params
   else:
     # Como o usuário não definiu nenhuma das componentes de uma
     # configuração, então não temos valores customizados para as
@@ -3432,8 +3417,30 @@ def optimize_application(configs_file_path, system_config, applications_config,
             "não é suportada!")  
 
       # Como a aplicação não pode ter a sua execução otimizada, então
-      # retornamos False porque não foi possível otimizar a execução.
+      # retornamos False.
       return False
+
+    # Verifica se pelo menos uma das opções -S ou --suggestion, -s ou
+    # --script e -r ou --run foi passada pois, se nenhuma for passada,
+    # não foi definido o que fazer com a melhor sugestçao de
+    # configuração.
+    if not user_args.suggestion and not user_args.script and not user_args.run:
+      print("⚠️  Não foi definida uma opção para definir o que devemos "
+            "fazer com a otimização da execução da aplicação! Supondo que é "
+            "somente para mostrar a melhor configuração para executar a " \
+            "aplicação!")
+
+      # Variável que será usada para informar que somente a sugestão
+      # deve ser mostrada, neste caso igual a True porque nenhuma opção
+      # foi passada, então vamos considerar a -S ou --suggestion como a
+      # default.
+      only_show_suggestion = True
+    else:
+      # Se pelo menos uma das opções -S ou --suggestion, -s ou--script e
+      # -r ou --run foi definida, então only_show_suggestion dependerá
+      # de a opção -S ou --suggestion ter sido usada pelo usuário.
+      only_show_suggestion  = user_args.suggestion
+
 
     # Para facilitar o acesso, define uma variável com uma referência
     # para o dicionário con as configurações da apliação definida pela
@@ -3442,102 +3449,338 @@ def optimize_application(configs_file_path, system_config, applications_config,
 
     # Para facilitar o acesso, define uma variável com uma referência
     # para as configurações da aplicação usadas pelo script de
-    # otimização;
+    # otimização.
     script_config = application_config['user']
 
-    # **** PAREI AQUI ****
+    # Para facilitar o acesso, define uma variável com uma referência
+    # para as configurações do gerenciador SLURM usadas pelo script de
+    # otimização.
     application_partitions_list = script_config['slurm']
 
+    # Para facilitar o acesso, define uma variável suggestions_map com o 
+    # dicionário que mapeia o nome de cada compunente em cada opção de
+    # customização do script de otimização para cada nome correspontente
+    # usado ao treinar os modelos para a aplicaçãa. A chave do dicionário
+    # é o nome da opção da componente no script de otimização e a
+    # referência da chave o nome como usado ao treinar os modelos.
+    suggestions_map = script_config['suggestions_map']
+
+    # Usa a função process_application_params para descobrir os valores,
+    # passados pelo usuário pela linha de comando do script de
+    # otimização e converter esses parâmtros para os efetivamente usados
+    # ao fazer as predições, necessárias para escolher a melhor sugestão
+    # de configuração e, se o modelo estiver definido, o tempo estimado
+    # desta malhor sugestão. A função retorna uma tupla com três 
+    # elementos:
+    #
+    # - Objeto da classe NameSpace, cuja referência será armazenada em
+    # required_applicaion_params, com os parâmetros obrigatórios da
+    # aplicação, passados pelo usuário na linha de comando do script de 
+    # otimização.
+    # - Lista de strings com os parâmetros não processados da aplicação,
+    # ou seja, os parâmetros que nçao são obrigatórios, cuja referência
+    # será armazenada em other_applicatios_params. Somente usamos esta
+    # referência nas mensagens de depuração.
+    # - Dicionário, cuja referência é armazenada em 
+    # user_application_params, com os parâmetros da aplicação 
+    # obrigatórios passados pelo usuário convertidos para os parâmetros
+    # que são usados para treinar os modelos e fazer as predições.
     (
       required_applicaion_params, other_applicatios_params, 
       user_application_params
     ) = process_application_params(application_name, application_args[1:], 
                                    script_config, application_configs_dir_path)
 
-    if user_application_params is None:
+    # Se o parâmetro required_applicaion_params for None e não uma
+    # referência para um objeto Namespace, então ocorreu algum erro ao
+    # processar as opções obrigatórias da aplicação (por exemplo, um 
+    # erro seria exatamente o usuário não passar uma dessas opções).
+    if required_applicaion_params is None:
+      # Como required_applicaion_params é None, então vamos informar ao
+      # usuário do script que um erro ocorreu ao processar as opções
+      # obrigatórias da aplicação.
       print("❌ Erro ao processar uma dos parâmetros da aplicação!")
+
+      # Como a aplicação não pode ter a sua execução otimizada, então
+      # retornamos False.
       return False
 
-    Status, custom_suggestions = get_custom_configurations(
+    # Se o parâmetro user_application_params for None e não uma
+    # referência para um dicionário, então ocorreu algum erro ao
+    # converter os parâmetros obrigatórios da aplicação (por exemplo, um 
+    # erro seria exatamente o usuário não passar uma dessas opções).
+    if user_application_params is None:
+      # Como user_application_params é None, então vamos informar ao
+      # usuário do script que um erro ocorreu ao converter as opções
+      # obrigatórias da aplicação.
+      print("❌ Erro ao converter uma dos parâmetros da aplicação!")
+
+      # Como a aplicação não pode ter a sua execução otimizada, então
+      # retornamos False.
+      return False
+
+    # Imprime as informações de processamento da aplicação se as
+    # mensagens de depuraçã estiverem habilitadas.
+    if debug_code:
+      print("Parâmetros obrigatórios processados da aplicação: "
+            f"{required_applicaion_params}")
+      print("Parâmetros não necessaŕios às predições dos modelos: "
+            f"{other_applicatios_params}")
+      print("Parâmetris da aplicação obrigatórios depois das conversões, com "
+            "os valores usados ao fazer as predições: "
+            f"{user_application_params}")
+
+    # Verifica se o usuário customizou as componentes das confihurações
+    # utilizando as opções correspondentes da linha de comando do
+    # script de otimização, usando a função get_custom_configurations. A
+    # função retorna uma tupla, em que o primeiro elemento indica se 
+    # o processamente dos parâmetros, se o usuário definiu pelo pelos
+    # uma componente customizada usando uma das opções do script, foi
+    # feito corretamente (True), ou ocorreu algum erro ao processar os
+    # parâmetros (False). Se nenhuma opção de customização for usada,
+    # será retornado True. O segundo elemento será o dicionário com os
+    # valores otimizados para as componentes das configrações, se o 
+    # usuário usou pelo menos um das opções do script de otimização 
+    # para custmizar as compunentes de uma configuração, e se os 
+    # parâmetros foram corretamente processados, ou None se o usuário
+    # não usou nenhuma opção para customizar as componentes ou se algum
+    # erro ocorreu ao processar as opções.
+    status, custom_suggestions = get_custom_configurations(
       application_name, 
       application_id, 
-      script_config, user_args,
+      suggestions_map, user_args,
       application_partitions_list
     )
 
-    if not Status:
+    # Verifica se algum erro ao processar os valores customizados para
+    # as componentes da configuração.
+    if not status:
+      # Se status for False, então o usuário definiu pelo menos uma 
+      # opção de customização de uma componente da configuração e
+      # ocorreu algum erro ao processar uma das opções do script de
+      # otimização. Geramos uma mensagem para indicar o erro ao usuário.
       print("❌ Erro ao processar uma das opções customizadas!")
+
+      # Como a aplicação não pode ter a sua execução otimizada, então
+      # retornamos False.
       return False
 
-    # Lê o preditor usado para fazer a melhor sugestão dos parâmetros
-    # de execução da aplicação.
+    # Determina o caminho em que está o arquivo pickle do preditor para
+    # a aplicação que o usuário deseja otimizar a sua execução. O
+    # caminho é uma junção do caminho base_files_path, o diretório raiz
+    # dos arquivos dos scripts de otimização e treinamento, o nome do
+    # diretório em que todos os arquivos pickle com os preditores são
+    # salvos pelo script de treinamento, dado na chave 'predictors_path'
+    # do arquivo de configuração dos scripts, e o nome do arquivo do
+    # preditor nesse diretório, definido pela chave application_id, a
+    # mesma chave usada para identificar a aplicação no dicionário 
+    # applications_configs com as configurações de todas as aplicações.
     predictor_path = (base_files_path 
                       / Path(system_config['predictors_path']) 
                       / predictors_info_config[application_id]
     )
+
+    # Lê o preditor treinado pelo script de treinamento para a aplicação
+    # que o usuário está otimizando a execução usando o script de 
+    # otimização. O preditor é composto pelo modelo auxiliar, que prevê
+    # o valor da variável alvo (no momento estamos usando a EDP) para
+    # todas as possíveis configurações de execução, que podem ser as
+    # mesmas usadas ao treinar o modelo ou as obtidas pela customização
+    # das componentes das configurações pelo usuário e, se for definido,
+    # o modelo auxiliar para estimar o tempo de execução da melhor
+    # sugestão de configuração. A referência do preditor, lido de um
+    # arquivo no formato .pickle, é salvo como um objeto da classe 
+    # SuggestionsPredictor, desrita e implementada no arquivo 
+    # Suggestions.py, na variável predictor.
     predictor = SuggestionsPredictor.load_predictor(predictor_path)
 
+    # Agora que o preditor foi lido e refrência ao seu objeto armazenada
+    # na variável predictor, vamos usar a função get_suggestion para
+    # onter a melhor sugestão de configuração. Como vimos, os parâmeros
+    # da aplicação obrigatórios convertidos e usados nas predições, 
+    # estarão definidos no dicionário user_application_params, e o
+    # segundo parâmetro custom_suggestions deverá ser um dicionário com
+    # os possíveis valores das componentes de uma configuração, se 
+    # valores customizados foram definidos pelo usuário do script de
+    # otimização, ou None se deverão ser consideradas todas as 
+    # configurações usadas ao treinar os modelos do preditor. O
+    # parâmetro verbose igual a debug_code, habilita a verbosidade
+    # interna da classe SuggestionsPredictor se a depuração do código,
+    # definida pela variável de ambiente DEBUG_CODE, for "true", "1", 
+    # "yes", "on", "t" (a definição não é sensível ao caso).
     suggestion = predictor.get_suggestion(user_application_params, 
                                           custom_suggestions, 
                                           verbose=debug_code)
 
-    # Cria o mapeamento reverso para a impressao
-    suggestions_map = script_config['suggestions_map']
+
+    # Cria um dicionário reversed_suggestions_map com o mapeamento
+    # reverso para a impressão das informaçoes da melhor sugestão de 
+    # configuração a partir do dicionário suggestions_map, ou seja, para
+    # cada par chave, nome, o nome passa a ser a chave e a chave o nome.
+    # Logo, neste dicionário, cada chave é o nome da componente da
+    # melhor sugestão de configuração como usado ao treinar os modelos e
+    # a referência da chave é o nome correspondente da componente na
+    # opção de customização do script de otimização. É usada para
+    # imprimir a melhor sugestão de configuração usando nomes para as
+    # componentes que sempre serão os mesmos (os nomes das opções) ao
+    # invés de mostrar os nomes que dependem da base de dados usada ao
+    # treinar os modelos do preditor da aplicação.
     reversed_suggestions_map = {
       v:k for k, v in suggestions_map.items()
     }
 
-    # Obtém o caminho do arquivo de template, se as opçoes. 
-    if user_args.run or not user_args.suggestion:
-      if user_args.verbose:
-        SuggestionsPredictor.print_suggestion(
-          suggestion, 
-          suggestion_map=reversed_suggestions_map, 
-          show_time=True,
-          show_score=True, 
-          show_X=True, 
-          show_y_pred=True
-        )
+    # Agora vamor processar as opções do script de otimização que
+    # definem o que deve ser feito com a melhor sugestão de configuração
+    # para a aplicação. Como descrevemos no manual, temos as seguintes
+    # opções:
+    #
+    # -S ou --suggestion: Somente imprime a melhor sugestão de
+    #                     configuração (ou seja, ignora as opções -S ou
+    #                     --script e -r ou --run). Se a opção foi
+    #                     usada, ou se nenhuma das opções foi usada
+    #                     only_show_suggestion será True.
+    # -s ou --script: Salva o script de submissão obtido a partir das
+    #                 informações referentes à melhor sugestão de 
+    #                 configuração, da melhor partição e do modelo do
+    #                 script de sunmissão para a aplicação, se a opção
+    #                 -S ou --suggestion foi usada.
+    # -r ou --run: Executa o script de submissão gerado, usando o 
+    #              programa externo definido na chave
+    #              'submission_program' do dicionário acessado pela 
+    #              chave 'slurm' do arquivo de condiguração do script
+    #              de otimização. A opção é igonorada se se a opção
+    #                 -S ou --suggestion foi usada.
 
-      template_params = get_template_params(application_name, user_args, 
-                                            application_args[1:], 
-                                            application_partitions_list,
-                                            suggestion, 
-                                            reversed_suggestions_map)
+    # Se a opção -S ou --suggestion ou a verbosidade estiver habilitada,
+    # devemos imprimir a melhor sugestão de configurção e, no caso da
+    # verbosidade habilitada outras informações referentes à melhor
+    # sugestão de configuração, como a tabela com todas as configurações
+    # testadas, todos os valores correspondentes preditos para a
+    # variável alvo pelo modelo auxiliar usado para escolher a melhor
+    # sugestão, o menor valor para esta variável alvo, a posição deste
+    # menor valor no vetor com todos os valores preditos e,
+    # consequentemente, a posição da melhor sugestão de configuração na
+    # tabela com todas as configurações.
+    if only_show_suggestion or user_args.verbose:
+      # Se a opção -s ou --suggestion foi passada ao script de
+      # otimização, ou se verbose foi usado, imprimimos as informações
+      # com os valores de cada componente da melhor sugestão de 
+      # configuração e, se a verbosidade estiver habilitada, outras 
+      # informações referentes à meljor sugestão de configuração.
+      SuggestionsPredictor.print_suggestion(
+        suggestion, 
+        suggestion_map=reversed_suggestions_map, 
+        show_score=user_args.verbose, 
+        show_X=user_args.verbose, 
+        show_y_pred=user_args.verbose, 
+        show_time=user_args.verbose
+      )
+
+      # Se a opção de -S ou --suggestion foi usada, ou se nanhuma das
+      # opções -S ou --suggestion, -s ou --script, ou -r ou --run foi
+      # usada então deveremos  terminar a funçaõ, pois neste caso o
+      # usuário somente desejava obter a melhor sugestçao de
+      # configuração.
+      if only_show_suggestion:
+        # Retornamos True, porque a melhor sugestão de configuração foi
+        # corretamente obtida mas somente mostrada como requisitado pelo
+        # usuário.
+        return True
+
+    # Gera o dicionário com todas as informações necessárias para gerar
+    # o script de submissão e o log de submissão do script se o usuário
+    # solicitou a submissção automática do script, usando a função
+    # get_template_params. Esse dicionário tem todas as informações
+    # necessárias para submeter um script, como as componentes da
+    # melhor sugestçao de configuração, que definem como is recursos de
+    # processamento devem ser usados, a partição a ser usada, o tempo
+    # máximo de execução, o uso máximo de memória, se o uso das máquinas
+    # é ou não exclusivo, e todos os parâmetros da aplicação passados
+    # pelo usuário na linha de comando do script de otimização.
+    template_params = get_template_params(application_name, user_args, 
+                                          application_args[1:], 
+                                          application_partitions_list,
+                                          suggestion, 
+                                          reversed_suggestions_map)
+
+    # Verifica se ocorreu algum erro ao gerar o dicionário
+    # template_params.
+    if template_params is None:
+      # Se template_params for None, entao ocorreu um erro de
+      # processamento ao gerar o dicionário com as informações
+      # necessárias para gerar o script de submissão e, se necessário,
+      # o log de execução da aplicação.
+      print("❌ Erro ao gerar os dados necessários para gerar o script de "
+            "Submissão!")
+      print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+      # Como a aplicação não pode ter a sua execução otimizada, então
+      # retornamos False.
+      return False
+
+    # Usa a função generate_submission_script para gerar ums string
+    # com o script de submissão pronto para ser salvo em um arquivo e,
+    # se requerido pelo usuário, ser submetido pelo programa de
+    # submissão externo.
+    template_content = generate_submission_script(template_file_path, 
+                                                  template_params)
+
+    # Verifica se ocorreu algum erro ao gerar o dicionário
+    # template_params.
+    if template_content is None:
+      # Se template_params for None, entao ocorreu um erro de
+      # processamento ao gerar o dicionário com as informações
+      # necessárias para gerar o script de submissão e, se necessário,
+      # o log de execução da aplicação.
+      print("❌ Erro ao gerar gerar o script de Submissão!")
+      print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+      # Como a aplicação não pode ter a sua execução otimizada, então
+      # retornamos False.
+      return False
+
+    # Se a verbosidade estiver habilitada, imprime na tela o script de
+    # submissão gerado.
+    # TODO: Será que isso deveria ser uma depuração, com a impressão
+    #       somente ocorrendo se debug_code for True? 
+    if user_args.verbose:      
+      print("➡️  Script de submissão: \n")
+      print(template_content)
+      print()
+
+    # Se a opção -s ou --script for usada, ou se a opção -e ou --run não
+    # foi definida, então precisamos salvar o script de configuração em
+    # um arquivo definitivo, ou seja, não temporário.
+    if user_args.script or not user_args.run:
 
       template_file_path = (base_files_path 
                             / Path(system_config['templates_path']) 
                             / script_config['script_template_name']
       )
-      template_content = generate_submission_script(template_file_path, 
-                                                    template_params)
-
-      if user_args.verbose:      
-        print("➡️  Script de submissão: \n")
-        print(template_content)
-        print()
 
       # Salva no arquivo passado como parâmetro ou o nome default definido no arquivo de cofiguração do usuário
       # Se o usuário não fornecer um nome pela opção -s ou --script, cria um arquivo temporário.
-      if user_args.script or not user_args.suggestion:
-        # Salva o script de su
-        try:
-          if user_args.script is None:
-            script_file_name = user_config["default_script_name"]
-          else:     
-            script_file_name = user_args.script
-          with open(script_file_name, "w", encoding="utf-8") as script_file:
-            script_file.write(template_content)
-          print(f"➡️  Script de submissão {script_file_name} criado com sucesso!")
-        except PermissionError as e:
-          print(f"❌ Erro de permissão ao acessar o arquivo {script_file_name}!")
-          return False
-        except IOError as e:
-          print(f"❌ Erro de I/O ao ler o arquivo {script_file_name}!")
-          print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
-          return False
-      else:
-        script_file_name = None
+      try:
+        if user_args.script is None:
+          script_file_name = user_config["default_script_name"]
+        else:     
+          script_file_name = user_args.script
+        with open(script_file_name, "w", encoding="utf-8") as script_file:
+          script_file.write(template_content)
+        print(f"➡️  Script de submissão {script_file_name} criado com sucesso!")
+      except PermissionError as e:
+        print(f"❌ Erro de permissão ao acessar o arquivo {script_file_name}!")
+        return False
+      except IOError as e:
+        print(f"❌ Erro de I/O ao ler o arquivo {script_file_name}!")
+        print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
+        return False
+    else:
+      script_file_name = None
+
+
+    # Se as opções -s ou --script e/ou -r ou --run forem usada, vam
+    if user_args.run:
 
       if user_args.run:
         job_id = submit_submission_script(script_file_name, 
