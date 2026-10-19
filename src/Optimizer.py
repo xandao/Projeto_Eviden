@@ -3718,6 +3718,13 @@ def optimize_application(configs_file_path, system_config, applications_config,
       # retornamos False.
       return False
 
+    # Descobre caminho completo do template do script de submissão usado
+    # pela aplicação para a qual p usuário está otimizando a execução.
+    template_file_path = (base_files_path 
+                          / Path(system_config['templates_path']) 
+                          / script_config['script_template_name']
+    )
+
     # Usa a função generate_submission_script para gerar ums string
     # com o script de submissão pronto para ser salvo em um arquivo e,
     # se requerido pelo usuário, ser submetido pelo programa de
@@ -3748,73 +3755,133 @@ def optimize_application(configs_file_path, system_config, applications_config,
       print(template_content)
       print()
 
-    # Se a opção -s ou --script for usada, ou se a opção -e ou --run não
+    # Se a opção -s ou --script for usada, ou se a opção -r ou --run não
     # foi definida, então precisamos salvar o script de configuração em
-    # um arquivo definitivo, ou seja, não temporário.
+    # um arquivo definitivo, ou seja, não temporário, que será o
+    # fornecido pelo usuário, ou o default definido pela chave 
+    # 'default_script_name' do arquivo de configuração do script de
+    # otimização.
     if user_args.script or not user_args.run:
-
-      template_file_path = (base_files_path 
-                            / Path(system_config['templates_path']) 
-                            / script_config['script_template_name']
-      )
-
-      # Salva no arquivo passado como parâmetro ou o nome default definido no arquivo de cofiguração do usuário
-      # Se o usuário não fornecer um nome pela opção -s ou --script, cria um arquivo temporário.
+      # Salva no arquivo passado como parâmetro ou o nome default 
+      # definido no arquivo de cofiguração do usuário, se o usuário não
+      # fornecer um nome pela opção -s ou --script, usa o arquivo com
+      # o nome dado na chave 'default_script_name' do dicionário com as
+      # configurações do script de otimização. O try é usado para
+      # capturar erros de permissão e de E/S ao salvar o arquivo com o
+      # script de submissão gerado pelo otimizador com as configurações
+      # baseadas na melhor sugestão de configuração.
       try:
+        # Verifica se o usuário usou a opção -s ou --script do script de
+        # otimização.
         if user_args.script is None:
+          # Se não usou a opção -s ou --script, salva o arquivo, no 
+          # diretório em que o usuário executou o script de otimização,
+          # no arquivo com o nome dado pela chave 'default_script_name'
+          # do arquivo de configuração do script de submissão. A 
+          # variável script_file_name é definida com o nome do arquivo,
+          # garantindo que ele será salvo no ditetório corrente em que
+          # o usuário executou o script de otimização.
           script_file_name = user_config["default_script_name"]
         else:     
+          # Se a opção -s ou --script foi passada pelo usuário como uma
+          # das opções do script de otimização, então usa o caminho 
+          # completo para o caminho do arquivo, passado pela opção, em
+          # que o usuário deseja salvsar o script de submissão. A
+          # variável script_file_name será definida com o caminho
+          # passado pelo usuário na opção.
           script_file_name = user_args.script
+
+        # Cria um ambiente para tentar salvar o arquivo no caminho 
+        # definido por script_file_name, lembrando que pode ser um 
+        # caminho completo fornecido pelo usuário, ou o nome default do
+        # script de submissão, que é salvo no diretório corrente do 
+        # usuário. O ambiente define uma referência para o arquivo
+        # criado inicialmente vazio na variável script_file.
         with open(script_file_name, "w", encoding="utf-8") as script_file:
+          # Salva o conteúdo do script de submissão, que foi salvo como
+          # uma string com multiplas linhas na variável
+          # template_content.
           script_file.write(template_content)
-        print(f"➡️  Script de submissão {script_file_name} criado com sucesso!")
+
+        # Informa ao usuário que o script de submissão foi salvo no 
+        # arquivo cujo caminho (ou nome) é definido por
+        # script_file_name. 
+        print(f"➡️  Script de submissão {script_file_name} criado com "
+              "sucesso!")
+
+      # Esta exceção ocorre se o usuário não tem permissões para salvar
+      # um arquivo no diretório passado pela opção -s ou --script do
+      # script de otimização, ou se não tem permissão para reescrever o
+      # arquivo, se ele existir e não poder ser alterado.
       except PermissionError as e:
+        # Imprime uma mensagem informando o erro de permissão de acesso
+        # ao usuário.
         print(f"❌ Erro de permissão ao acessar o arquivo {script_file_name}!")
+
+        # Como não foi possível salvar o script de submissão, retornamos
+        # False.
         return False
+
+      # Esta exceção ocorre se ocorreu algum erro de escrita ao salvar o
+      # arquivo.
       except IOError as e:
-        print(f"❌ Erro de I/O ao ler o arquivo {script_file_name}!")
+        # Imprime uma mensagem informando o erro de E/S ao salvar o
+        # arquivo com o script de submissão.
+        print(f"❌ Erro de I/O ao salvar o arquivo {script_file_name}!")
         print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
+
+        # Como não foi possível salvar o script de submissão, retornamos
+        # False.
         return False
     else:
+      # Se não passamos a opção -s ou --script e a opção -e ou --run,
+      # então não devemos salvar o script.
       script_file_name = None
 
 
-    # Se as opções -s ou --script e/ou -r ou --run forem usada, vam
+#    if user_args.run:
+
     if user_args.run:
+      job_id = submit_submission_script(script_file_name, 
+                                        template_content, 
+                                        user_args.verbose)
+      if job_id is not None and user_config['enable_submission_log']:
+        # Gera o log de submissão do trabalho da aplicação
+        # otimizada, que será usado para monitorar o trabalho
+        # submetido, e que será salvo em um arquivo de no formato
+        # csv, com todas as informações referentes à otimização do
+        # trabalho (melhor sugestão de configuração, parâmetros da
+        # aplicação passados pelo usuário e parâmetros da
+        # aplicação convertidos, nome do trabalho, tempo de
+        # execução estimado para a melhor configuração, menor 
+        # da variável alvo do modelo auxiliar usado para descobrir
+        # a melhor sugestão e ID do trabalho ao ser submetido pelo
+        # sbatch).
 
-      if user_args.run:
-        job_id = submit_submission_script(script_file_name, 
-                                          template_content, 
-                                          user_args.verbose)
-        if job_id is not None and user_config['enable_submission_log']:
-          # Gera o log de submissão do trabalho da aplicação
-          # otimizada, que será usado para monitorar o trabalho
-          # submetido, e que será salvo em um arquivo de no formato
-          # csv, com todas as informações referentes à otimização do
-          # trabalho (melhor sugestão de configuração, parâmetros da
-          # aplicação passados pelo usuário e parâmetros da
-          # aplicação convertidos, nome do trabalho, tempo de
-          # execução estimado para a melhor configuração, menor 
-          # da variável alvo do modelo auxiliar usado para descobrir
-          # a melhor sugestão e ID do trabalho ao ser submetido pelo
-          # sbatch).
+        submission_log(application_config, 
+                        system_config, suggestion, template_params,
+                        required_applicaion_params, 
+                        user_application_params,
+                        application_args[1:], job_id, debug_code)
+    #else:
+    #  SuggestionsPredictor.print_suggestion(
+    #    suggestion, 
+    #    suggestion_map=reversed_suggestions_map, 
+    #    show_score=user_args.verbose, 
+    #    show_X=user_args.verbose, 
+    #    show_y_pred=user_args.verbose, 
+    #    show_time=user_args.verbose
+    #  )
 
-          submission_log(application_config, 
-                          system_config, suggestion, template_params,
-                          required_applicaion_params, 
-                          user_application_params,
-                          application_args[1:], job_id, debug_code)
-    else:
-      SuggestionsPredictor.print_suggestion(
-        suggestion, 
-        suggestion_map=reversed_suggestions_map, 
-        show_score=user_args.verbose, 
-        show_X=user_args.verbose, 
-        show_y_pred=user_args.verbose, 
-        show_time=user_args.verbose
-      )
-
+    # Como conseguimos fazer todo o processamento, ou sejam obter a 
+    # melhor sugestão de configuração, gerar o script de submissão,
+    # salvar o script se o usuário desejar, e submeter se o usário
+    # desejar, gerando o log se estiver habilitado pela chave 
+    # 'enable_submission_log'do dicionário com as configurações do
+    # script de otimização, porque a submissão foi feita com sucesso
+    # porque todo o processamento doi feito, então retornamos True.
     return True
+  
   except KeyError as e:
     if application_name is None:
       print("❌ Erro ao processar uma das estruturas indexadas por chave, a "
