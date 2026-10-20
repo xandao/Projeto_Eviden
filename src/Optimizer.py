@@ -2684,7 +2684,7 @@ def process_application_params(application_name, application_args,
   # pela função de predição. Usamos a função parse_known_args porque
   # somente vamos processar os parâmetros da aplicação que são
   # obrigatórios, os outros somente serão usados ao gerar o script de
-  # submissão. A função retorna umn objeto argparse.Namespace com os
+  # submissão. A função retorna um objeto argparse.Namespace com os
   # parâmetros processados da aplicação e uma lista de strings em
   # other_applicatios_params com os outros parâmetros da aplicação que
   # não foram processados (por enquanto, não estamos usando este ]
@@ -3420,6 +3420,11 @@ def optimize_application(configs_file_path, system_config, applications_config,
       # retornamos False.
       return False
 
+    # Armazena o nome default em que o script de submissão será salvo. O
+    # nome é definido pela chave 'default_script_name' do dicionário com
+    # as configurações do script de otimização.
+    default_script_name = user_config["default_script_name"]
+
     # Verifica se pelo menos uma das opções -S ou --suggestion, -s ou
     # --script e -r ou --run foi passada pois, se nenhuma for passada,
     # não foi definido o que fazer com a melhor sugestçao de
@@ -3427,14 +3432,14 @@ def optimize_application(configs_file_path, system_config, applications_config,
     if not user_args.suggestion and not user_args.script and not user_args.run:
       print("⚠️  Não foi definida uma opção para definir o que devemos "
             "fazer com a otimização da execução da aplicação! Supondo que é "
-            "somente para mostrar a melhor configuração para executar a " \
-            "aplicação!")
+            "para salvar o script de submissão no arquivo com o nome default "
+            f"de {default_script_name}!")
 
       # Variável que será usada para informar que somente a sugestão
-      # deve ser mostrada, neste caso igual a True porque nenhuma opção
+      # deve ser mostrada, neste caso igual a False porque nenhuma opção
       # foi passada, então vamos considerar a -S ou --suggestion como a
       # default.
-      only_show_suggestion = True
+      only_show_suggestion = False
     else:
       # Se pelo menos uma das opções -S ou --suggestion, -s ou--script e
       # -r ou --run foi definida, então only_show_suggestion dependerá
@@ -3676,11 +3681,9 @@ def optimize_application(configs_file_path, system_config, applications_config,
         show_time=user_args.verbose
       )
 
-      # Se a opção de -S ou --suggestion foi usada, ou se nanhuma das
-      # opções -S ou --suggestion, -s ou --script, ou -r ou --run foi
-      # usada então deveremos  terminar a funçaõ, pois neste caso o
-      # usuário somente desejava obter a melhor sugestçao de
-      # configuração.
+      # Se a opção de -S ou --suggestion foi usada, então deveremos 
+      # terminar a funçaõ, pois neste caso o usuário somente desejava
+      # obter a melhor sugestão de configuração.
       if only_show_suggestion:
         # Retornamos True, porque a melhor sugestão de configuração foi
         # corretamente obtida mas somente mostrada como requisitado pelo
@@ -3777,11 +3780,12 @@ def optimize_application(configs_file_path, system_config, applications_config,
           # Se não usou a opção -s ou --script, salva o arquivo, no 
           # diretório em que o usuário executou o script de otimização,
           # no arquivo com o nome dado pela chave 'default_script_name'
-          # do arquivo de configuração do script de submissão. A 
+          # do arquivo de configuração do script de submissão, cuja
+          # referência foi salva na variável default_script_name. A 
           # variável script_file_name é definida com o nome do arquivo,
           # garantindo que ele será salvo no ditetório corrente em que
           # o usuário executou o script de otimização.
-          script_file_name = user_config["default_script_name"]
+          script_file_name = default_script_name
         else:     
           # Se a opção -s ou --script foi passada pelo usuário como uma
           # das opções do script de otimização, então usa o caminho 
@@ -3857,21 +3861,11 @@ def optimize_application(configs_file_path, system_config, applications_config,
         # da variável alvo do modelo auxiliar usado para descobrir
         # a melhor sugestão e ID do trabalho ao ser submetido pelo
         # sbatch).
-
         submission_log(application_config, 
                         system_config, suggestion, template_params,
                         required_applicaion_params, 
                         user_application_params,
                         application_args[1:], job_id, debug_code)
-    #else:
-    #  SuggestionsPredictor.print_suggestion(
-    #    suggestion, 
-    #    suggestion_map=reversed_suggestions_map, 
-    #    show_score=user_args.verbose, 
-    #    show_X=user_args.verbose, 
-    #    show_y_pred=user_args.verbose, 
-    #    show_time=user_args.verbose
-    #  )
 
     # Como conseguimos fazer todo o processamento, ou sejam obter a 
     # melhor sugestão de configuração, gerar o script de submissão,
@@ -3881,7 +3875,15 @@ def optimize_application(configs_file_path, system_config, applications_config,
     # script de otimização, porque a submissão foi feita com sucesso
     # porque todo o processamento doi feito, então retornamos True.
     return True
-  
+
+  # Captura as exceções que podem ser geradas devido a erros de
+  # implementação no código, para garantir que o usuário possa reportar
+  # uma mensagem legível se algum bug existir no código do script deo
+  # otimização.
+
+  # Em algum lugar do código, uma chave incorreta foi usada. Mostra um
+  # erro, para o usuário poder reportar, com o nome dessa chave e, se
+  # já processando a otimização de aplicação, o nome da aplicação.
   except KeyError as e:
     if application_name is None:
       print("❌ Erro ao processar uma das estruturas indexadas por chave, a "
@@ -3891,7 +3893,13 @@ def optimize_application(configs_file_path, system_config, applications_config,
             f"chave {e.args[0]} não existe, ao otimizar a aplicação "
             f"{application_name}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como ocorreu uma exceção antes do teŕmino de todas as operações
+    # feitas pelo script de otimização, retorna False.
     return False
+  # Em algum lugar do código, foi acessado um atributo que não existe
+  # em um objeto. Mostra um erro, para o usuário poder reportar e, se
+  # já processando a otimização de aplicação, o nome da aplicação.
   except AttributeError as e:
     if application_name is None:
       print("❌ Erro ao acessar um dos objetos internos do script, um dos "
@@ -3902,8 +3910,32 @@ def optimize_application(configs_file_path, system_config, applications_config,
             f"{application_name}!")
     print(f"❌ Erro gerado: '{e.args[0]}'")  
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como ocorreu uma exceção antes do teŕmino de todas as operações
+    # feitas pelo script de otimização, retorna False.
     return False
+
+  # Em algum lugar do código, foi usado um valor inválido como parâmetro 
+  # de alguma função. Mostra um erro, para o usuário  poder reportar e, 
+  # se já processando a otimização de aplicação, o nome da aplicação.
   except ValueError as e:
+    if application_name is None:
+      print("❌ Parâmetro inválido passado para uma função, ao inicializar as "
+            "otimizações!")
+    else:
+      print("❌ Parâmetro inválido passado para uma função, ao fazer a "
+            f"otimização para a aplicação {application_name}!")
+    print(f"❌ Erro gerado: '{e.args[0]}'")  
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como ocorreu uma exceção antes do teŕmino de todas as operações
+    # feitas pelo script de otimização, retorna False.
+    return False
+  # Em algum lugar do código, foi usado um tipo inválido em alguma
+  # operação como, por exemplo, somar um interio com uma string. Mostra 
+  # um erro, para o usuário  poder reportar e, se já processando a
+  # otimização de aplicação, o nome da aplicação.
+  except TypeError as e:
     if application_name is None:
       print("❌ Erro ao inicializar ou usar estruturas internas do script, ao "
             "inicializar as otimizações!")
@@ -3912,7 +3944,13 @@ def optimize_application(configs_file_path, system_config, applications_config,
             f"fazer a otimização para a aplicação {application_name}!")
     print(f"❌ Erro gerado: '{e.args[0]}'")  
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como ocorreu uma exceção antes do teŕmino de todas as operações
+    # feitas pelo script de otimização, retorna False.
     return False
+  # Em algum lugar do código, oorreu uma exceção inesperada. Mostra um 
+  # erro, para o usuário  poder reportar com as informações da exceção 
+  # e, se já processando a otimização de aplicação, o nome da aplicação.
   except Exception as e:
     if application_name is None:
       print("❌ Erro desconhecido ao começar a fazer as otimizações!")
@@ -3921,6 +3959,9 @@ def optimize_application(configs_file_path, system_config, applications_config,
             f"{application_name}!")
     print(f"❌ Parâmetros do erro: {e.args}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    # Como ocorreu uma exceção antes do teŕmino de todas as operações
+    # feitas pelo script de otimização, retorna False.
+    return False
 
 def process_script_options(configs_file_path, system_config, 
                            applications_configs, user_config, 
@@ -3981,28 +4022,91 @@ def process_script_options(configs_file_path, system_config,
           a execução da aplicação, e False se a listagem não pode ser
           gerada ou não foi possível otimizar a execução da aplicação.
   """
-  # Processa os parâmetros da linha de comando
+  # Verifica se o usuário somente deseja obter quais aplicações podem
+  # ter as suas execuções otimizadas pelo script de otimização.
   if user_args.list:
+    # Se o usuário somente deseja listar as aplicações, usa a função
+    # list_applications para listar todas as aplicações definidas pelas
+    # chaves do dicionário com as configurações das aplicações 
+    # applications_configs, sendo que a função retornará True se a lista
+    # foi gerada com sucesso.
     status = list_applications(applications_configs)
+
+    # Se a função retornou False, então como ocorreu algum erro ao
+    # mostrar a lista de aplicações, imprimimos uma mensagem repotando o 
+    # erro ao usuário.
     if not status:
       print("❌ Erro ao listar as aplicações que podem ter as suas execuções "
             "otimizadas pelo script de otimização!")
   elif application_args:
+    # Se foram definidos parâmetros para a aplicação, então o usuário
+    # deseja otimizar uma aplicação, definida pelo primeiro parâmetro
+    # da lista de parâmetros application_args. Logo, chamamos a função
+    # optimize_application para gerar, basedo nas possíveis
+    # configurações, sejam as utilizadas ao treinar os modelos da 
+    # aplicação ou obtidas pelas possíveis combinações das componentes
+    # de uma configuração cusromizadas pelo usuaprio usando as opções
+    # do script de otimização, para escolher a melhor sugestão de
+    # configuração, imprimi-la, se o usuário desejar, gerar um script de
+    # submiddão, se o usuário usou a opção para definir o nome do
+    # aqruivo do script ou o nome default se não desejar submeter 
+    # automaticamente os script e, se requisitou, submeter
+    # automaticamente o script. Se todas as operações foram executadas
+    # com sucesso, a função retorna True.
     status = optimize_application(configs_file_path, system_config, 
                                   applications_configs, user_config, 
                                   application_args, 
                                   predictors_info_config, user_args)
+
+    # Se a função retornou False, então como ocorreu algum erro ao
+    # otimizar a execução da aplicação, imprimimos uma mensagem 
+    # repotando o erro ao usuário.
     if not status:
-      print("❌ Erro ao otimizar o script!")
+      print("❌ Erro ao otimizar a execucão da aplicação "
+            f"{application_args[0]}!")
   else:
     # Por enquanto, aqui seria o caso de não ser usada a opção -l ou 
     # --list e de não serem passados o nome da aplicação e seus
-    # parâmetros.
+    # parâmetros. Como nenhuma operação foi feita, retornamos True.
     status = True
 
+  # Retorna se a operaçaõ executada pela função (listar as aplicações ou
+  # otimizar a eecução da aplicação), foi (True) ou não (False), 
+  # executada como sucesso.
   return status   
 
-# Lê os arquivos de confoguração
+"""
+Inicialização do script de otimização, em que a função read_configs para
+ler os arquivos de configuração é chamada e, caso nenhum erro ocorra, a 
+função process_script_args é chamada para processar as opções do script 
+de otimizaçao e, finalemnte, também se nenhum erro ocorrer, a função 
+process_script_options que ou mostra a listagem das aplicações que podem
+ter as suas execuções otimizada, ou otimiza a execução de uma aplicação. 
+"""
+
+# Lê todos os arquivos de configuração necessários à execução do script
+# de otimização. A função retorna o seguinte, sendo que será retornado
+# None para um dos retornos se ocorreu algum erro ao obter o que é
+# descrito para o retorno:
+#
+# configs_file_path: string com o caminho completo do diretóri base dos
+#                    script de otimização e de treinamento, em que
+#                    estarão todos os arquivos de configuração, arquivos
+#                    auxiliares, os arquivos binários no formato pickle
+#                    dos preditores de todas as aplicações que podem ter
+#                    as suas execuções otimizadas, e todos os arquivos
+#                    em Python usados pelo script de otimização.
+# system_config: Dicionário com as configurações do sistema, usadas
+#                pelos scripts de otimização e de treinamento.
+# applications_configs: Dicionário com uma chave para cada aplicação,
+#                       que referencia o dicionário com as configurações
+#                       da aplicação associada à chave.
+# user_config: Dicionário com as configurações do script de orimização.
+# predictors_info_config: Dicionário em que, no dicionáio 
+#                         applications_configs, cada chave estpa 
+#                         associada a uma aplicação, e cuja referência é
+#                         o nome do arquivo binário, no formato pickle,
+#                         com os modelos treinados para a aplicação.
 (
   configs_file_path, 
   system_config, 
@@ -4011,6 +4115,10 @@ def process_script_options(configs_file_path, system_config,
   predictors_info_config
 ) = read_configs(verbose=debug_code)
 
+# Verifica se ocorreu algum erro ao obter as informações descritas
+# anteriormente. Se ocorreu um erro ao obter uma das configurações, serã
+# retornado None para a confiuração que gerou o erro e, se for o caso,
+# as configurações que não puderam ser lidas devido ao erro.
 if any(
   v is None for v in [
     configs_file_path,
@@ -4020,20 +4128,56 @@ if any(
     predictors_info_config
     ]
   ):
+  # Como ocorre um erro ao processar pelo menos uma das configurações,
+  # imprime a mensagem informando o erro ao usuário.
   print("❌ Erro ao processar um dos arquivos de configuração.")
   print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+  # Aborta execução do script com o código de erro -1, erro ao ler uma
+  # ou mais configurações do script de otimização.
   exit(-1)
 
-# Processa a linha de comando.
+# Processa a linha de comando do script de otimização, dividindo essa
+# linha entre os parâmetros do script, à esquerda do separador "--" e os
+# parâmetros da aplicação à direita do separador, usando a função 
+# process_script_args. Se o separador não for usado, toda linha de 
+# comando será considerada como parâmetros do script. A função retorna o
+# seguinte, sendo que será retornado None para parâmetro cuja referência 
+# é salva em user_args se ocorreu algum erro ao processar os parâmetros:
+#
+# user_args: Objeto do tipo argparse.Namespace com as opções do script
+#            de orimização passadas pelos usuários.
+# application_args: Lista com os parâsmetros da aplicação sendo cada um
+#                   deles uma string. Se o separador "--" não foi 
+#                   definido. será uma lista vazia.
 user_args, application_args = process_script_args()
 
-# Verifica se algum erro ocorreu
+# Verifica se algum erro ocorreu ao processar os parâmetros do script de
+# otimização. 
 if user_args is None:
+  # Como a função process_script_args já imprime as mensagens de erro
+  # quando ocorre algum erro ao processar as opções do script, então
+  # abortamos o script com o código de erro -2, ero ao processar as
+  # opções do script de otimização.
   exit(-2)
 
+# Chama a função process_script_options para, dependo do que o usuário
+# definiu na lina de comando, ou listar todas as aplicações que podem
+# ter as suas execuções otimizadas, ou otimizar a execução da aplicação,
+# salvando o script em um arquivo e submentendo ele, dependendo das 
+# opções passadas ao script de submissão pelo usuário.
 status = process_script_options(configs_file_path, system_config, 
                                 applications_configs, user_config, 
                                 application_args, 
                                 predictors_info_config, user_args)
+
+# Verifica se algum erro ocorreu ao listar as aplicações ou otimizar a
+# exeucução da aplicação, salvar o script, ou submeter o script.
 if not status:
+  # Como a função process_script_options já imprime as mensagens de erro
+  # quando ocorre algum erro ao listar as aplicações ou aootimizar a
+  # exeucução da aplicação, salvar o script, ou submeter o script
+  # processar as opções do script, então abortamos o script com o código 
+  # de erro -3, ero ao listar as aplicações ou otimizar a execução da
+  # aplicação.
   exit(-3)
