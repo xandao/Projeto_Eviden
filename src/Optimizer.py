@@ -211,6 +211,160 @@ def read_configs(verbose=False):
   return (configs_file_path, system_config, applications_configs, user_config,
           predictors_info_config)
 
+def process_application_params(application_name, application_args, 
+                               script_config):
+  """
+  Função para ler e os argumentos da aplicação que precisam
+  necessariamente ser passados pelos usuários que desejam otimizar a
+  execução dessa aplicação. Os argumentos dependerão da aplicação para
+  a qual o usuário deseja otimizar a sua execução, e serão definidos no
+  dicionário com as configurações da aplicação, associadas ao script de
+  otimização (definidas pela chave 'user' do dicionário com todas as
+  configurações da aplicação). Os argumentos da aplicação são definidos
+  em um dicionário acessado pela chave 'user_options' do dicionário com
+  as configurações do script para a aplicação, sendo que cada chave do
+  dicionário define o nome do argumento e o conteúdo define os campos
+  necessários para criar uma opção usando a função add_argument do
+  objeto da classe argparse.ArgumentParser definido para processar os
+  parâmertros. Depois de ler os argumentos, são feitas as conversões 
+  necessárias para que os argumentos possam ser usados ao treinar os
+  modelos, usando a função convert_user_params, sendo que vimos que 
+  existem três conversões, copiar o argumento usando o mesmo valor
+  passado pelo usuário, determinar o tamanho de um argumento que é o
+  caminho para um arquivo, ou obter um novo argumento usando alguns dos
+  argumentos passados pelo usuário e uma tabela de mapeamento. Por
+  exemplo, o RAxML tem dois argumentos, o bootstrap e o caminho do
+  arquivo de entrada, sendo que o caminho do arquivo será usado para o
+  obter o tamanho do arquivo que será efetivamente usado ao treinar o
+  modelo.
+
+  Parâmetros:
+    application_name (str): Nome da aplicação passado na linha de
+                            comando do script pelo usuário. Este
+                            parâmetro é usado para mostrar o nome da
+                            aplicação usado pelo usuário na linha de
+                            comando do script ao mostrar a ajuda com os
+                            parâmetros que precisam obrigatoriamente ser
+                            passados pelo usuário.
+    application_args list[str]: Lista com todos os parâmetros da 
+                                aplicação passados pelo usuário. A lista
+                                não inclue o nome da aplicação.
+    script_config (dict): Dicionário com as configurações da aplicação
+                          definida internamente pelo swu nome
+                          application_id, com as configurações desta
+                          aplicação para o script de otimização. É a
+                          chave 'user' do dicionário com as
+                          configurações dessa aplicação. Nesta função,
+                          usamos a chave 'user_options' que é um
+                          dicionário que define as opções que devem ser
+                          passadas pelo usuário.
+
+  Retorna:
+    tupla: Uma tupla em que o primeiro elemento são os argumentos da
+           aplicação obrigatórios, que foram passados pelo usuário, em
+           um objeto argparse.Namespace, e o segundo elemento uma lista
+           de strings com os parâmetros da aplicação não obrigatórios e
+           não necessários ao fazer as predições. 
+  """
+  
+  # Inicializa o analisador dos parâmetros da aplicação, com
+  # uma descrição informando que são parâmetros obrigatórios (parâmetro
+  # "description"), o nome da apicação passado pelo usuário na linha
+  # de comando do script (parâmetro prog). Também informamos que vamos
+  # definir uma ajuda (help) customizada, necessário para escrever a
+  # ajuda em português (parâmetro "add_help" com o valor False), e uma 
+  # classe de formatação, necessária para lidar com múltiplas linhas e,
+  # no nosso caso, que definimos um objeto da classe customizada 
+  # CustomFormatter, mudar o nome na drescição da linha de comando do
+  # inglês "usage:" para o português "uso" (parâmetro "formatter_class"
+  # com a referência para a classe CustomFormatter customizada para
+  # mostrar o "uso"). 
+  parser_application = argparse.ArgumentParser(
+    description="Esta ajuda descreve os parâmetros da aplicação que "
+                "precisam ser obrigatoriamente definidos.", 
+    prog=application_name, 
+    add_help=False, 
+    formatter_class=CustomFormatter
+  )
+
+  # Armazena a refrência para o dicionário com os parâmetros da
+  # aplicação na variável application_params.
+  application_params = script_config['user_options']
+
+  # Cria um objeto cuja referência será armazenada em opcoes para 
+  # agrupar as opções gerais do script, sendo que a string 
+  # "Opções principais" passada ao criar o objeto será o texto mostrado
+  # antes dos textos com as descrições de cada opção do script, com 
+  # exceção da ajuda, que será colocada em um outro grupo único.
+  opcoes = parser_application.add_argument_group("Opções principais")
+
+  # Cria um objeto cuja referência será armazenada em ajuda para criar 
+  # um grupo somente com a opção de ajuda, sendo que a string  "Ajuda" 
+  # passada ao criar o objeto será o texto mostrado antes do texto da 
+  # opção de ajuda.
+  ajuda = parser_application.add_argument_group("Ajuda")
+
+  # Vamos adicionar a ajuda customizada para cada aplicação, definida
+  # pelo diconário armazenado em application_params, sendo que a chave
+  # define o nome da opção que é armazeno em param durante o laço.
+  for param in application_params.keys():
+    # Adiciona ao grupo de opções gerais, referenciado por opções, a 
+    # opção definida pela chave param. O campo 'params' do dicionário
+    # application_params define os parâmetros para a opção em uma lista
+    # de strings. O parâmetro "required" igual a True diz que esta
+    # opção é na verdade obrigatória, pois representa um dos parâmetros
+    # da aplicação que precisam ser passados pelo usuário. O parâmetro
+    # "hekp" define uma descrição para a opção, em uma string definida
+    # pela chave 'help' do dicionário application_params. O parâmetro
+    # "type" define o tipo do parâmetro como uma classe do Python, sendo
+    # que a chave 'type' do dicionário application_params define uma
+    # string represanto o tipo parâmetro que é convertida para a classe
+    # correspondente do Python usando a função get_type. O último
+    # parâmetro "dest" define que o nome do campo, no objeto Namespace
+    # retornado pelo parser, com o valor da opção passado pelo usuário.
+    opcoes.add_argument(
+      *application_params[param]['params'], 
+      required=True, 
+      help=application_params[param]['help'], 
+      type=get_type(application_params[param]['type']), 
+      dest=param    
+    )
+
+  # Adiciona ao grupo de ajuda, referenciado por ajuda, a opção -h ou
+  # --help que mostra a ajuda do script de otimização, com a descrição
+  # da linha de comando e quais são as opções disponíveis e como elas
+  # devem ser usadas. O parâmetro "action" com a string "help" define 
+  # que a opção é uma opção de ajuda, e o parâmetro "help" define uma 
+  # descrição para a opção.
+  ajuda.add_argument(
+    "-h", "--help", 
+    action="help", 
+    help="Mostra esta mensagem de ajuda e sai."
+  )
+
+  # Converte os argumentos da aplicação para o dicionário a ser usado
+  # pela função de predição. Usamos a função parse_known_args porque
+  # somente vamos processar os parâmetros da aplicação que são
+  # obrigatórios, os outros somente serão usados ao gerar o script de
+  # submissão. A função retorna um objeto argparse.Namespace com os
+  # parâmetros processados da aplicação e uma lista de strings em
+  # other_applicatios_params com os outros parâmetros da aplicação que
+  # não foram processados (por enquanto, não estamos usando este ]
+  # parâmetro, porque no stript de submisão passamos todos os parâmetros
+  # da aplicação como definidos pelo usuário na linha de comando do
+  # script).                               
+  (
+    required_applicaion_params, other_applicatios_params
+  ) = parser_application.parse_known_args(application_args)
+
+  # Retorna uma tupla, em que o primeiro elemento são os argumentos da
+  # aplicação obrigatórios e passados pela linha de comando, e o segundo
+  # argumento é o dicionário com esses argumentos convertidos para os 
+  # usados ao treinar os modelos e fazer as predições, ou None se algum
+  # erro ocorreu durante as conversões.
+  return required_applicaion_params, other_applicatios_params
+
+
 def process_script_args():
   """
   Função para processar a linha de comando do script de otimização. A 
@@ -286,6 +440,14 @@ def process_script_args():
   # exceção da ajuda, que será colocada em um outro grupo único.
   opcoes = parser.add_argument_group("Opções principais")
 
+  # Cria um objeto cuja referência será armazenada em opcoes para 
+  # agrupar as opções de customização dos recursos (compomentes) de 
+  # cada configuração avaliada, sendo que a string "Opções de 
+  # customização" passada ao criar o objeto será o texto mostrado
+  # antes dos textos com as descrições de cada opção de customização do 
+  # script.
+  customizar = parser.add_argument_group("Opções de customização")
+
   # Cria um objeto cuja referência será armazenada em ajuda para criar 
   # um grupo somente com a opção de ajuda, sendo que a string  "Ajuda" 
   # passada ao criar o objeto será o texto mostrado antes do texto da 
@@ -351,18 +513,19 @@ def process_script_args():
     help="Mostra somente a sugestão para os parâmetros do script."
   )
 
-  # Adiciona ao grupo de opções gerais, referenciado por opcões, a opção
-  # -n ou --nodes que permite ao usuário definir os possíveis valores da
-  # variável de configuração que define o números de nós. O uso da opção
-  # habilita o uso das configurações otimizadas, e as outras opções
-  # referentes às outras variáveis de configuração serão definidas em
-  # '1' se não forem definidas pelo usuário. O parâmetro "type" com a 
-  # classe str define que o parâmetro usa strings, o parâmetro "nargs"
-  # com a string "+" indica que o parâmetro recebe uma ou mais strings
-  # (devido ao "type" ser "str"), o parâmetro "default" define que o 
-  # valor default da opção, se não passada, é None, e o parâmetro "help" 
-  # define uma descrição para a opção.
-  opcoes.add_argument(
+  # Adiciona ao grupo de opções de customização, referenciado por 
+  # customizar, a opção -n ou --nodes que permite ao usuário definir os
+  # possíveis valores da variável de configuração que define o números
+  # de nós. O uso da opção habilita o uso das configurações otimizadas,
+  # e as outras opções referentes às outras variáveis de configuração
+  # serão definidas em '1' se não forem definidas pelo usuário. O
+  # parâmetro "type" com a classe str define que o parâmetro usa
+  # strings, o parâmetro "nargs" com a string "+" indica que o
+  # parâmetro recebe uma ou mais strings (devido ao "type" ser "str"),
+  # o parâmetro "default" define que o valor default da opção, se não
+  # passada, é None, e o parâmetro "help" define uma descrição para a
+  # opção.
+  customizar.add_argument(
     "-n", "--nodes", 
     type=str, 
     nargs="+", 
@@ -370,14 +533,14 @@ def process_script_args():
     help=textwrap.dedent
     (
       """\
-        Lista com os possíveis números de nós, se a aplicação usa múltiplos "
-        "nós.
-        Usada conjuntamente com as opções -p e -t, que terão os valores "
-        "padrão se não forem usadas.
-        Cada elemento da lista está no formato i:e:s, onde i é o número "
-        "inicial, f é o final e s é o passo.
-        Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o "
-        "s, que será igual a 1.
+        Lista com os possíveis números de nós, se a aplicação usa múltiplos 
+        nós.
+        Usada conjuntamente com as opções -p e -t, que terão os valores 
+        padrão se não forem usadas.
+        Cada elemento da lista está no formato i:e:s, onde i é o número 
+        inicial, f é o final e s é o passo.
+        Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o 
+        s, que será igual a 1.
         Default 1:1.
 
           Exemplos: -n 1 2:10:2 -> Nós: 1, 2, 4, 6, 8, 10.
@@ -387,32 +550,33 @@ def process_script_args():
      )
   )                      
 
-  # Adiciona ao grupo de opções gerais, referenciado por opcões, a opção
-  # -p ou --process que permite ao usuário definir os possíveis valores
-  # da variável de configuração que define o números de processos por
-  # nó. O uso da opção habilita o uso das configurações otimizadas, e as
-  # outras opções referentes às outras variáveis de configuração serão
-  # definidas em '1' se não forem definidas pelo usuário. O parâmetro 
-  # "type" com a classe str define que o parâmetro usa strings, o 
-  # parâmetro "nargs" com a string "+" indica que o parâmetro recebe uma 
-  # ou mais strings (devido ao "type" ser "str"), o parâmetro "default" 
-  # define que o valor default da opção, se não passada, é None, e o 
-  # parâmetro "help" define uma descrição para a opção.
-  opcoes.add_argument(
+  # Adiciona ao grupo de opções de customização, referenciado por 
+  # customizar, a opção -p ou --process que permite ao usuário definir
+  # os possíveis valores da variável de configuração que define o
+  # números de processos por nó. O uso da opção habilita o uso das
+  # configurações otimizadas, e as outras opções referentes às outras
+  # variáveis de configuração serão definidas em '1' se não forem
+  # definidas pelo usuário. O parâmetro "type" com a classe str define
+  # que o parâmetro usa strings, o parâmetro "nargs" com a string "+"
+  # indica que o parâmetro recebe uma ou mais strings (devido ao "type"
+  # ser "str"), o parâmetro "default" define que o valor default da
+  # opção, se não passada, é None, e o parâmetro "help" define uma
+  # descrição para a opção.
+  customizar.add_argument(
     "-p", "--process", 
     type=str, 
     nargs="+", 
     default=None, 
     help=textwrap.dedent(
       """\
-        Lista com os possíveis números de processos, se a aplicação usa "
-        "múltiplos processos por nó."
-        Usada conjuntamente com as opções -n e -t, que terão os valores "
-        "padrão se não forem usadas."
-        Cada elemento da lista está no formato i:e:s, onde i é o número "
-        "inicial, f é o final e s é o passo."
-        Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o "
-        "s, que será igual a 1."
+        Lista com os possíveis números de processos, se a aplicação usa 
+        múltiplos processos por nó.
+        Usada conjuntamente com as opções -n e -t, que terão os valores 
+        padrão se não forem usadas.
+        Cada elemento da lista está no formato i:e:s, onde i é o número
+        inicial, f é o final e s é o passo.
+        Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o 
+        s, que será igual a 1.
         Default 1:1.
 
         Exemplos: -p 1 2:      -> Processos: 1, 2.
@@ -422,37 +586,37 @@ def process_script_args():
     )
   )
 
-  # Adiciona ao grupo de opções gerais, referenciado por opções, a opção
-  # -t ou --threads que permite ao usuário definir os possíveis valores
-  # da variável de configuração que define o números de threads por
-  # processo. O uso da opção habilita o uso das configurações
-  # otimizadas, e as outras opções referentes às outras variáveis de
-  # configuração serão definidas em '1' se não forem definidas pelo
-  # usuário. O parâmetro "type" com a classe str define que o parâmetro 
-  # usa strings, o parâmetro "nargs" com a string "+" indica que o
-  # parâmetro recebe uma ou mais strings (devido ao "type" ser "str"), o
-  # parâmetro "default" define que o valor default da opção, se não
-  # passada, é None, e o parâmetro "help" define uma descrição para a
-  # opção.
-  opcoes.add_argument(
+  # Adiciona ao grupo de opções de customização, referenciado por
+  # customizar, a opção -t ou --threads que permite ao usuário definir
+  # os possíveis valores da variável de configuração que define o
+  # números de threads por processo. O uso da opção habilita o uso das
+  # configurações otimizadas, e as outras opções referentes às outras
+  # variáveis de configuração serão definidas em '1' se não forem
+  # definidas pelo usuário. O parâmetro "type" com a classe str define
+  # que o parâmetro usa strings, o parâmetro "nargs" com a string "+"
+  # indica que o parâmetro recebe uma ou mais strings (devido ao "type"
+  # ser "str"), o parâmetro "default" define que o valor default da
+  # opção, se não passada, é None, e o parâmetro "help" define uma
+  # descrição para a opção.
+  customizar.add_argument(
     "-t", "--threads", 
     type=str, 
     nargs="+", 
     default=None, 
     help=textwrap.dedent(
       """\
-        Lista com os possíveis números de threads, se a aplicação usa "
-        "múltiplas threads por processo."
-        Usada conjuntamente com as opções -n e -p, que terão os valores "
-        "padrão se não forem usadas."
-        Cada elemento da lista está no formato i:e:s, onde i é o número "
-        "inicial, f é o final e s é o passo."
-        Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o "
-        "s, que será igual a 1."
+        Lista com os possíveis números de threads, se a aplicação usa 
+        múltiplas threads por processo.
+        Usada conjuntamente com as opções -n e -p, que terão os valores 
+        padrão se não forem usadas.
+        Cada elemento da lista está no formato i:e:s, onde i é o número 
+        inicial, f é o final e s é o passo.
+        Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o 
+        s, que será igual a 1.
         Default 1:1.
 
-        Exemplos: -t 1 2:24:2 -> Threads: 1, 2, 4, 6, 8, 10, 12, 14, 16, 18, "
-        "20, 22, 24"
+        Exemplos: -t 1 2:24:2 -> Threads: 1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 
+                                          20, 22, 24
                   -t 2 :24:8  -> Threads: 2, 24, 32, 40, 48.
                   -t 2 24 48  -> Threads: 2, 24, 48.  
       """
@@ -2536,190 +2700,6 @@ def get_custom_configurations(application_name, application_id,
   # retorna None porque neste caso custom_configurations é None. 
   return True, custom_configurations
 
-def process_application_params(application_name, application_args, 
-                               script_config, 
-                               application_configs_dir_path):
-  """
-  Função para ler e os argumentos da aplicação que precisam
-  necessariamente ser passados pelos usuários que desejam otimizar a
-  execução dessa aplicação. Os argumentos dependerão da aplicação para
-  a qual o usuário deseja otimizar a sua execução, e serão definidos no
-  dicionário com as configurações da aplicação, associadas ao script de
-  otimização (definidas pela chave 'user' do dicionário com todas as
-  configurações da aplicação). Os argumentos da aplicação são definidos
-  em um dicionário acessado pela chave 'user_options' do dicionário com
-  as configurações do script para a aplicação, sendo que cada chave do
-  dicionário define o nome do argumento e o conteúdo define os campos
-  necessários para criar uma opção usando a função add_argument do
-  objeto da classe argparse.ArgumentParser definido para processar os
-  parâmertros. Depois de ler os argumentos, são feitas as conversões 
-  necessárias para que os argumentos possam ser usados ao treinar os
-  modelos, usando a função convert_user_params, sendo que vimos que 
-  existem três conversões, copiar o argumento usando o mesmo valor
-  passado pelo usuário, determinar o tamanho de um argumento que é o
-  caminho para um arquivo, ou obter um novo argumento usando alguns dos
-  argumentos passados pelo usuário e uma tabela de mapeamento. Por
-  exemplo, o RAxML tem dois argumentos, o bootstrap e o caminho do
-  arquivo de entrada, sendo que o caminho do arquivo será usado para o
-  obter o tamanho do arquivo que será efetivamente usado ao treinar o
-  modelo.
-
-  Parâmetros:
-    application_name (str): Nome da aplicação passado na linha de
-                            comando do script pelo usuário. Este
-                            parâmetro é usado para mostrar o nome da
-                            aplicação usado pelo usuário na linha de
-                            comando do script ao mostrar a ajuda com os
-                            parâmetros que precisam obrigatoriamente ser
-                            passados pelo usuário.
-    application_args list[str]: Lista com todos os parâmetros da 
-                                aplicação passados pelo usuário. A lista
-                                não inclue o nome da aplicação.
-    script_config (dict): Dicionário com as configurações da aplicação
-                          definida internamente pelo swu nome
-                          application_id, com as configurações desta
-                          aplicação para o script de otimização. É a
-                          chave 'user' do dicionário com as
-                          configurações dessa aplicação. Nesta função,
-                          usamos a chave 'user_options' que é um
-                          dicionário que define as opções que devem ser
-                          passadas pelo usuário.
-    application_configs_dir_path (str): Caminho completo em que estão
-                                        armazenadas as configurações
-                                        de todas as aplicações. O
-                                        diretório é usado porque, além
-                                        de lermos as opções da
-                                        aplicação, também fazemos as
-                                        conversões das opções da
-                                        aplicação que não são
-                                        diretamente usadas, sendo que
-                                        para o mapeamento é necessário
-                                        ler a tabela .cvs com os
-                                        mapeamentos.
-
-  Retorna:
-    tupla: Uma tupla em que o primeiro elemento são os argumentos da
-           aplicação obrigatórios, que foram passados pelo usuário, em
-           um objeto argparse.Namespace, e o segundo elemento um
-           dicionário com esses argumentos convertidos se nenhum erro
-           ocorreu durante as conversões ou None em caso contrário. 
-  """
-  
-  # Inicializa o analisador dos parâmetros da aplicação, com
-  # uma descrição informando que são parâmetros obrigatórios (parâmetro
-  # "description"), o nome da apicação passado pelo usuário na linha
-  # de comando do script (parâmetro prog). Também informamos que vamos
-  # definir uma ajuda (help) customizada, necessário para escrever a
-  # ajuda em português (parâmetro "add_help" com o valor False), e uma 
-  # classe de formatação, necessária para lidar com múltiplas linhas e,
-  # no nosso caso, que definimos um objeto da classe customizada 
-  # CustomFormatter, mudar o nome na drescição da linha de comando do
-  # inglês "usage:" para o português "uso" (parâmetro "formatter_class"
-  # com a referência para a classe CustomFormatter customizada para
-  # mostrar o "uso"). 
-  parser_application = argparse.ArgumentParser(
-    description="Esta ajuda descreve os parâmetros da aplicação que "
-                "precisam ser obrigatoriamente definidos.", 
-    prog=application_name, 
-    add_help=False, 
-    formatter_class=CustomFormatter
-  )
-
-  # Armazena a refrência para o dicionário com os parâmetros da
-  # aplicação na variável application_params.
-  application_params = script_config['user_options']
-
-  # Cria um objeto cuja referência será armazenada em opcoes para 
-  # agrupar as opções gerais do script, sendo que a string 
-  # "Opções principais" passada ao criar o objeto será o texto mostrado
-  # antes dos textos com as descrições de cada opção do script, com 
-  # exceção da ajuda, que será colocada em um outro grupo único.
-  opcoes = parser_application.add_argument_group("Opções principais")
-
-  # Cria um objeto cuja referência será armazenada em ajuda para criar 
-  # um grupo somente com a opção de ajuda, sendo que a string  "Ajuda" 
-  # passada ao criar o objeto será o texto mostrado antes do texto da 
-  # opção de ajuda.
-  ajuda = parser_application.add_argument_group("Ajuda")
-
-  # Vamos adicionar a ajuda customizada para cada aplicação, definida
-  # pelo diconário armazenado em application_params, sendo que a chave
-  # define o nome da opção que é armazeno em param durante o laço.
-  for param in application_params.keys():
-    # Adiciona ao grupo de opções gerais, referenciado por opções, a 
-    # opção definida pela chave param. O campo 'params' do dicionário
-    # application_params define os parâmetros para a opção em uma lista
-    # de strings. O parâmetro "required" igual a True diz que esta
-    # opção é na verdade obrigatória, pois representa um dos parâmetros
-    # da aplicação que precisam ser passados pelo usuário. O parâmetro
-    # "hekp" define uma descrição para a opção, em uma string definida
-    # pela chave 'help' do dicionário application_params. O parâmetro
-    # "type" define o tipo do parâmetro como uma classe do Python, sendo
-    # que a chave 'type' do dicionário application_params define uma
-    # string represanto o tipo parâmetro que é convertida para a classe
-    # correspondente do Python usando a função get_type. O último
-    # parâmetro "dest" define que o nome do campo, no objeto Namespace
-    # retornado pelo parser, com o valor da opção passado pelo usuário.
-    opcoes.add_argument(
-      *application_params[param]['params'], 
-      required=True, 
-      help=application_params[param]['help'], 
-      type=get_type(application_params[param]['type']), 
-      dest=param    
-    )
-
-  # Adiciona ao grupo de ajuda, referenciado por ajuda, a opção -h ou
-  # --help que mostra a ajuda do script de otimização, com a descrição
-  # da linha de comando e quais são as opções disponíveis e como elas
-  # devem ser usadas. O parâmetro "action" com a string "help" define 
-  # que a opção é uma opção de ajuda, e o parâmetro "help" define uma 
-  # descrição para a opção.
-  ajuda.add_argument(
-    "-h", "--help", 
-    action="help", 
-    help="Mostra esta mensagem de ajuda e sai."
-  )
-
-  # Converte os argumentos da aplicação para o dicionário a ser usado
-  # pela função de predição. Usamos a função parse_known_args porque
-  # somente vamos processar os parâmetros da aplicação que são
-  # obrigatórios, os outros somente serão usados ao gerar o script de
-  # submissão. A função retorna um objeto argparse.Namespace com os
-  # parâmetros processados da aplicação e uma lista de strings em
-  # other_applicatios_params com os outros parâmetros da aplicação que
-  # não foram processados (por enquanto, não estamos usando este ]
-  # parâmetro, porque no stript de submisão passamos todos os parâmetros
-  # da aplicação como definidos pelo usuário na linha de comando do
-  # script).                               
-  (
-    required_applicaion_params, other_applicatios_params
-  ) = parser_application.parse_known_args(application_args)
-
-  # Depois de ter obtido os argumentos obrigatórios da aplicação, 
-  # processa esses argumentos, fazendo as conversões necessárias para
-  # obter os argumentos da aplicação que efetivamente foram usados ao
-  # treinar os modelos e que, portanto, são necessários para fazer as
-  # predições do modelo auxiliar para escolher a melhor sugestão de
-  # configuração e o modelo para estimar o tempo de execução desta
-  # sugestão. Como vimos na descrição da função convert_user_params, 
-  # será retornado um dicionário, armazenado em user_application_params,
-  # com cada argumento e o seu valor, depois de feitas as cionversões,
-  # que são definidas em uma lista de tuplas referenciadas pela chave
-  # 'conversions' do dicionário com as configurações do script para a
-  # aplicação. Se o retorno for None, então isso indicará que algum erro
-  # ocorreu em uma das conversões.
-  user_application_params = convert_user_params(required_applicaion_params, 
-                                                script_config['conversions'], 
-                                                application_configs_dir_path)  
-
-  # Retorna uma tupla, em que o primeiro elemento são os argumentos da
-  # aplicação obrigatórios e passados pela linha de comando, e o segundo
-  # argumento é o dicionário com esses argumentos convertidos para os 
-  # usados ao treinar os modelos e fazer as predições, ou None se algum
-  # erro ocorreu durante as conversões.
-  return (required_applicaion_params, other_applicatios_params, 
-          user_application_params)
-
 def get_template_params(application_name, user_args, application_args, 
                         application_partitions_list, suggestion, 
                         reversed_suggestions_map):
@@ -3486,15 +3466,27 @@ def optimize_application(configs_file_path, system_config, applications_config,
     # ou seja, os parâmetros que nçao são obrigatórios, cuja referência
     # será armazenada em other_applicatios_params. Somente usamos esta
     # referência nas mensagens de depuração.
-    # - Dicionário, cuja referência é armazenada em 
-    # user_application_params, com os parâmetros da aplicação 
-    # obrigatórios passados pelo usuário convertidos para os parâmetros
-    # que são usados para treinar os modelos e fazer as predições.
     (
-      required_applicaion_params, other_applicatios_params, 
-      user_application_params
+      required_applicaion_params, other_applicatios_params
     ) = process_application_params(application_name, application_args[1:], 
-                                   script_config, application_configs_dir_path)
+                                   script_config)
+
+    # Depois de ter obtido os argumentos obrigatórios da aplicação, 
+    # processa esses argumentos, fazendo as conversões necessárias para
+    # obter os argumentos da aplicação que efetivamente foram usados ao
+    # treinar os modelos e que, portanto, são necessários para fazer as
+    # predições do modelo auxiliar para escolher a melhor sugestão de
+    # configuração e o modelo para estimar o tempo de execução desta
+    # sugestão. Como vimos na descrição da função convert_user_params, 
+    # será retornado um dicionário, armazenado em user_application_params,
+    # com cada argumento e o seu valor, depois de feitas as cionversões,
+    # que são definidas em uma lista de tuplas referenciadas pela chave
+    # 'conversions' do dicionário com as configurações do script para a
+    # aplicação. Se o retorno for None, então isso indicará que algum erro
+    # ocorreu em uma das conversões.
+    user_application_params = convert_user_params(required_applicaion_params, 
+                                                  script_config['conversions'], 
+                                                  application_configs_dir_path)  
 
     # Se o parâmetro required_applicaion_params for None e não uma
     # referência para um objeto Namespace, então ocorreu algum erro ao
