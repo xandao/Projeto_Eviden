@@ -444,7 +444,7 @@ def process_application_params(application_name, application_args,
   return required_applicaion_params, other_applicatios_params
 
 
-def process_script_args(applications_config):
+def process_args(applications_config):
   """
   Função para processar a linha de comando do script de otimização. A 
   linha de comando é dividida em duas partes, de acordo com o separador
@@ -468,13 +468,19 @@ def process_script_args(applications_config):
   -S, --suggestion: Mostra somente a sugestão para os parâmetros do
                     script.
   -n, --nodes: Lista com os possíveis números de nós, se a aplicação usa
-               múltiplos nós. Usada conjuntamente com as opções -p e -t.
+               múltiplos nós. Usada conjuntamente com as opções, quando
+               aplicáveis, -p, -t e -g.
   -p, --process: Lista com os possíveis números de processos, se a 
                  aplicação usa múltiplos processos por nó. Usada
-                 conjuntamente com as opções -n e -t. 
+                 conjuntamente com as opções, quando aplicáveis, -n ,-t
+                 e -g. 
   -t, --threads: Lista com os possíveis números de threads, se a 
                  aplicação usa múltiplas threads por processo. Usada 
-                 conjuntamente com as opções -n e -p.
+                 conjuntamente com as opções, quando aplicáveis, -n, -p
+                 e -g. 
+  -g, --gpus: Lista com os possíveis números de gpus, se a aplicação usa
+              múltiplas GPUs por nó. Usada conjuntamente com as opções, 
+              quando aplicáveis, -n, -p e -t. 
   -l, --list: Lista as aplicações cujas execuções podem ser otimizadas 
               pelo script.
   -v, --verbose: Habilita a verbosidade com informações sobre a melhor
@@ -671,6 +677,11 @@ def process_script_args(applications_config):
          "script."
   )
 
+  # Inicializa a lista das opções de customização para o caso em que o
+  # usuário não passou uma aplicação ou que a aplicação não tem uma
+  # implementação.
+  possiveis_opcoes_configuracao = ['nodes', 'process', 'threads', 'gpus']
+
   # Descobre a chave da configuração da aplicação no dicionário com as
   # configurações de todas as aplicações, se o nome da aplicação foi 
   # passado pelo usuário logo após o separador "--" estiver associado a
@@ -693,134 +704,173 @@ def process_script_args(applications_config):
       possiveis_opcoes_configuracao = applications_config[application_id][
         'user']['suggestions_map']
 
-      # Cria um objeto cuja referência será armazenada em opcoes para 
-      # agrupar as opções de customização dos recursos (compomentes) de 
-      # cada configuração avaliada, sendo que a string "Opções de 
-      # customização" passada ao criar o objeto será o texto mostrado
-      # antes dos textos com as descrições de cada opção de customização
-      # do script.
-      customizar = parser.add_argument_group("Opções de customização")
-      # Adiciona ao grupo de opções de customização, referenciado por 
-      # customizar, a opção -n ou --nodes que permite ao usuário definir 
-      # os possíveis valores da variável de configuração que define os
-      # números de nós. O uso da opção habilita o uso das configurações
-      # otimizadas, e as outras opções referentes às outras variáveis de
-      # configuração serão definidas em '1' se não forem definidas pelo
-      # usuário. O parâmetro "type" com a classe str define que o
-      # parâmetro usa strings, o parâmetro "nargs" com a string "+"
-      # indica que o parâmetro recebe uma ou mais strings (devido ao
-      # "type" ser "str"), o parâmetro "default" define que o valor
-      # default da opção, se não passada, é None, e o parâmetro "help"
-      # define uma descrição para a opção. A opção somente será
-      # adicionada a lista de customização das componetes somente se a
-      # aplicação poder definir o recurso alocado pela componente.
-      if 'nodes' in possiveis_opcoes_configuracao:
-        customizar.add_argument(
-          "-n", "--nodes", 
-          type=str, 
-          nargs="+", 
-          default=None, 
-          help=textwrap.dedent
-          (
-            """\
-              Lista com os possíveis números de nós, se a aplicação usa 
-              múltiplos nós.
-              Usada conjuntamente com as outras opções de configuração, que
-              terão os valorespadrão se não forem usadas.
-              Cada elemento da lista está no formato i:e:s, onde i é o número 
-              inicial, f é o final e s é o passo.
-              Pode-se omitir o i, que será igual a 1, o e, que será igual a i, 
-              e o s, que será igual a 1.
-              Default 1:1.
+  # Cria um objeto cuja referência será armazenada em opcoes para 
+  # agrupar as opções de customização dos recursos (compomentes) de 
+  # cada configuração avaliada, sendo que a string "Opções de 
+  # customização" passada ao criar o objeto será o texto mostrado
+  # antes dos textos com as descrições de cada opção de customização
+  # do script.
+  customizar = parser.add_argument_group("Opções de customização")
+  # Adiciona ao grupo de opções de customização, referenciado por 
+  # customizar, a opção -n ou --nodes que permite ao usuário definir os
+  # possíveis valores da variável de configuração que define os números 
+  # de nós. O uso da opção habilita o uso das configurações
+  # otimizadas, e as outras opções referentes às outras variáveis de
+  # configuração serão definidas em '1' se não forem definidas pelo
+  # usuário. O parâmetro "type" com a classe str define que o
+  # parâmetro usa strings, o parâmetro "nargs" com a string "+"
+  # indica que o parâmetro recebe uma ou mais strings (devido ao
+  # "type" ser "str"), o parâmetro "default" define que o valor
+  # default da opção, se não passada, é None, e o parâmetro "help"
+  # define uma descrição para a opção. A opção somente será
+  # adicionada a lista de customização das componetes somente se a
+  # aplicação poder definir o recurso alocado pela componente.
+  if 'nodes' in possiveis_opcoes_configuracao:
+    customizar.add_argument(
+      "-n", "--nodes", 
+      type=str, 
+      nargs="+", 
+      default=None, 
+      help=textwrap.dedent
+      (
+        """\
+          Lista com os possíveis números de nós, se a aplicação usa 
+          múltiplos nós.
+          Usada conjuntamente com as outras opções de configuração, que
+          terão os valorespadrão se não forem usadas.
+          Cada elemento da lista está no formato i:e:s, onde i é o número 
+          inicial, f é o final e s é o passo.
+          Pode-se omitir o i, que será igual a 1, o e, que será igual a i, 
+          e o s, que será igual a 1.
+          Default 1:1.
 
-                Exemplos: -n 1 2:10:2 -> Nós: 1, 2, 4, 6, 8, 10.
-                          -n :10:2    -> Nós: 1, 3, 5, 7, 9.
-                          -n 1:5      -> Nós: 1, 2, 3, 4, 5.                                                                 
-            """
-          )
-        )                      
+            Exemplos: -n 1 2:10:2 -> Nós: 1, 2, 4, 6, 8, 10.
+                      -n :10:2    -> Nós: 1, 3, 5, 7, 9.
+                      -n 1:5      -> Nós: 1, 2, 3, 4, 5.                                                                 
+        """
+      )
+    )                      
 
-      # Adiciona ao grupo de opções de customização, referenciado por 
-      # customizar, a opção -p ou --process que permite ao usuário
-      # definir os possíveis valores da variável de configuração que
-      # define o números de processos por nó. O uso da opção habilita o
-      # uso das configurações otimizadas, e as outras opções referentes
-      # às outras variáveis de configuração serão definidas em '1' se
-      # não forem definidas pelo usuário. O parâmetro "type" com a
-      # classe str define que o parâmetro usa strings, o parâmetro 
-      # "nargs" com a string "+" indica que o parâmetro recebe uma ou
-      # mais strings (devido ao "type" ser "str"), o parâmetro "default" 
-      # define que o valor default da opção, se não passada, é None, e o
-      # parâmetro "help" define uma descrição para a opção. A opção
-      # somente será adicionada a lista de customização das componetes
-      # somente se a aplicação poder definir o recurso  alocado pela
-      # componente.
-      if 'process' in possiveis_opcoes_configuracao:
-        customizar.add_argument(
-          "-p", "--process", 
-          type=str, 
-          nargs="+", 
-          default=None, 
-          help=textwrap.dedent(
-            """\
-              Lista com os possíveis números de processos, se a aplicação usa 
-              múltiplos processos por nó.
-              Usada conjuntamente com as outras opções de configuração, que
-              terão os valores padrão se não forem usadas.
-              Cada elemento da lista está no formato i:e:s, onde i é o número
-              inicial, f é o final e s é o passo.
-              Pode-se omitir o i, que será igual a 1, o e, que será igual a i,
-              e o s, que será igual a 1.
-              Default 1:1.
+  # Adiciona ao grupo de opções de customização, referenciado por 
+  # customizar, a opção -p ou --process que permite ao usuário
+  # definir os possíveis valores da variável de configuração que
+  # define o números de processos por nó. O uso da opção habilita o
+  # uso das configurações otimizadas, e as outras opções referentes
+  # às outras variáveis de configuração serão definidas em '1' se
+  # não forem definidas pelo usuário. O parâmetro "type" com a
+  # classe str define que o parâmetro usa strings, o parâmetro 
+  # "nargs" com a string "+" indica que o parâmetro recebe uma ou
+  # mais strings (devido ao "type" ser "str"), o parâmetro "default" 
+  # define que o valor default da opção, se não passada, é None, e o
+  # parâmetro "help" define uma descrição para a opção. A opção
+  # somente será adicionada a lista de customização das componetes
+  # somente se a aplicação poder definir o recurso  alocado pela
+  # componente.
+  if 'process' in possiveis_opcoes_configuracao:
+    customizar.add_argument(
+      "-p", "--process", 
+      type=str, 
+      nargs="+", 
+      default=None, 
+      help=textwrap.dedent(
+        """\
+          Lista com os possíveis números de processos, se a aplicação usa 
+          múltiplos processos por nó.
+          Usada conjuntamente com as outras opções de configuração, que
+          terão os valores padrão se não forem usadas.
+          Cada elemento da lista está no formato i:e:s, onde i é o número
+          inicial, f é o final e s é o passo.
+          Pode-se omitir o i, que será igual a 1, o e, que será igual a i,
+          e o s, que será igual a 1.
+          Default 1:1.
 
-              Exemplos: -p 1 2:      -> Processos: 1, 2.
-                        -p 1 :3:1    -> Processos: 1, 2, 3.
-                        -p :3 6:12:3 -> Processos: 1, 2, 3, 6, 9, 12                                                                  
-            """
-          )
-        )
+          Exemplos: -p 1 2:      -> Processos: 1, 2.
+                    -p 1 :3:1    -> Processos: 1, 2, 3.
+                    -p :3 6:12:3 -> Processos: 1, 2, 3, 6, 9, 12.                                                                  
+        """
+      )
+    )
 
-      if 'threads' in possiveis_opcoes_configuracao:
-        # Adiciona ao grupo de opções de customização, referenciado por
-        # customizar, a opção -t ou --threads que permite ao usuário
-        # definir os possíveis valores da variável de configuração que
-        # define o números de threads por processo. O uso da opção
-        # habilita o uso das configurações otimizadas, e as outras
-        # opções referentes às outras variáveis de configuração serão
-        # definidas em '1' se não forem definidas pelo usuário. O
-        # parâmetro "type" com a classe str define que o parâmetro usa
-        # strings, o parâmetro "nargs" com a string "+" indica que o
-        # parâmetro recebe uma ou mais strings (devido ao "type" ser
-        # "str"), o parâmetro "default" define que o valor default da
-        # opção, se não passada, é None, e o parâmetro "help" define uma
-        # descrição para a opção. A opção somente será adicionada a
-        # lista de customização das componetes somente se a aplicação
-        # poder definir o recurso  alocado pela componente.
-        customizar.add_argument(
-          "-t", "--threads", 
-          type=str, 
-          nargs="+", 
-          default=None, 
-          help=textwrap.dedent(
-            """\
-              Lista com os possíveis números de threads, se a aplicação usa 
-              múltiplas threads por processo.
-              Usada conjuntamente com as outras opções de configuração, que  
-              terão os valores padrão se não forem usadas.
-              Cada elemento da lista está no formato i:e:s, onde i é o número 
-              inicial, f é o final e s é o passo.
-              Pode-se omitir o i, que será igual a 1, o e, que será igual a i,  
-              e o s, que será igual a 1.
-              Default 1:1.
+  if 'threads' in possiveis_opcoes_configuracao:
+    # Adiciona ao grupo de opções de customização, referenciado por
+    # customizar, a opção -t ou --threads que permite ao usuário
+    # definir os possíveis valores da variável de configuração que
+    # define o números de threads por processo. O uso da opção
+    # habilita o uso das configurações otimizadas, e as outras
+    # opções referentes às outras variáveis de configuração serão
+    # definidas em '1' se não forem definidas pelo usuário. O
+    # parâmetro "type" com a classe str define que o parâmetro usa
+    # strings, o parâmetro "nargs" com a string "+" indica que o
+    # parâmetro recebe uma ou mais strings (devido ao "type" ser
+    # "str"), o parâmetro "default" define que o valor default da
+    # opção, se não passada, é None, e o parâmetro "help" define uma
+    # descrição para a opção. A opção somente será adicionada a
+    # lista de customização das componetes somente se a aplicação
+    # poder definir o recurso  alocado pela componente.
+    customizar.add_argument(
+      "-t", "--threads", 
+      type=str, 
+      nargs="+", 
+      default=None, 
+      help=textwrap.dedent(
+        """\
+          Lista com os possíveis números de threads, se a aplicação usa 
+          múltiplas threads por processo.
+          Usada conjuntamente com as outras opções de configuração, que  
+          terão os valores padrão se não forem usadas.
+          Cada elemento da lista está no formato i:e:s, onde i é o número 
+          inicial, f é o final e s é o passo.
+          Pode-se omitir o i, que será igual a 1, o e, que será igual a i,  
+          e o s, que será igual a 1.
+          Default 1:1.
 
-              Exemplos: -t 1 2:24:2 -> Threads: 1, 2, 4, 6, 8, 10, 12, 14, 16,  
-                                                18, 20, 22, 24
-                        -t 2 :24:8  -> Threads: 2, 24, 32, 40, 48.
-                        -t 2 24 48  -> Threads: 2, 24, 48.  
-            """
-          )
-        )
+          Exemplos: -t 1 2:24:2 -> Threads: 1, 2, 4, 6, 8, 10, 12, 14, 16,  
+                                            18, 20, 22, 24
+                    -t 2 :24:8  -> Threads: 2, 24, 32, 40, 48.
+                    -t 2 24 48  -> Threads: 2, 24, 48.  
+        """
+      )
+    )
 
+  if 'gpus' in possiveis_opcoes_configuracao:
+    # Adiciona ao grupo de opções de customização, referenciado por
+    # customizar, a opção -g ou --gpus que permite ao usuário
+    # definir os possíveis valores da variável de configuração que
+    # define o números de GPUS por nó. O uso da opção habilita o uso
+    # das configurações otimizadas, e as outras opções referentes às
+    # outras variáveis de configuração serão definidas em '1' se não 
+    # forem definidas pelo usuário. O parâmetro "type" com a classe
+    # str define que o parâmetro usa strings, o parâmetro "nargs"
+    # com a string "+" indica que o parâmetro recebe uma ou mais 
+    # strings (devido ao "type" ser "str"), o parâmetro "default" 
+    # define que o valor default da opção, se não passada, é None, e
+    # o parâmetro "help" define uma descrição para a opção. A opção
+    # somente será adicionada a lista de customização das componetes
+    # somente se a aplicação poder definir o recurso  alocado pela
+    # componente.
+    customizar.add_argument(
+      "-g", "--gpus", 
+      type=str, 
+      nargs="+", 
+      default=None, 
+      help=textwrap.dedent(
+        """\
+          Lista com os possíveis números de gpus, se a aplicação usa 
+          múltiplas gpus por nó.
+          Usada conjuntamente com as outras opções de configuração, que  
+          terão os valores padrão se não forem usadas.
+          Cada elemento da lista está no formato i:e:s, onde i é o número 
+          inicial, f é o final e s é o passo.
+          Pode-se omitir o i, que será igual a 1, o e, que será igual a i,  
+          e o s, que será igual a 1.
+          Default 1:1.
+
+          Exemplos: -g 1 2:4:2 -> GPUs: 1, 2, 4.
+                    -g 2 :4:1  -> GPUs: 1, 2, 3, 4
+                    -g 3 1 4  -> GPUs: 1, 3, 4.  
+        """
+      )
+    )
   # Cria um objeto cuja referência será armazenada em ajuda para criar 
   # um grupo somente com a opção de ajuda, sendo que a string  "Ajuda" 
   # passada ao criar o objeto será o texto mostrado antes do texto da 
@@ -848,20 +898,34 @@ def process_script_args(applications_config):
   # Verifica se o usuário não passou um parâmetro que não necessita do
   # nome da aplicação e seus parâmetros. No momento, a opção de listar
   # as aplicações que podem ser otimizadas é a única opção que não 
-  # precisa do nome da aplicação.
-  ignore_application_name = not user_args.list
+  # precisa do nome da aplicação (a opção de ajuda automaticamente 
+  # mostra a ajuda e finaliza o script).
+  application_name_needed = not user_args.list 
 
-  # Se application_args for None, então o usuário tentou executar o 
-  # script sem usar o separador "--" ou não passou pelo menos o nome da
-  # aplicação e um parâmetro da aplicação depois dele. Então, precisamos
-  # informar o erro e mostrar a ajuda do script de otimização, que pode
-  # ser mostrada pela função print_help do analisador da linha de
-  # comando parser.
-  if application_args is None and ignore_application_name:
-      print("Não foi definido o nome da aplicação e pelo menos um argumento "
-            "da aplicação!")
+  # Vamos primeiramente verificar se é necessário passar o nome da
+  # aplicação, caso não sejam usadas opções da linha de comando que não
+  # obrigem a passagem do nome da aplicação.
+  if application_name_needed:
+    # Se application_args for None, então o usuário tentou executar o 
+    # script sem usar o separador "--" ou não passou pelo menos o nome 
+    # da aplicação e um parâmetro da aplicação depois dele. 
+    if application_args is None:
+      # Como o usuário não passou o nome da aplicação, precisamos 
+      # informar um erro para o usuário informando que é necessário 
+      # fornecer o nome da aplicação.
+      print("⚠️  Não foi definido o nome da aplicação e pelo menos um "
+            "argumento da aplicação!")
+      
+      # Como ocorreu um erro devido ao usuário não fornecer a aplicação,
+      # mostramos a ajuda do script.
       parser.print_help()
-
+    elif application_id is None:
+    # Se o usuário passou um nome da aplicação, que na verdade é um nome
+    # do executável, e se application_id for None, então a aplicação não
+    # é uma das que podem ser otimizadas pelo script de otimização. 
+      print(f"⚠️  A otimização da execução da aplicação {application_args[0]} "
+            "ainda não é suportada!")
+    
   # Retorna a tupla composta pelo objeto da classe NameSpace com os 
   # parâmetros do scriptr de otimização, se o usuário usou o separador
   # da aplicação e passou pelo menos dois parâmetros, pois precisamos
@@ -2434,9 +2498,8 @@ def list_applications(applications_config):
       # impressa indica o identificador interno da aplucação, e os nomes
       # dos executáveis que podem ser usados pelos usuários
       print(f"➡️  Aplicação {application_id}, possíveis nomes para os "
-            f"executáveis: {
-              ', '.join(application_config['user']['executable_names'])
-              }")
+            "executáveis: "
+            f"{', '.join(application_config['user']['executable_names'])}")
 
   # Devido a um erro no código, foi tentado o acesso de um campo de um
   # objeto referenciado por uma chave inexistente ao listar as
@@ -4190,7 +4253,7 @@ if any(
 # application_args: Lista com os parâsmetros da aplicação sendo cada um
 #                   deles uma string. Se o separador "--" não foi 
 #                   definido. será uma lista vazia.
-user_args, application_args = process_script_args(applications_configs)
+user_args, application_args = process_args(applications_configs)
 
 # Verifica se algum erro ocorreu ao processar os parâmetros do script de
 # otimização. 
