@@ -211,6 +211,85 @@ def read_configs(verbose=False):
   return (configs_file_path, system_config, applications_configs, user_config,
           predictors_info_config)
 
+def find_application_config(applications_config, application_name):
+  """
+  Função para procurar e retornar a chave referenciando as configurações
+  de uma aplicação identificada pelo seu executável, que pode ser um dos
+  nomes de executáveis dados na lista referenciada pela chave 
+  'executable_names' do dicionário refenciado pela chave 'user' do 
+  dicionário com as configurações de uma aplicação. Será escolhida a
+  primeira aplicação para a qual o nome do executável está na sua lista
+  de executáveis logo, para evitar inconsistências, duas aplicações 
+  diferentes, mesmo que sejam variações da mesma aplicação, por exemplo,
+  compiladas para usar somente MPI ou MPI com OpenMP, não podem ter o 
+  mesmo nome para o executável.
+
+  Parâmetros:
+    applications_config (dict): Dicionário com todas as configurações
+                                das aplicações que podem ser otimizadas
+                                pelo script de otimização, sendo que
+                                cada chave, associada e identificando
+                                uma aplicação, tem uma referência para o
+                                dicionário com as configurações dessa
+                                aplicação.
+    application_name (str): Nome de um dos possíveis arquivos
+                            executáveis da aplicação, passados pelo
+                            usuário como o primerio parâmetro da
+                            aplicação, que identifica a aplicação que o
+                            usuário está tentando otimizar (o parâmetro
+                            que vem logo após do separador '--'). 
+
+  Retorna:
+    str | None: String com o nome que identifica a aplicação, ou seja, a
+                chave no dicionário applications_config com a referência
+                para o dicionário com as configurações da aplicação que 
+                possui como possíveis nomes de executáveis o nome dado
+                em application_name. Se application_name não for achado
+                em nenhum dos nomes de executáveis, considerando cada
+                aplicação definida pelas chaves do dicionário
+                applications_config, então será retornado None para
+                indicar que esta aplicação não é ainda suportada e
+                portanto não pode ser otimizada.
+  """
+
+  # Iniializa a variável que armazenará a chave da aplucação no
+  # dicionário applications_config com None, inicialmente indicando que
+  # a aplicação cujo executável é passado em application_name não é
+  # suportada.
+  application_id = None
+
+  # Para verificar se application_name é um possível nome de executável
+  # de uma das aplcações suportadas, precisamos percorrer todas as
+  # chaves do dicionário applications_config.
+  for application_id_aux in applications_config.keys():
+    # Verifica se application_name é um dos executáveis da aplicação
+    # para a qual estamos verificando os seus possíveis executáveis,
+    # identificada pela chave application_id_aux. Para fazer isso, basta
+    # verificar se a string application_name está dentro (é uma das
+    # strings, usando o operador in) da lista definida pela chave
+    # 'executable_names' do dicionário referenciado pela chave 'user',
+    # comctodos os possíveis nomes dos executáveis para a aplicação
+    # identificada por application_id_aux.
+    if application_name in (
+      applications_config[application_id_aux]['user']['executable_names']
+    ):
+      # Se o application_name for um dos nomes dos executáveis, então
+      # encontramos a chave no dicionário applications_config, ou seja,
+      # a string application_id_aux. Logo, definimos application_id, com
+      # a chave da aplicação para a referência application_id_aux, com o
+      # nome da chave da aplicação, e encerramos a verificação, pois já
+      # encontramos a chave identificando a aplucação a ser otimizada.
+      application_id = application_id_aux
+      break
+
+  # Retorna a variável application_id, que terá a chave do dicionário
+  # applications_config com a refência da configuração da aplicação a
+  # ter a sua execução otimizada se application_name for um dos
+  # possíveis executáveis de uma das aplicações ou None em caso
+  # contrário, para indicar que a aplucação não pode ter a sua execução
+  # otimizada.
+  return application_id
+
 def process_application_params(application_name, application_args, 
                                script_config):
   """
@@ -250,7 +329,7 @@ def process_application_params(application_name, application_args,
                                 aplicação passados pelo usuário. A lista
                                 não inclue o nome da aplicação.
     script_config (dict): Dicionário com as configurações da aplicação
-                          definida internamente pelo swu nome
+                          definida internamente pelo seu nome
                           application_id, com as configurações desta
                           aplicação para o script de otimização. É a
                           chave 'user' do dicionário com as
@@ -365,7 +444,7 @@ def process_application_params(application_name, application_args,
   return required_applicaion_params, other_applicatios_params
 
 
-def process_script_args():
+def process_script_args(applications_config):
   """
   Função para processar a linha de comando do script de otimização. A 
   linha de comando é dividida em duas partes, de acordo com o separador
@@ -412,6 +491,71 @@ def process_script_args():
              a primeira entrada o nome da aplicação.
   """
 
+  # Define a string "--" usada para definir, nos parâmetros passados ao
+  # script quando o usuário executou ele no terminal, o ponto em que
+  # temos os parâmetros do script nos patâmetros do primeiro até o
+  # parâmetro igual à string, e o que vem depois deste parâmetro, o 
+  # nome da aplicação seguido pelos parâmetros da aplicação. 
+  # TODO: Defini o valor fixo "--"" porque é o usado na maior parte dos
+  # programas e scrips para separar os parâmetros do script dos da 
+  # aplicação que o script trata,
+  application_param_separator = '--'
+
+  # Verifica a string application_param_separator que define o serapador
+  # está na lista de argumntos passados ao script e dados na lista
+  # sys.argv.
+  if application_param_separator in sys.argv:
+    # Como o separador está na lista, primeiramente descobrimos a sua
+    # posição separator_pos na lista,
+    separator_pos = sys.argv.index(application_param_separator)
+
+    # Como as listas do Python são indexadas a partir da posição 0, e
+    # como o primeiro parâmetro da lista sys.argv sempre será, como em
+    # outros comandos de terminal do Linux e suas variantes, o nome do
+    # script de otimização, então os parâmetros do script de otimização
+    # estarão na posição de 1 até separator_pos - 1. A lista com esses
+    # parâmetros será armazenada em script_args.
+    script_args = sys.argv[1:separator_pos]
+
+    # Verifica se temos pelo menos o nome da aplicação, ou seja, se:
+    # separator_pos = len(sys.argv) - 1 (sem nada depois do "--")
+    # separator_pos = len(sys.argv) - 2 (somente nome da aplicação)
+    # separator_pos < len(sys.argv) - 2 (nome da aplicação e pelo menos
+    # um parâmetro.
+    if separator_pos < len(sys.argv) - 1:
+      # O nome da aplicação e os parâmetros da aplicação estarão na
+      # posição de separator_pos + 1 até o final da lista. A lista com
+      # o nome da plicação e os seus parâmetros será armazenada em 
+      # application_args. Note que a sintaxe do script de otimização exige
+      # que o primeiro elemento dessa lista seja o nome da aplicação. 
+      application_args = sys.argv[separator_pos+1:]
+
+      # Como temos um nome da aplicação e pelo menos um parâmetro da
+      # aplicação, define o nome da aplicação passado pelo usuário na 
+      # linha de comando.
+      application_name = application_args[0]
+    else:
+      # Neste caso, não temos o nome da aplicação, então definimos a
+      # variável application_name como None, para indicar que não vamos
+      # mostrar os parâmetros de customização, e application_args também
+      # como None, porque nenhum parâmetro foi passado depois do 
+      # separador '--'
+      application_name = None   
+      application_args = None
+
+      # Como temos o separador '--', devemos removê-lo dos paràmetros do
+      # script de otimziação.
+      script_args = sys.argv[1:separator_pos]
+  else:
+    # Se o separador não estiver na lista, então todos os parâmetros
+    # serão atribuídos a lista de parâmetros do script de otimização.
+    script_args = sys.argv[1:]
+
+    # Como não foi usado o separador, então não foi passado o nome da
+    # aplicação e nem a lisra de argumentos. 
+    application_args = None
+    application_name = None
+
   # Inicializa o analisador dos parâmetros do script de otimização, com
   # uma descrição do que o script faz (parâmetro "description"), uma
   # descrição do formato da linha de comando do script (parâmetro
@@ -439,20 +583,6 @@ def process_script_args():
   # antes dos textos com as descrições de cada opção do script, com 
   # exceção da ajuda, que será colocada em um outro grupo único.
   opcoes = parser.add_argument_group("Opções principais")
-
-  # Cria um objeto cuja referência será armazenada em opcoes para 
-  # agrupar as opções de customização dos recursos (compomentes) de 
-  # cada configuração avaliada, sendo que a string "Opções de 
-  # customização" passada ao criar o objeto será o texto mostrado
-  # antes dos textos com as descrições de cada opção de customização do 
-  # script.
-  customizar = parser.add_argument_group("Opções de customização")
-
-  # Cria um objeto cuja referência será armazenada em ajuda para criar 
-  # um grupo somente com a opção de ajuda, sendo que a string  "Ajuda" 
-  # passada ao criar o objeto será o texto mostrado antes do texto da 
-  # opção de ajuda.
-  ajuda = parser.add_argument_group("Ajuda")
 
   # Adiciona ao grupo de opções gerais, referenciado por opções, a opção
   # -r ou --run que permite ao usuário executar o script gerado com a 
@@ -513,116 +643,6 @@ def process_script_args():
     help="Mostra somente a sugestão para os parâmetros do script."
   )
 
-  # Adiciona ao grupo de opções de customização, referenciado por 
-  # customizar, a opção -n ou --nodes que permite ao usuário definir os
-  # possíveis valores da variável de configuração que define o números
-  # de nós. O uso da opção habilita o uso das configurações otimizadas,
-  # e as outras opções referentes às outras variáveis de configuração
-  # serão definidas em '1' se não forem definidas pelo usuário. O
-  # parâmetro "type" com a classe str define que o parâmetro usa
-  # strings, o parâmetro "nargs" com a string "+" indica que o
-  # parâmetro recebe uma ou mais strings (devido ao "type" ser "str"),
-  # o parâmetro "default" define que o valor default da opção, se não
-  # passada, é None, e o parâmetro "help" define uma descrição para a
-  # opção.
-  customizar.add_argument(
-    "-n", "--nodes", 
-    type=str, 
-    nargs="+", 
-    default=None, 
-    help=textwrap.dedent
-    (
-      """\
-        Lista com os possíveis números de nós, se a aplicação usa múltiplos 
-        nós.
-        Usada conjuntamente com as opções -p e -t, que terão os valores 
-        padrão se não forem usadas.
-        Cada elemento da lista está no formato i:e:s, onde i é o número 
-        inicial, f é o final e s é o passo.
-        Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o 
-        s, que será igual a 1.
-        Default 1:1.
-
-          Exemplos: -n 1 2:10:2 -> Nós: 1, 2, 4, 6, 8, 10.
-                    -n :10:2    -> Nós: 1, 3, 5, 7, 9.
-                    -n 1:5      -> Nós: 1, 2, 3, 4, 5.                                                                 
-      """
-     )
-  )                      
-
-  # Adiciona ao grupo de opções de customização, referenciado por 
-  # customizar, a opção -p ou --process que permite ao usuário definir
-  # os possíveis valores da variável de configuração que define o
-  # números de processos por nó. O uso da opção habilita o uso das
-  # configurações otimizadas, e as outras opções referentes às outras
-  # variáveis de configuração serão definidas em '1' se não forem
-  # definidas pelo usuário. O parâmetro "type" com a classe str define
-  # que o parâmetro usa strings, o parâmetro "nargs" com a string "+"
-  # indica que o parâmetro recebe uma ou mais strings (devido ao "type"
-  # ser "str"), o parâmetro "default" define que o valor default da
-  # opção, se não passada, é None, e o parâmetro "help" define uma
-  # descrição para a opção.
-  customizar.add_argument(
-    "-p", "--process", 
-    type=str, 
-    nargs="+", 
-    default=None, 
-    help=textwrap.dedent(
-      """\
-        Lista com os possíveis números de processos, se a aplicação usa 
-        múltiplos processos por nó.
-        Usada conjuntamente com as opções -n e -t, que terão os valores 
-        padrão se não forem usadas.
-        Cada elemento da lista está no formato i:e:s, onde i é o número
-        inicial, f é o final e s é o passo.
-        Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o 
-        s, que será igual a 1.
-        Default 1:1.
-
-        Exemplos: -p 1 2:      -> Processos: 1, 2.
-                  -p 1 :3:1    -> Processos: 1, 2, 3.
-                  -p :3 6:12:3 -> Processos: 1, 2, 3, 6, 9, 12                                                                  
-      """
-    )
-  )
-
-  # Adiciona ao grupo de opções de customização, referenciado por
-  # customizar, a opção -t ou --threads que permite ao usuário definir
-  # os possíveis valores da variável de configuração que define o
-  # números de threads por processo. O uso da opção habilita o uso das
-  # configurações otimizadas, e as outras opções referentes às outras
-  # variáveis de configuração serão definidas em '1' se não forem
-  # definidas pelo usuário. O parâmetro "type" com a classe str define
-  # que o parâmetro usa strings, o parâmetro "nargs" com a string "+"
-  # indica que o parâmetro recebe uma ou mais strings (devido ao "type"
-  # ser "str"), o parâmetro "default" define que o valor default da
-  # opção, se não passada, é None, e o parâmetro "help" define uma
-  # descrição para a opção.
-  customizar.add_argument(
-    "-t", "--threads", 
-    type=str, 
-    nargs="+", 
-    default=None, 
-    help=textwrap.dedent(
-      """\
-        Lista com os possíveis números de threads, se a aplicação usa 
-        múltiplas threads por processo.
-        Usada conjuntamente com as opções -n e -p, que terão os valores 
-        padrão se não forem usadas.
-        Cada elemento da lista está no formato i:e:s, onde i é o número 
-        inicial, f é o final e s é o passo.
-        Pode-se omitir o i, que será igual a 1, o e, que será igual a i, e o 
-        s, que será igual a 1.
-        Default 1:1.
-
-        Exemplos: -t 1 2:24:2 -> Threads: 1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 
-                                          20, 22, 24
-                  -t 2 :24:8  -> Threads: 2, 24, 32, 40, 48.
-                  -t 2 24 48  -> Threads: 2, 24, 48.  
-      """
-    )
-  )
-
   # Adiciona ao grupo de opções gerais, referenciado por opcoes, a opção
   # -v ou --verbose que habilita a verbosidade do script de otimização,
   # mostrando diversas informações sobre o processo de escolha da melhor
@@ -651,6 +671,162 @@ def process_script_args():
          "script."
   )
 
+  # Descobre a chave da configuração da aplicação no dicionário com as
+  # configurações de todas as aplicações, se o nome da aplicação foi 
+  # passado pelo usuário logo após o separador "--" estiver associado a
+  # um dos possíveis nomes 
+  if application_name is not None:
+    application_id = find_application_config(applications_config, 
+                                             application_name)
+    # Verifica se conseguimos identificar a aplicação, para mostrar 
+    # corretamente as opções de customização de acordo com a aplicação.
+    if application_id is not None:
+      # Como conseguimos identificar a aplicação, define uma lista com
+      # os nomes das opções que podem user usadas pela aplicação ao 
+      # customizar as componentes de uma configuração. O nome pode ser
+      # obtido a partir das chaves do dicionário definido na chave 
+      # 'suggestions_map' do dicionário referenciado pela chave 'user'
+      # com as configrações do script de configuração, no dicionáro com
+      # todas as configurações da aplicação, cuja chave no dicionário
+      # com as configurações de todas as aplicações applications_configs
+      # é dada por application_id. 
+      possiveis_opcoes_configuracao = applications_config[application_id][
+        'user']['suggestions_map']
+
+      # Cria um objeto cuja referência será armazenada em opcoes para 
+      # agrupar as opções de customização dos recursos (compomentes) de 
+      # cada configuração avaliada, sendo que a string "Opções de 
+      # customização" passada ao criar o objeto será o texto mostrado
+      # antes dos textos com as descrições de cada opção de customização
+      # do script.
+      customizar = parser.add_argument_group("Opções de customização")
+      # Adiciona ao grupo de opções de customização, referenciado por 
+      # customizar, a opção -n ou --nodes que permite ao usuário definir 
+      # os possíveis valores da variável de configuração que define os
+      # números de nós. O uso da opção habilita o uso das configurações
+      # otimizadas, e as outras opções referentes às outras variáveis de
+      # configuração serão definidas em '1' se não forem definidas pelo
+      # usuário. O parâmetro "type" com a classe str define que o
+      # parâmetro usa strings, o parâmetro "nargs" com a string "+"
+      # indica que o parâmetro recebe uma ou mais strings (devido ao
+      # "type" ser "str"), o parâmetro "default" define que o valor
+      # default da opção, se não passada, é None, e o parâmetro "help"
+      # define uma descrição para a opção. A opção somente será
+      # adicionada a lista de customização das componetes somente se a
+      # aplicação poder definir o recurso alocado pela componente.
+      if 'nodes' in possiveis_opcoes_configuracao:
+        customizar.add_argument(
+          "-n", "--nodes", 
+          type=str, 
+          nargs="+", 
+          default=None, 
+          help=textwrap.dedent
+          (
+            """\
+              Lista com os possíveis números de nós, se a aplicação usa 
+              múltiplos nós.
+              Usada conjuntamente com as outras opções de configuração, que
+              terão os valorespadrão se não forem usadas.
+              Cada elemento da lista está no formato i:e:s, onde i é o número 
+              inicial, f é o final e s é o passo.
+              Pode-se omitir o i, que será igual a 1, o e, que será igual a i, 
+              e o s, que será igual a 1.
+              Default 1:1.
+
+                Exemplos: -n 1 2:10:2 -> Nós: 1, 2, 4, 6, 8, 10.
+                          -n :10:2    -> Nós: 1, 3, 5, 7, 9.
+                          -n 1:5      -> Nós: 1, 2, 3, 4, 5.                                                                 
+            """
+          )
+        )                      
+
+      # Adiciona ao grupo de opções de customização, referenciado por 
+      # customizar, a opção -p ou --process que permite ao usuário
+      # definir os possíveis valores da variável de configuração que
+      # define o números de processos por nó. O uso da opção habilita o
+      # uso das configurações otimizadas, e as outras opções referentes
+      # às outras variáveis de configuração serão definidas em '1' se
+      # não forem definidas pelo usuário. O parâmetro "type" com a
+      # classe str define que o parâmetro usa strings, o parâmetro 
+      # "nargs" com a string "+" indica que o parâmetro recebe uma ou
+      # mais strings (devido ao "type" ser "str"), o parâmetro "default" 
+      # define que o valor default da opção, se não passada, é None, e o
+      # parâmetro "help" define uma descrição para a opção. A opção
+      # somente será adicionada a lista de customização das componetes
+      # somente se a aplicação poder definir o recurso  alocado pela
+      # componente.
+      if 'process' in possiveis_opcoes_configuracao:
+        customizar.add_argument(
+          "-p", "--process", 
+          type=str, 
+          nargs="+", 
+          default=None, 
+          help=textwrap.dedent(
+            """\
+              Lista com os possíveis números de processos, se a aplicação usa 
+              múltiplos processos por nó.
+              Usada conjuntamente com as outras opções de configuração, que
+              terão os valores padrão se não forem usadas.
+              Cada elemento da lista está no formato i:e:s, onde i é o número
+              inicial, f é o final e s é o passo.
+              Pode-se omitir o i, que será igual a 1, o e, que será igual a i,
+              e o s, que será igual a 1.
+              Default 1:1.
+
+              Exemplos: -p 1 2:      -> Processos: 1, 2.
+                        -p 1 :3:1    -> Processos: 1, 2, 3.
+                        -p :3 6:12:3 -> Processos: 1, 2, 3, 6, 9, 12                                                                  
+            """
+          )
+        )
+
+      if 'threads' in possiveis_opcoes_configuracao:
+        # Adiciona ao grupo de opções de customização, referenciado por
+        # customizar, a opção -t ou --threads que permite ao usuário
+        # definir os possíveis valores da variável de configuração que
+        # define o números de threads por processo. O uso da opção
+        # habilita o uso das configurações otimizadas, e as outras
+        # opções referentes às outras variáveis de configuração serão
+        # definidas em '1' se não forem definidas pelo usuário. O
+        # parâmetro "type" com a classe str define que o parâmetro usa
+        # strings, o parâmetro "nargs" com a string "+" indica que o
+        # parâmetro recebe uma ou mais strings (devido ao "type" ser
+        # "str"), o parâmetro "default" define que o valor default da
+        # opção, se não passada, é None, e o parâmetro "help" define uma
+        # descrição para a opção. A opção somente será adicionada a
+        # lista de customização das componetes somente se a aplicação
+        # poder definir o recurso  alocado pela componente.
+        customizar.add_argument(
+          "-t", "--threads", 
+          type=str, 
+          nargs="+", 
+          default=None, 
+          help=textwrap.dedent(
+            """\
+              Lista com os possíveis números de threads, se a aplicação usa 
+              múltiplas threads por processo.
+              Usada conjuntamente com as outras opções de configuração, que  
+              terão os valores padrão se não forem usadas.
+              Cada elemento da lista está no formato i:e:s, onde i é o número 
+              inicial, f é o final e s é o passo.
+              Pode-se omitir o i, que será igual a 1, o e, que será igual a i,  
+              e o s, que será igual a 1.
+              Default 1:1.
+
+              Exemplos: -t 1 2:24:2 -> Threads: 1, 2, 4, 6, 8, 10, 12, 14, 16,  
+                                                18, 20, 22, 24
+                        -t 2 :24:8  -> Threads: 2, 24, 32, 40, 48.
+                        -t 2 24 48  -> Threads: 2, 24, 48.  
+            """
+          )
+        )
+
+  # Cria um objeto cuja referência será armazenada em ajuda para criar 
+  # um grupo somente com a opção de ajuda, sendo que a string  "Ajuda" 
+  # passada ao criar o objeto será o texto mostrado antes do texto da 
+  # opção de ajuda.
+  ajuda = parser.add_argument_group("Ajuda")
+
   # Adiciona ao grupo de ajuda, referenciado por ajuda, a opção -h ou
   # --help que mostra a ajuda do script de otimização, com a descrição
   # da linha de comando e quais são as opções disponíveis e como elas
@@ -662,56 +838,6 @@ def process_script_args():
     action="help", 
     help="Mostra esta mensagem de ajuda e sai."
   )
-
-  # Define a string "--" usada para definir, nos parâmetros passados ao
-  # script quando o usuário executou ele no terminal, o ponto em que
-  # temos os parâmetros do script nos patâmetros do primeiro até o
-  # parâmetro igual à string, e o que vem depois deste parâmetro, o 
-  # nome da aplicação seguido pelos parâmetros da aplicação. 
-  # TODO: Defini o valor fixo "--"" porque é o usado na maior parte dos
-  # programas e scrips para separar os parâmetros do script dos da 
-  # aplicação que o script trata,
-  application_param_separator = '--'
-
-  # Verifica a string application_param_separator que define o serapador
-  # está na lista de argumntos passados ao script e dados na lista
-  # sys.argv.
-  if application_param_separator in sys.argv:
-    # Como o separador está na lista, primeiramente descobrimos a sua
-    # posição separator_pos na lista,
-    separator_pos = sys.argv.index(application_param_separator)
-
-    # Como as listas do Python são indexadas a partir da posição 0, e
-    # como o primeiro parâmetro da lista sys.argv sempre será, como em
-    # outros comandos de terminal do Linux e suas variantes, o nome do
-    # script de otimização, então os parâmetros do script de otimização
-    # estarão na posição de 1 até separator_pos - 1. A lista com esses
-    # parâmetros será armazenada em script_args.
-    script_args = sys.argv[1:separator_pos]
-
-    # Já o nome da aplicação e os parâmetros da aplicação estarão na
-    # posição de separator_pos + 1 até o final da lista. A lista com
-    # o nome da plicação e os seus parâmetros será armazenada em 
-    # application_args. Note que a sintaxe do script de otimização exige
-    # que o primeiro elemento dessa lista seja o nome da aplicação. 
-    application_args = sys.argv[separator_pos+1:]
-
-    # Apesar de o usuário ter usado o separador, ainda precisamos 
-    # verificar se ele passou um nome da aplicação e pelo menos um
-    # parâmetro da aplicação, pois precisamos de no mínimo um parâmetro
-    # da aplicação para treinar o preditor para a aplicação;
-  else:
-    # Se o separador não estiver na lista, então todos os parâmetros
-    # serão atribuídos a lista de parâmetros do script de otimização.
-    # TODO: Eu preciso verificar se é necessário usar a função do 
-    # analisador da linha de comando para processar a linha de comandos
-    # neste caso, porque o script não irá executar já que nção foi
-    # definido o nome e nem os parâmetros da aplicação.
-    script_args = sys.argv[1:]
-
-    # Como não foi usado o separador, então não foi passado o nome da
-    # aplicação e nem a lisra de argumentos. 
-    application_args = None
 
   # Processa os parâmetros passados ao script de otimização, que inclui
   # os parâmtros relacionados ao script de submissão baseado na melhor
@@ -2261,85 +2387,6 @@ def submission_log(application_config, system_config, suggestion,
     # aplicação do usuário otimizada pelo script de otimização..
     return False
 
-def find_application_config(applications_config, application_name):
-  """
-  Função para procurar e retornar a chave referenciando as configurações
-  de uma aplicação identificada pelo seu executável, que pode ser um dos
-  nomes de executáveis dados na lista referenciada pela chave 
-  'executable_names' do dicionário refenciado pela chave 'user' do 
-  dicionário com as configurações de uma aplicação. Será escolhida a
-  primeira aplicação para a qual o nome do executável está na sua lista
-  de executáveis logo, para evitar inconsistências, duas aplicações 
-  diferentes, mesmo que sejam variações da mesma aplicação, por exemplo,
-  compiladas para usar somente MPI ou MPI com OpenMP, não podem ter o 
-  mesmo nome para o executável.
-
-  Parâmetros:
-    applications_config (dict): Dicionário com todas as configurações
-                                das aplicações que podem ser otimizadas
-                                pelo script de otimização, sendo que
-                                cada chave, associada e identificando
-                                uma aplicação, tem uma referência para o
-                                dicionário com as configurações dessa
-                                aplicação.
-    application_name (str): Nome de um dos possíveis arquivos
-                            executáveis da aplicação, passados pelo
-                            usuário como o primerio parâmetro da
-                            aplicação, que identifica a aplicação que o
-                            usuário está tentando otimizar (o parâmetro
-                            que vem logo após do separador '--'). 
-
-  Retorna:
-    str | None: String com o nome que identifica a aplicação, ou seja, a
-                chave no dicionário applications_config com a referência
-                para o dicionário com as configurações da aplicação que 
-                possui como possíveis nomes de executáveis o nome dado
-                em application_name. Se application_name não for achado
-                em nenhum dos nomes de executáveis, considerando cada
-                aplicação definida pelas chaves do dicionário
-                applications_config, então será retornado None para
-                indicar que esta aplicação não é ainda suportada e
-                portanto não pode ser otimizada.
-  """
-
-  # Iniializa a variável que armazenará a chave da aplucação no
-  # dicionário applications_config com None, inicialmente indicando que
-  # a aplicação cujo executável é passado em application_name não é
-  # suportada.
-  application_id = None
-
-  # Para verificar se application_name é um possível nome de executável
-  # de uma das aplcações suportadas, precisamos percorrer todas as
-  # chaves do dicionário applications_config.
-  for application_id_aux in applications_config.keys():
-    # Verifica se application_name é um dos executáveis da aplicação
-    # para a qual estamos verificando os seus possíveis executáveis,
-    # identificada pela chave application_id_aux. Para fazer isso, basta
-    # verificar se a string application_name está dentro (é uma das
-    # strings, usando o operador in) da lista definida pela chave
-    # 'executable_names' do dicionário referenciado pela chave 'user',
-    # comctodos os possíveis nomes dos executáveis para a aplicação
-    # identificada por application_id_aux.
-    if application_name in (
-      applications_config[application_id_aux]['user']['executable_names']
-    ):
-      # Se o application_name for um dos nomes dos executáveis, então
-      # encontramos a chave no dicionário applications_config, ou seja,
-      # a string application_id_aux. Logo, definimos application_id, com
-      # a chave da aplicação para a referência application_id_aux, com o
-      # nome da chave da aplicação, e encerramos a verificação, pois já
-      # encontramos a chave identificando a aplucação a ser otimizada.
-      application_id = application_id_aux
-      break
-
-  # Retorna a variável application_id, que terá a chave do dicionário
-  # applications_config com a refência da configuração da aplicação a
-  # ter a sua execução otimizada se application_name for um dos
-  # possíveis executáveis de uma das aplicações ou None em caso
-  # contrário, para indicar que a aplucação não pode ter a sua execução
-  # otimizada.
-  return application_id
-
 def list_applications(applications_config):
   """
   Função para listar todas as aplicações que podem ser otimizadas pelo
@@ -3838,9 +3885,10 @@ def optimize_application(configs_file_path, system_config, applications_config,
 #    if user_args.run:
 
     if user_args.run:
+      print("A")
       job_id = submit_submission_script(script_file_name, 
                                         template_content, 
-                                        user_args.verbose)
+                                        user_config, user_args.verbose)
       if job_id is not None and user_config['enable_submission_log']:
         # Gera o log de submissão do trabalho da aplicação
         # otimizada, que será usado para monitorar o trabalho
@@ -4142,7 +4190,7 @@ if any(
 # application_args: Lista com os parâsmetros da aplicação sendo cada um
 #                   deles uma string. Se o separador "--" não foi 
 #                   definido. será uma lista vazia.
-user_args, application_args = process_script_args()
+user_args, application_args = process_script_args(applications_configs)
 
 # Verifica se algum erro ocorreu ao processar os parâmetros do script de
 # otimização. 
