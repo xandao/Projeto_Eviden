@@ -1,0 +1,67 @@
+{
+  "suggestions_parameters": ["NNodes", "Processo p/ no", "Thread p/ proc."],
+  "application_parameters": ["Bootstrap", "Tamanho"],
+  "name": "raxml",
+  "estimated_parameters": {
+    "suggestion": "EDP",
+    "time": "ElapsedRaw"
+  },
+  "training": {
+    "group_parameters": ["Bootstrap", "Tamanho"],
+    "filter_parameters": ["ElapsedRaw", "Consumo de Energia Total (J)", "EDP"],
+    "dataset_files": [
+      "raxml.csv",
+      "com_edp-1a4n.csv",
+      "saida-final-edp_raxml_isa_sem_5nos.csv",
+      "saida-final-edp_raxml_mica_sem_5nos.csv"
+    ]
+  },
+  "user": {
+    "executable_names": ["raxmlHPC-HYBRID-AVX", "raxml"],
+    "script_template_name": "raxml_template.sh",
+    "suggestions_map": {
+      "nodes": "NNodes",
+      "process": "Processo p/ no",
+      "threads": "Thread p/ proc."
+    },
+    "user_options": {
+      "Bootstrap": {
+        "params": ["-N", "-#"],
+        "type": "integer",
+        "help": "Valor do bootstrap."
+      },
+      "Arquivo": {
+        "params": ["-s"],
+        "type": "string",
+        "help": "Arquivo de entrada com as sequências."
+      }
+    },
+    "conversions": {
+      "Bootstrap": ["copy", "Bootstrap"],
+      "Tamanho": ["filesize", "Arquivo"]
+    },
+    "slurm": [
+      {
+        "partition": "sequana_cpu_dev",
+        "max_time": 1200,
+        "max_memory": 367001600,
+        "exclusive": true,
+        "default": false,
+        "nodes": 4,
+        "process": 2,
+        "threads": 48
+      },
+      {
+        "partition": "sequana_cpu",
+        "max_time": 3600,
+        "max_memory": 367001600,
+        "exclusive": true,
+        "default": true,
+        "nodes": 20,
+        "process": 2,
+        "threads": 48
+      }
+    ],
+    "log_file": "submissions_raxml.csv"
+  }
+}

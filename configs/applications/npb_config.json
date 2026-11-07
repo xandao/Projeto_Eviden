@@ -1,0 +1,81 @@
+{
+  "suggestions_parameters": ["NNodes", "Processo p/ no", "Thread p/ proc."],
+  "application_parameters": [
+    "Zone X",
+    "Zone Y",
+    "Iterações",
+    "Grid X",
+    "Grid Y",
+    "Grid Z"
+  ],
+  "name": "npb",
+  "estimated_parameters": {
+    "suggestion": "EDP",
+    "time": "ElapsedRaw"
+  },
+  "training": {
+    "group_parameters": ["Benchmark", "Classe"],
+    "filter_parameters": ["ElapsedRaw", "Consumo de Energia Total (J)", "EDP"],
+    "dataset_files": [
+      "npb_1.csv",
+      "npb_2.csv",
+      "npb_3.csv",
+      "npb_4.csv",
+      "npb_5.csv",
+      "npb_6.csv"
+    ]
+  },
+  "user": {
+    "executable_names": ["npb.sh"],
+    "script_template_name": "npb_template.sh",
+    "predictor_name": "npb",
+    "suggestions_map": {
+      "nodes": "NNodes",
+      "process": "Processo p/ no",
+      "threads": "Thread p/ proc."
+    },
+    "user_options": {
+      "Benchmark": {
+        "params": ["-b"],
+        "type": "string",
+        "help": "Nome do benchmark."
+      },
+      "Classe": {
+        "params": ["-c"],
+        "type": "string",
+        "help": "Nome da classe do benchmark."
+      }
+    },
+    "conversions": {
+      "Zone X": ["map", "npb_map_table.cvs", "Benchmark", "Classe"],
+      "Zone Y": ["map", "npb_map_table.cvs", "Benchmark", "Classe"],
+      "Iterações": ["map", "npb_map_table.cvs", "Benchmark", "Classe"],
+      "Grid X": ["map", "npb_map_table.cvs", "Benchmark", "Classe"],
+      "Grid Y": ["map", "npb_map_table.cvs", "Benchmark", "Classe"],
+      "Grid Z": ["map", "npb_map_table.cvs", "Benchmark", "Classe"]
+    },
+    "slurm": [
+      {
+        "partition": "sequana_cpu_dev",
+        "max_time": 1200,
+        "max_memory": 367001600,
+        "exclusive": true,
+        "default": false,
+        "nodes": 4,
+        "process": 2,
+        "threads": 48
+      },
+      {
+        "partition": "sequana_cpu",
+        "max_time": 3600,
+        "max_memory": 367001600,
+        "exclusive": true,
+        "default": true,
+        "nodes": 20,
+        "process": 2,
+        "threads": 48
+      }
+    ],
+    "log_file": "submissions_npb.csv"
+  }
+}

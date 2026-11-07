@@ -1,0 +1,32 @@
+#%Module1.0#####################################################################
+##
+## Predictors creator
+##
+
+proc ModulesHelp { } {
+  puts stderr "Adds module applications predictors creator version 0.1.0"
+}
+
+module-whatis "Predictors creator version 0.1.0"
+
+# Santos Dumont 1.0
+set basedir "/scratch/cenapadrjsd/alexandre.porto/trainer_and_optmizer"
+# Santos Dumont 2.0
+#set basedir "prj/cenapadrjsd/alexandre.porto/trainer_and_optmizer"
+
+# Update environment variables
+prepend-path PATH "$basedir/bin"
+
+# Configs base directory
+setenv APPOPTIMIZER_BASE_PATH $basedir
+setenv APPOPTIMIZER_CONFIGS_DIR "configs"
+
+# Actions when the module is LOADED
+if { [module-info mode load] } {
+  module load python/3.9.12_sequana
+}
+
+# Actions when the module is UNLOADED
+if { [module-info mode remove] } {
+  module unload python/3.9.12_sequana
+}

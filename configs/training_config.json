@@ -1,0 +1,91 @@
+{
+	"filter": {
+		"outlier_limit": 100.0
+	},
+	"models": {
+		"ExtraTreesRegressor": {
+			"grid_search_parms": {
+				"max_depth": [
+					5,
+					10,
+					15,
+					null
+				],
+				"n_estimators": [
+					10,
+					20,
+					50,
+					100,
+					120,
+					150
+				]
+			},
+			"fixed_params": {
+				"random_state": 42
+			},
+			"name": "ETR",
+			"import_path": "sklearn.ensemble.ExtraTreesRegressor"
+		},
+		"GradientBoostingRegressor": {
+			"grid_search_parms": {
+				"max_depth": [
+					5,
+					10,
+					15,
+					null
+				],
+				"n_estimators": [
+					10,
+					20,
+					50,
+					100,
+					120,
+					150
+				]
+			},
+			"fixed_params": {
+				"random_state": 42
+			},
+			"name": "GBTR",
+			"import_path": "sklearn.ensemble.GradientBoostingRegressor"
+		},
+		"RandomForestRegressor": {
+			"grid_search_parms": {
+				"max_depth": [
+					5,
+					10,
+					15,
+					null
+				],
+				"n_estimators": [
+					10,
+					20,
+					50,
+					100,
+					120,
+					150
+				]
+			},
+			"fixed_params": {
+				"random_state": 42
+			},
+			"name": "RFR",
+			"import_path": "sklearn.ensemble.RandomForestRegressor"
+		},
+		"DecisionTreeRegressor": {
+			"grid_search_parms": {
+				"max_depth": [
+					5,
+					10,
+					15,
+					null
+				]
+			},
+			"fixed_params": {
+				"random_state": 42
+			},
+			"name": "DTR",
+			"import_path": "sklearn.tree.DecisionTreeRegressor"
+		}
+	}
+}

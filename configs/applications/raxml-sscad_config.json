@@ -1,0 +1,61 @@
+{
+  "suggestions_parameters": ["NNodes", "Thread"],
+  "application_parameters": ["Bootstrap", "Tamanho"],
+  "name": "raxml-sscad",
+  "estimated_parameters": {
+    "suggestion": "EDP",
+    "time": "ElapsedRaw"
+  },
+  "training": {
+    "group_parameters": ["Bootstrap", "Tamanho"],
+    "filter_parameters": ["ElapsedRaw", "Consumo de Energia Total (J)", "EDP"],
+    "dataset_files": ["raxml_sscad.csv"]
+  },
+  "user": {
+    "executable_names": ["raxml-sscad"],
+    "script_template_name": "raxml-sscad_template.sh",
+    "suggestions_map": {
+      "nodes": "NNodes",
+      "threads": "Thread"
+    },
+    "user_options": {
+      "Bootstrap": {
+        "params": ["-N", "-#"],
+        "type": "integer",
+        "help": "Valor do bootstrap."
+      },
+      "Arquivo": {
+        "params": ["-s"],
+        "type": "string",
+        "help": "Arquivo de entrada com as sequências."
+      }
+    },
+    "conversions": {
+      "Bootstrap": ["copy", "Bootstrap"],
+      "Tamanho": ["filesize", "Arquivo"]
+    },
+    "slurm": [
+      {
+        "partition": "sequana_cpu_dev",
+        "max_time": 1200,
+        "max_memory": 367001600,
+        "exclusive": true,
+        "default": false,
+        "nodes": 4,
+        "process": 2,
+        "threads": 48
+      },
+      {
+        "partition": "sequana_cpu",
+        "max_time": 3600,
+        "max_memory": 367001600,
+        "exclusive": true,
+        "default": true,
+        "nodes": 20,
+        "process": 2,
+        "threads": 48
+      }
+    ],
+    "log_file": "submissions_raxml-sscad.csv"
+  }
+}

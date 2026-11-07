@@ -1,0 +1,1119 @@
+# Bibliotecas do Python usadas pelo código do script de treinamento.
+import pandas as pd
+from Utils.Suggestions import (
+  FilterOutliers, 
+  BestHiperparams, 
+  DiscoverBestModel, 
+  SuggestionsPredictor
+)
+from Utils.ReadConfigs import (
+  ReadSystemConfig, 
+  ReadApplicationsConfigs, 
+  ReadTrainingConfig, 
+  PredictorsInfoConfig
+)
+import importlib
+import argparse
+import sys
+import textwrap
+from pathlib import Path
+from functools import partial
+from Utils.Common import (
+  base_files_path_env_name, 
+  base_files_path, 
+  configs_files_dir, 
+  debug_code, 
+  CustomFormatter
+)
+
+def read_configs(verbose=False):
+  """
+  Lê os arquivos de configuração do sistema, das aplicações e do
+  usuário. Retorna uma tupla com os seguintes elementos, referentes às
+  configurações lidas:
+
+  - configs_file_path: Caminho para o diretório de configuração.
+  - system_config: Dicionário com as configurações do sistema.
+  - applications_configs: Dicionário com as configurações das 
+    aplicações.
+  - training_config: Dicionário com as configurações de treinamento dos
+                     modelos a serem avaliados, os hiperparâmetros a 
+                     serem otimizados e outros parâmetros de 
+                     treinamento, como o limite de outliers a ser usado
+                     na filtragem dos dados.
+
+  Se algum dos arquivos de configuração não puder ser lido, a função
+  retorna None para todos os elementos da tupla.
+
+  Parâmetros:
+    verbose (bool): Se True, imprime mensagens detalhadas durante a 
+                    leitura dos arquivos de configuração.
+
+  Retorna:
+    tuple: Uma tupla com os elementos configs_file_path, system_config, 
+           applications_configs e training_config descritos 
+           anteriormente.
+  """
+
+  # Primeiramente verifica se a variável de ambiente com o caminho da 
+  # base do diretório com os arquivos dos scripts está definida,
+  # o que ocorrerá somente se a variável de ambiente 
+  # APPOPTIMIZER_BASE_FILES_PATH estiver definida ao executar o script
+  # de otimização. 
+  if base_files_path is None:
+    # Se a varável de ambiente não estiver definida, imprime uma
+    # mensagem de erro com o nome da variável de ambiente.
+    print(f"❌ Variável de ambiente {base_files_path_env_name} com o caminho "
+          "da base dos scripts não foi definida")
+
+    # Como não temos como ler os arquivos de configuração pois não
+    # sabemos o diretório com as configurações, retorna None para todos
+    # os elementos da tupla.
+    return None, None, None, None
+  else:
+    # Como o diretório base dos arquivos dos scripts está definido,
+    # descobrimos o caminho do diretório com os arquivos de
+    # configuração, que será composto por este diretório base e o
+    # subdiretório definido na variável configs_files_dir (este nome de
+    # subdiretório é definido pela variável de ambiente 
+    # APPOPTIMIZER_CONFIGS_DIR, que pode ser definida pelo adminstrador
+    # do sistema para mudar o valor default "configs" usado quando a
+    # variável não for definida.
+    configs_file_path = base_files_path / configs_files_dir
+
+  # Lê as configurações do sistema, que são usadas para ler as
+  # configurações das aplicações, pois é neste arquivo que está o nome
+  # do diretório com as configurações das aplicações. O caminho do
+  # arquivo de configuração do sistema é composto pelo diretório de 
+  # configuração e o nome do arquivo de configuração do sistema, que é 
+  # definido como "system_config.json". O nome está atualmente fixo no
+  # código, mas podemos no futuro permitir que seja definido por uma
+  # variável de ambiente.
+  system_config_file_path = configs_file_path / 'system_config.json'
+
+  # Lê as configurações do sistema usando a classe ReadSystemConfig, 
+  # usando a função read_system_config, para ler o arquivo de
+  # configuração do sistema e retorna um dicionário com as configurações
+  # lidas. Se o arquivo não puder ser lido, a função retorna None.
+  system_config = ReadSystemConfig(verbose).read_system_config(
+    system_config_file_path
+  )
+
+  # Verifica se as configurações do sistema foram lidas com sucesso, 
+  # pois são necessárias para ler os arquivos de configuração das
+  # aplicações, já que o nome do diretório com os arquivos de
+  # configuração das aplicações está definido no arquivo de configuração
+  # do sistema.
+  if system_config is None:
+    # Se não foi possível ler as configurações do sistema, não podemos
+    # ler as configurações das aplicações, porque não sabemos o nome do
+    # diretório com as configurações das aplicaçõesm, dentro do
+    # diretório de configuração. Neste caso, definimos 
+    # applications_configs como None, para indicar que não foi possível
+    # ler as configurações das aplicações.
+    applications_configs = None
+  else:    
+    # Para ler as configurações das aplicações, precisamos do caminho do
+    # diretório com os arquivos de configuração das aplicações, que é
+    # composto pelo diretório de configuração e o subdiretório definido
+    # na chave "applications_path" do dicionário system_config definido
+    # pelo arquivo de configuração do sistema. 
+    applications_configs_dir_path = (
+      configs_file_path / system_config['applications_path']
+    )
+
+    # Lê as configurações das aplicações usando a classe
+    # ReadApplicationsConfigs, para processar, usando a função 
+    # read_applications_config desta classe, o diretório de configuração
+    # das aplicações e retorna um dicionário com as configurações lidas, 
+    # caso o diretório possa ler lido, tenha os arquivos de configuração 
+    # das aplicações e estes possam ser lidos sem erros. Se algum erro
+    # ocorrer durante o processamento do diretório ou dos arquivos de
+    # configuração das aplicações, a função retorna None.
+    applications_configs = ReadApplicationsConfigs(
+      verbose
+    ).read_applications_config(applications_configs_dir_path)
+
+  # Define o caminho do arquivo de configuração com as informações
+  # referentes ao treinamento dos modelos, que é composto pelo diretório 
+  # de configuração e o nome do arquivo de configuração dos 
+  # treinamentos, que é definido como "training_config.json". O nome
+  # está atualmente fixo no código, mas podemos no futuro permitir que
+  # seja definido por uma variável de ambiente ou no arquivo de
+  # configuração do sistema.
+  training_config_file_path = configs_file_path / 'training_config.json'
+
+  # Lê as configurações usadas pelo treinamento dos modelos, usando a 
+  # classe ReadTrainingConfig, que lê o arquivo de configuração com as
+  # configurações de treinamento, como os modelos a serem avaliados, os
+  # hiperparâmetros a serem otimizados e outros parâmetros de
+  # treinamento, como o limite de outliers a ser usado na filtragem dos
+  # dados. A função read_training_config desta classe retorna um
+  # dicionário com as configurações lidas, caso o arquivo possa ser lido
+  # sem erros. Se algum erro ocorrer durante a leitura do arquivo de
+  # configuração de treinamento, a função retorna None.
+  training_config = ReadTrainingConfig(
+    verbose
+  ).read_training_config(training_config_file_path)
+
+  # Retorna uma tupla com cinco elementos, sendo o primeiro o caminho do
+  # diretório de configuração, o segundo o dicionário com as
+  # configurações do sistema, o terceiro o dicionário com as 
+  # configurações das aplicações e o quarto o dicionário com as
+  # configurações de treinamento. Se algum dos arquivos de configuração 
+  # não pode ser lido, a função retorna None para o arquivo que não foi
+  # lido.
+  return (configs_file_path, system_config, applications_configs, 
+          training_config)
+
+def process_script_args():
+  """
+  Função para processar os argumentos passados para o script de 
+  treinamento. A linha de comando do script deve ser composta pelos
+  parâmetros do script, que são opcionais e atualmente temos somente o
+  parâmetro "-v" ou "--verbose" para habilitar a verbosidade, e pelo 
+  comando a ser executado. O comando a ser executado é obrigatório e 
+  pode ser um dos seguintes:
+
+  - applications: lista todas as aplicações que podemos treinar os 
+                  modelos e que poderão posteriormente serem 
+                  utilizadas pelos usuáriospelo script de otimização 
+                  para gerar as sugestões de configuração de execução
+                  das aplicações.
+  - models: lista os modelos que são avaliados quando formos escolher o 
+             melhor modelo para gerar os preditores de uma das
+             aplicações.
+  - train app1, app2, ..., appn: Faz todo o processo de treinamento, da 
+                                 leitura e filtragem dos dados,
+                                 otimização dos hiperparâmetros dos 
+                                 modelos, escolha do melhor modelo e 
+                                 treinamento deste melhor modelo com
+                                 todos os dados, sendo gerado um modelo
+                                 para auxiliar a geração das sugestões e
+                                 outro, opcional, para predizer o tempo. 
+                                 Cada aplicação da lista é considerada
+                                 na ordem dada e os treinamentos são
+                                 independentes.
+
+  No momento, o script de treinamento possui somente dois parâmetros 
+  opcionais:
+   
+  -v, --verbose: Habilita a verbosidade com informações sobre a melhor
+                 sugestão de configuração escolhida para a aplicação.
+  -h, --help: Mostra a ajuda com as opções do script de treinamento e
+              com a sintaxe da linha de comando.
+
+	Parâmetros:
+    Não tem.
+
+  Retorna:
+    tuple: Uma tupla com os elementos command, verbose e parser, sendo o
+           elemento command uma lista com o comando a ser executado e
+           seus parâmetros se forem necessários (no momento, somente o
+           comando train tem parâmetros, as aplicações para as quais
+           treinaremos o preditor), o elemento verbose um booleano 
+           indicando se a verbosidade está ou não habilitada e o 
+           elemento parser uma referência para o objeto ArgumentParser 
+           que processou os argumentos da linha de comando.                                                 
+  """
+
+  # Inicializa o analisador dos parâmetros do script de treinamento, com
+  # uma descrição do que o script faz (parâmetro "description"), uma
+  # descrição do formato da linha de comando do script (parâmetro
+  # "usage"). Também informamos que vamos definir uma ajuda (help)
+  # customizada, necessário para escrever a ajuda em português
+  # (parâmetro "add_help" com o valor False), e uma classe de
+  # formatação, necessária para lidar com múltiplas linhas e,
+  # no nosso caso, que definimos um objeto da classe customizada 
+  # CustomFormatter, mudar o nome na drescição da linha de comando do
+  # inglês "usage:" para o português "uso" (parâmetro "formatter_class"
+  # com a referência para a classe CustomFormatter customizada para
+  # mostrar o "uso"). 
+  parser = argparse.ArgumentParser(
+    description="Script para treinar os modelos para todas as aplicações cujo "
+                "uso será otimizado.", 
+    usage="trainer [opções] Command [Parâmetros]",
+    add_help=False, 
+    formatter_class=CustomFormatter
+  )
+
+  # Cria um objeto cuja referência será armazenada em opcoes para 
+  # agrupar as opções gerais do script, sendo que a string 
+  # "Opções principais" passada ao criar o objeto será o texto mostrado
+  # antes dos textos com as descrições de cada opção do script, com 
+  # exceção da ajuda, que será colocada em um outro grupo único.
+  opcoes = parser.add_argument_group("Opções principais")
+
+  # Adiciona ao grupo de opções principais, referenciado por opcoes, o
+  # parâmetro command, que é obrigatório e define o comando a ser 
+  # executado. O parâmetro "type" com a classe str define que o 
+  # parâmetro usa strings, o parâmetro "nargs" com a string "*" indica 
+  # que o parâmetro recebe zero ou mais strings (devido ao "type" ser 
+  # "str"), e o parâmetro "help" define uma descrição para a opção. 
+  opcoes.add_argument(
+    "command", 
+    type=str, 
+    nargs='*', 
+    help=textwrap.dedent(
+      """\
+        Comando a ser executado. Pode ser um dos seguintes comandos:
+
+        applications: lista todas as aplicações que podemos treinar os modelos.
+        models: lista os modelos que são avaliados quando os preditores forem 
+                gerados.
+
+        train app1, app2, ..., appn: Faz todo o processo de treinamento, da 
+                                      leitura e filtragem dos dados, otimização 
+                                      dos hiperparâmetros dos modelos, escolha 
+                                      do melhor modelo e treinamento deste 
+                                      melhor modelo com todos os dados, sendo 
+                                      gerado um modelo para auxiliar a geração 
+                                      das sugestões e outro para predizer o 
+                                      tempo.
+
+         Cada aplicação da lista é considerada na ordem dada e os treinamentos 
+         são idependentes, ou seja, passar a lista é equivalente a executar o 
+         script com o comando para cada aplicação isoladamente.
+      """
+    )
+  )
+
+  # Adiciona ao grupo de opções gerais, referenciado por opcoes, a opção
+  # -v ou --verbose que habilita a verbosidade do script de treinamento,
+  # mostrando diversas informações sobre o processo de treinamento dos
+  # modelos e a escoha do melhor modelo para gerar os preditores.
+  opcoes.add_argument(
+    "-v", "--verbose", 
+    action="store_true", 
+    default=False, 
+    help="Habilita a verbosidade do script."
+  )
+
+  # Cria um objeto cuja referência será armazenada em ajuda para criar 
+  # um grupo somente com a opção de ajuda, sendo que a string  "Ajuda" 
+  # passada ao criar o objeto será o texto mostrado antes do texto da 
+  # opção de ajuda.
+  ajuda = parser.add_argument_group("Ajuda")
+
+  # Adiciona ao grupo de ajuda, referenciado por ajuda, a opção -h ou
+  # --help que mostra a ajuda do script de otimização, com a descrição
+  # da linha de comando e quais são as opções disponíveis e como elas
+  # devem ser usadas. O parâmetro "action" com a string "help" define 
+  # que a opção é uma opção de ajuda, e o parâmetro "help" define uma 
+  # descrição para a opção.
+  ajuda.add_argument(
+    "-h", "--help", 
+    action="help", 
+    help="Mostra esta mensagem de ajuda e sai."
+  )
+
+  # Processa os parâmetros passados ao script de treinamento, que inclui
+  # os possíveis comandos descritos anteriormente (applications, models 
+  # e train) e os opções do script de treinamento, a opção de 
+  # verbosidade e a opção de ajuda.
+  args = parser.parse_args()
+
+  # Define se a verbosidade está habilitada ou não, com base no valor do 
+  # parâmetro verbose, cujo valor é True se a opção -v ou --verbose foi 
+  # passada na linha de comando, e False caso contrário. 
+  verbose = args.verbose
+
+  # Define o comando a ser executado, que é uma lista de strings, sendo 
+  # a primeira string o comando a ser executado (applications, models ou
+  # train) e as demais strings, se existirem, os parâmetros do comando.
+  command = args.command
+
+  # Retorna uma tupla com três elementos, sendo o primeiro a lista com o
+  # comando a ser executado e seus parâmetros, o segundo um booleano
+  # indicando se a verbosidade está habilitada ou não e o terceiro uma
+  # referência para o objeto ArgumentParser que processou os argumentos
+  # da linha de comando.
+  return command, verbose, parser
+
+def applications_command(applications_config):
+  """
+  Fumção para executar o comando "applications", que lista todas as 
+  aplicações que podemos treinar os modelos para gerar o preditor, e que 
+  poderão posteriormente serem utilizadas pelos usuários pelo script de 
+  otimização para gerar as sugestões de configuração que permitirão 
+  otimizar a execução das aplicações.  
+
+  Parâmetros:
+    applications_config (dict): Dicionário com todas as configurações
+                                das aplicações que podem ser otimizadas
+                                pelo script de otimização, sendo que
+                                cada chave, associada e identificando
+                                uma aplicação, tem uma referência para o
+                                dicionário com as configurações dessa
+                                aplicação.
+
+  Retorna:
+    bool: Sempre True, pois o comando sempre deveria ser executado com
+          sucesso, já que applications_config é um dicionário e o nome
+          que precisa ser usado no train é o nome interno da aplicação.
+  """
+
+  # Lista todas as aplicações que podem ter os modelos treinados para 
+  # gerar o preditor. Para isso, como cada aplicação é uma chave do 
+  # dicionário applications_config, percorremos todas as chaves desse 
+  # dicionário. 
+  for application_name in sorted(applications_config.keys()):
+    # Para cada chave application_name do dicionário 
+    # applications_config, que é o nome interno da aplicação, imprimimos
+    # esse nome no terminal.
+    print(f"➡️  {application_name}")
+
+  # Como o comando applications sempre deve ser executado com sucesso,
+  # retornamos True.
+  return True
+
+def models_command(training_config):
+  """
+  Função para executar o comando "models", que lista todos os modelos
+  que podem ser treinados.
+
+  Parâmetros:
+    training_config (dict): Dicionário com todas as configurações
+                            de treinamento. Como os dicionários com as
+                            configurações de treinamento dos modelos são 
+                            armazenados no diiconário cuja referência é
+                            definida pela chave "models", então os nomes
+                            dos modelos que podem ser treinados são as
+                            chas desse dicionário, e portanto podemos 
+                            listar as chaves deste dicionário para 
+                            descobrir os modelos que podem ser usados.
+
+  Retorna:
+    bool: True, se o comando foi executado com sucesso, o que somente 
+          não ocorrerá se a chave "models" não existir no dicionário 
+          training_config, e False caso contrário, ou seja, se o acesso
+          à chave gerar uma exceção KeyError. 
+  """
+
+  # Usa um bloco try para garantir que a chave "models" existe no 
+  # dicionário training_config, e caso não exista, captura a exceção 
+  # KeyError.
+  try:
+    # Percorre todas as chaves do dicionário definido pela chave 
+    # "models" do dicionário training_config, que são os nomes dos 
+    # modelos que podem ser treinados.
+    for model_name in training_config['models'].keys():
+      # Para cada chave model_name do dicionário definido pela chave 
+      # "models" do dicionário training_config, que é o nome do modelo, 
+      # imprimimos esse nome no terminal.
+      print(f"➡️  {model_name}")
+
+  # Captura a exceção KeyError caso a chave "models" não exista no
+  # dicionário training_config.    
+  except KeyError as e:
+    # Como a chave "models" não existe no dicionário training_config,
+    # porque a exceção KeyError foi capturada, imprimimos uma mensagem 
+    # de erro no terminal, informando que a chave não foi encontrada no
+    # arquivo de configuração d treinamento.
+    print(f"❌ A chave {e.args[0]} não foi encontrada no arquivo de "
+          "configuração de treinamento, logo não foi possível listar os "
+          "modelos!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Retorna False, pois o comando não pôde ser executado com sucesso.
+    return False
+
+  # Retorna True, pois o comando foi executado com sucesso.
+  return True
+
+def read_predictor_info_config(system_config, verbose=False):
+  """
+  Função para ler o arquivo de configuração com as informações dos
+  preditores.
+
+  Parâmetros:
+    system_config (dict): Dicionário com as configurações gerais
+                          relacionadas aos scripts de otrimização e de
+                          treinamento.
+    verbose (bool): Indica se a verbosidade está habilitada, ou seja, se
+                    deverão ser impressas as mensagens de log.
+
+  Retorna:
+    tuple | None: Uma tupla com três elementos, sendo o primeiro 
+                  elemento o caminho do diretório com os arquivos dos 
+                  preditores e o arquivo com a configuração dos 
+                  preditores, o segundo elemento um dicionário com as
+                  informações dos preditores, e o terceiro elemento uma
+                  referência para o objeto da classe 
+                  PredictorsInfoConfig, que será necessário para
+                  atualizar o arquivo de configuração com as informações
+                  dos preditores. Se algum erro ocorrer durante a
+                  leitura do arquivo de configuração dos preditores, a
+                  função retorna None para o segundo elemento da tupla.
+  """
+  
+  # Define o caminho do diretório com os arquivos dos preditores e do 
+  # arquivo de configuração com qual preditor é o melhor para cada
+  # aplicação.
+  predictors_file_path = (base_files_path / 
+                          Path(system_config['predictors_path']))
+  
+  # Define o caminho do arquivo de configuração com as informações dos
+  # preditores, que contém uma entrada para cada aplicação com o nome do
+  # preditor que foi treinado para essa aplicação e que será o usado ao
+  # gerar as sugestões de configuração de execução da aplicação.
+  predictors_info_file_path = (
+    predictors_file_path / system_config["predictors_info_config_filename"]
+  )
+
+  # Cria um objeto da classe PredictorsInfoConfig, que será usado para
+  # ler o arquivo de configuração com as informações dos preditores e
+  # para atualizar esse arquivo com as informações do preditor que foi
+  # treinado para cada aplicação.
+  predictors_info_config_obj = PredictorsInfoConfig()
+
+  # Lê o arquivo de configuração com as informações dos preditores, que
+  # é um arquivo JSON, e retorna um dicionário com as informações dos
+  # preditores, caso o arquivo possa ser lido sem erros. Se algum erro
+  # ocorrer durante a leitura do arquivo de configuração dos preditores,
+  # a função retorna None.
+  predictors_info_config = (
+      predictors_info_config_obj.read_predictors_info_config(
+          predictors_info_file_path
+      )
+  )
+
+  # Se a verbosidade está habilitada, imprimimos as informações dos
+  # preditores lidas do arquivo de configuração.
+  if verbose:
+    # Imprime uma mensagem de informação indicando cada aplicação e o
+    # nome do arquivo com o preditor que foi treinado para essa
+    # aplicação.
+    print("➡️  Informações dos preditores lidas do arquivo de configuração:")
+    for application_name, predictor_file_name in predictors_info_config.items():
+      # Imprime o nome da aplicação e o nome do arquivo com o preditor
+      # que foi treinado para essa aplicação.
+      print(f"➖➡️  Aplicação: {application_name}; "
+            f"Nome do arquivo com o preditor treinado: {predictor_file_name}")
+    # Imprime uma linha em branco para separar as informações dos
+    # preditores dos outros logs.
+    print("")
+
+  # Retorna uma tupla com três elementos, sendo o primeiro o caminho do
+  # diretório com os arquivos dos preditores e o arquivo com a
+  # configuração dos preditores, o segundo um dicionário com as
+  # informações dos preditores, e o terceiro elemento uma referência
+  # para o objeto usado ao ler o arquivo de configuração com as
+  # informações dos preditores.
+  return (predictors_file_path, predictors_info_config, 
+          predictors_info_config_obj)
+
+def read_training_data(dataset_files, base_files_path, system_config, 
+                       used_columns, verbose=False):
+  """
+  Função para ler os dados de treinamento de uma aplicação, usando as
+  informações da aplicação e do sistema.
+
+  Parâmetros:
+    dataset_files (list): Lista com os nomes dos arquivos com os 
+                          conjuntos de dados a serem lidos e
+                          concatenados.
+    base_files_path (Path): Caminho para o diretório base dos arquivos
+                            de todos os scripts, que é definido pela
+                            variável de ambiente 
+                            APPOPTIMIZER_BASE_FILES_PATH.
+    system_config (dict): Dicionário com as configurações gerais
+                          relacionadas aos scripts de otrimização e de
+                          treinamento. No caso da função, iremos usar
+                          chave 'dataset_path' com o nome do diretório 
+                          em que estão armazenados todos os conjuntos de
+                          dados das aplicações usados nos treinamentos.
+    used_columns (list): Lista com os nomes das colunas a serem lidas
+                         dos arquivos con os conjuntos de dados das
+                         aplicações. Os nomes das colunas vão depender
+                         da aplicação.
+    verbose (bool): Indica se a verbosidade está habilitada, ou seja, se
+                    deverão ser impressas as mensagens de log.
+
+  Retorna:
+    DataFrame | None: Se nenhum erro ocorreu, os conjuntos de dados da 
+                      aplicação, para a qual estamos gerando o preditor, 
+                      lidos e concatenados em um único conjunto de
+                      dados, ou None caso algum erro ocorra durante a 
+                      leitura dos arquivos de dados.
+  """  
+
+  try:
+    # Inicializa um DataFrame vazio que será usado para armazenar as
+    # colunas relevantes (passadas em used_columns) dos arquivos com os 
+    # conjuntos de dados das aplicações.
+    dataset = pd.DataFrame()
+
+    # Percorre todos os arquivos com os conjuntos de dados das
+    # aplicações, que são passados na lista dataset_files.
+    for file_name in dataset_files:
+      # Define o caminho completo do arquivo com o conjunto de dados da
+      # aplicação, que é composto pelo diretório base dos arquivos dos
+      # scripts, pelo subdiretório definido na chave 'dataset_path' do
+      # dicionário system_config e pelo nome do arquivo com o conjunto
+      # de dados da aplicação.
+      full_file_path = (
+        base_files_path / Path(system_config['dataset_path']) /  file_name
+      )
+
+      # Lê o arquivo com o conjunto de dados da aplicação, usando
+      # somente as colunas relevantes passadas em used_columns, e
+      # armazena o resultado em um DataFrame temporário.
+      file_dataset = pd.read_csv(full_file_path, usecols=used_columns)
+      
+      # Concatena o DataFrame temporário com o DataFrame principal, que
+      # irá armazenar todos os conjuntos de dados das aplicações, lidos
+      # e concatenados em um único conjunto de dados.
+      dataset = pd.concat([dataset, file_dataset])
+
+    # Como os índices dos DataFrames lidos podem ser diferentes, e como
+    # o concatenarmos os DataFrames, os índices podem ficar desordenados
+    # e podem haver índices duplicados, então redefinimos os índices do
+    # DataFrame principal.
+    dataset = dataset.reset_index(drop=True)		
+
+    # Se a verbosidade está habilitada, imprimimos o conjunto de dados
+    # original da aplicação e os dados estatísticos referentes a esse
+    # conjunto de dados.
+    if verbose:
+      # Imprime o conjunto de dados original da aplicação final, já com
+      # todos os conjuntos de dados concatenados.
+      print("➖➡️  Conjunto de dados original da aplicação:")
+      print("\n", dataset.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
+            sep="")
+
+      # Imprime os dados estatísticos referentes a esse conjunto de
+      # dados.
+      print("➖➖➡️  Dados estatísticos referentes ao conjunto de dados "
+            "original:")
+      print("\n", dataset.describe().to_markdown(tablefmt="grid", 
+                                                 floatfmt=".2f"), "\n", sep="")
+      
+  # O arquivo não foi encontrado.
+  except FileNotFoundError as e:
+    print(f"❌ O arquivo {full_file_path.name} não foi encontrado!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return None
+  # O caminho é para um diretório e não um arquivo.
+  except IsADirectoryError as e:
+    print(f"❌ O caminho {full_file_path.name} é um diretório!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return None
+  # O arquivo não pôde ser aberto devido a problemas de permissão.
+  except PermissionError as e:
+    print(f"❌ Erro de permissão ao acessar o arquivo {full_file_path.name}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return None
+  # Ocorreu um erro de I/O ao acessar o arquivo.
+  except IOError as e:
+    print(f"❌ Erro de I/O ao acessar o arquivo {full_file_path.name}!")
+    print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return None
+  # Ocorreu um erro de codigicação dos caracteres do arquivo, por 
+  # exemplo, o arquivo está no formato Latin-1 ao invés do UTF-8.
+  except UnicodeDecodeError as e:
+    print("❌ Erro de codificação ao acessar o arquivo "
+          f"{full_file_path.name}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return None
+  # Algumas das colunas especificadas em used_columns não existem no
+  # arquivo.
+  except ValueError as e:
+    print(f"❌ Erro ao processar os dados do arquivo {full_file_path.name}!")
+    print(f"❌ mensagem de erro: {str(e)}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return None
+  # Ocorreu alguma outra exceção inesperada.
+  except Exception as e:
+    print(f"❌ Erro desconhecido ao acessar o arquivo {full_file_path.name}!")
+    print(f"❌ Parâmetros do erro: {e.args}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return None
+
+  return dataset
+
+def filter_training_data(dataset, input_variables, filter_variables, 
+                         outlier_limit, verbose=False):
+  """
+  Função para filtrar os dados de treinamento de uma aplicação, usando as
+  informações da aplicação e do sistema.
+
+  Parâmetros:
+    dataset (DataFrame): Dados de treinamento.
+    input_variables (list): Lista com os nomes das variáveis de entrada.
+    filter_variables (list): Lista com os nomes das variáveis de filtro.
+    outlier_limit (float): Limite para identificação de outliers.
+    verbose (bool): Indica se deve imprimir mensagens de log.
+
+  Retorna:
+    DataFrame | None : O conjunto de dados da aplicação com os outliers 
+                       filtrados, ou seja, com os outliers removidos se
+                       o processo de filtragem for bem sucedido, ou None
+                       caso algum erro ocorra durante o processo de
+                       filtragem dos dados.
+  """
+
+  try:
+    # Cria um objeto da classe FilterOutliers, que será usado para filtrar
+    # os outliers do conjunto de dados da aplicação.
+    dataset_filter = FilterOutliers()
+
+    # Filtra os outliers do conjunto de dados da aplicação dataset, usando
+    # as variáveis de entrada, as variáveis de filtro e o limite para
+    # identificação de outliers. O resultado é um novo conjunto de dados 
+    # da aplicação, com os outliers removidos, que tem que a sua
+    # referência armazenada na variável clean_dataset.
+    clean_dataset = dataset_filter.Filter(dataset, input_variables, 
+                                          filter_variables, outlier_limit)
+
+    # Se a verbosidade está habilitada, imprimimos o conjunto de dados da
+    # aplicação após a filtragem dos outliers e os dados estatísticos
+    # referentes a esse conjunto de dados filtrado.
+    if verbose:
+      # Imprime o conjunto de dados da aplicação após a filtragem dos
+      # outliers.
+      print("➖➡️  Conjunto de dados da aplicação após a filtragem dos "
+            "outliers:")
+      print("\n", clean_dataset.to_markdown(tablefmt="grid", floatfmt=".2f"), 
+            "\n", sep="")
+
+      # Imprime os dados estatísticos referentes a esse conjunto de dados
+      # filtrado.
+      print("➖➖➡️  Dados estatísticos referentes ao conjunto de dados "
+            "filtrado:")
+      print("\n", clean_dataset.describe().to_markdown(tablefmt="grid", 
+                                                      floatfmt=".2f"), "\n", 
+            sep="")
+
+    # Retorna uma referência para o conjunto de dados da aplicação com os
+    # outliers filtrados.
+    return clean_dataset
+
+  # Foi passado um tipo inválido em um dos parâmetros da função Filter.
+  except ValueError as e:
+    print("❌ Erro ao filtrar os outliers do conjunto de dados da "
+          "aplicação!")
+    print(f"❌ mensagem de erro: {str(e)}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return None
+  # Em um dos parâmetros de variáveis da func~ão Filter, foi passada uma
+  # variável que não existe no conjunto de dados da aplicação.
+  except KeyError as e:
+    print("❌ Erro ao filtrar os outliers do conjunto de dados da "
+          "aplicação!")
+    print(f"❌ mensagem de erro: {str(e)}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return None
+  # Ocorreu alguma outra exceção inesperada.
+  except Exception as e:
+    print("❌ Erro desconhecido ao filtrar os outliers do conjunto de dados "
+          "da aplicação!")
+    print(f"❌ Parâmetros do erro: {e.args}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return None
+
+def optimize_hyperparameters(clean_dataset, models, 
+                             suggestion_variables,
+                             application_variables,
+                             group_variables,
+                             suggestion_prediction_variable,
+                             verbose=False): 
+  """
+  Função para otimizar os hiperparâmetros dos modelos de uma aplicação,
+  usando as informações da aplicação e do sistema.
+
+  """
+
+  initialized_models = {}
+
+  for preditor_key, model_info in models.items():
+    if verbose:
+      print(f"➖➡️  Otimizando o modelo {model_info['name']} usando os "
+            f"hiperparâmetros {model_info['grid_search_parms']} e a busca em "
+            "grade:")
+    # Descobre e importa o modelo de modo dinâmico.
+    module_path, model_name = model_info['import_path'].rsplit(".", 1)
+    # Importa e obtem dinamicamente o modelo.
+    model_module = importlib.import_module(module_path)
+    model = getattr(model_module, model_name)
+
+    # Faz a otimização dos hiperparâmetros.
+    best_hyper = BestHiperparams(verbose=debug_code)
+    best_params, best_score = best_hyper.optimize(
+      clean_dataset, 
+      suggestion_variables,
+      application_variables,
+      group_variables,
+      suggestion_prediction_variable, 
+      model() if model_info['fixed_params'] is None else model(**model_info['fixed_params']),
+      model_info['grid_search_parms']
+      )
+
+    if verbose:
+      print(f"➖➖➡️   Modelo {model_info['name']}: Melhores hiperparâmetros -> "
+            f"{best_params}; Melhor score -> {best_score}")
+      print("➖➖➖➡️  Dataframe com a avaliação de todas as combinações dos "
+            "hiperparâmetros:")         
+      hyperparams_score = best_hyper.get_hyperparams_scores() 
+      print("\n", hyperparams_score.to_markdown(tablefmt="grid", 
+                                                floatfmt=".2f"), "\n", sep="")
+
+
+    if model_info['fixed_params'] is not None:
+        best_params = dict(**best_params, **model_info['fixed_params'])
+    initialized_models[preditor_key] = model(**best_params) 
+
+  return initialized_models, best_params
+
+def choose_best_model(clean_dataset, initialized_models, suggestion_variables,
+                      application_variables, group_variables, 
+                      suggestion_prediction_variable, verbose=False): 
+  """
+  Função para escolher o melhor modelo de uma aplicação, usando as
+  informações da aplicação e do sistema.
+  
+  """
+
+  # Determina o melhor modelo, usando a validacao cruzada.;
+  if verbose:	
+    print("➖➡️    Determinando o melhor modelo dentre os modelos da lista  "
+          f"{', '.join(initialized_models.keys())}, usando a validação "
+          "cruzada com o LOGO:")
+
+  cross_validator = DiscoverBestModel(verbose=debug_code)	
+  (
+    best_model_name, 
+    best_model_score, 
+    results_df, 
+    mean_scores_models_df
+  ) = cross_validator.best_model(clean_dataset, suggestion_variables,
+                                 application_variables, group_variables,
+                                 suggestion_prediction_variable, 
+                                 initialized_models)
+ 
+  if verbose:					
+    print(f"➖➖➡️    Dataframe com os resultados das avaliações dos modelos:")
+    print("\n", results_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
+          sep="")
+    print("➖➖➡️    Dataframe com os resultados médios para cada modelo, "
+          "ordenado do melhor para o pior modelo:")
+    print("\n", mean_scores_models_df.to_markdown(tablefmt="grid", 
+                                                  floatfmt=".2f"), "\n", 
+          sep="")
+
+  return best_model_name, best_model_score 
+
+def generate_application_predictor(clean_dataset, 
+                                            best_model_name, 
+                                            best_model_score,
+                                            best_params,
+                                            suggestion_variables,
+                                            application_variables, 
+                                            group_variables, 
+                                            prediction_variables, 
+                                            verbose=False):
+  """ 
+  Função para treinar o melhor modelo de uma aplicação, usando as
+  informações da aplicação e do sistema.
+
+  """
+
+  print("➖➡️    Treinando agora o preditor com o melhor modelo "
+        f"{best_model_name} (pontuação: {best_model_score}), usando "
+        f"{best_params} como os hiperparâmetros customizados.")
+  # Descobre e importa o modelo de modo dinâmico.
+  module_path, model_name = training_config["models"][best_model_name]['import_path'].rsplit(".", 1)
+  # Importa e obtem dinamicamente o modelo.
+  model_module = importlib.import_module(module_path)
+  model = getattr(model_module, model_name)
+
+  predictor = SuggestionsPredictor()
+  predictor.fit(clean_dataset, suggestion_variables, application_variables,
+                group_variables, prediction_variables, model, best_params, 
+                verbose)
+  if verbose:
+    print('---> Dataframe do oráculo:')
+    oracle_df = predictor.get_oracle()
+    print("\n", oracle_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
+  # Obtém as imformações das importâncias, se o modelo as define  
+  importances_df = predictor.get_importances(verbose=debug_code)
+  if verbose and importances_df is not None:
+    print('---> Dataframe com as importâncias do modelo:')
+    print("\n", importances_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
+  elif verbose:
+    print("---> O modelo não avalia as importâncias das características.")
+
+  return predictor
+
+def save_application_predictor(best_model_name, best_model_import_name, 
+                               predictor,predictors_file_path, 
+                               predictors_info_config,
+                               predictors_info_config_obj, 
+                               suggestion_prediction_variable, 
+                               application_name, application_key, 
+                               verbose=False):
+  """ 
+  Função para treinar o melhor modelo de uma aplicação, usando as
+  informações da aplicação e do sistema.
+
+  """
+
+  preditor_file_name = (predictors_file_path / 
+                        f"{application_name}_{best_model_import_name}_"
+                        f"{suggestion_prediction_variable}.pickle")
+  # Removendo o arquivo anterior do preditor da aplicação, se existir.
+  if application_key in predictors_info_config:
+    old_preditor_file_name = predictors_info_config[application_key]
+    old_preditor_file_path = predictors_file_path / f"{old_preditor_file_name}"
+    if verbose:
+      print(f'--> Removendo o preditor antigo {old_preditor_file_name}')  
+    old_preditor_file_path.unlink(missing_ok=True)
+  
+  # Salva o arquivo do preditor no formato .pickle.
+  print(f"--> Salvando o preditor treinado como o modelo {best_model_name} "
+        f"(nome {best_model_import_name}) no arquivo {preditor_file_name}.")
+
+  predictor.save_predictor(preditor_file_name)
+
+  # Salva as informações do arquivo do modelo do preditor.
+  if verbose:
+    print("--> Salvndo a informação do caminhio do preditor "
+          f"{preditor_file_name} para a aplicação {application_key} no "
+          "arquivo de configuração dos preditores.")
+  predictors_info_config[application_key] = preditor_file_name.name
+  predictors_info_config_obj.save_predictors_info_config(predictors_info_config)
+
+  return True
+
+
+def train_command(applications_name, applications_config, training_config, 
+                  system_config,verbose=False):
+  try:
+    (
+      predictors_file_path, 
+      predictors_info_config, 
+      predictors_info_config_obj
+    ) = read_predictor_info_config(system_config, verbose=verbose)
+
+    if predictors_info_config is None:
+      print("❌ Não foi possível ler o arquivo de configuração com as "
+            "informações dos preditores, logo não foi possível treinar os "
+            "modelos para as aplicações!")
+      return False
+
+    application_name = None
+    
+    for application_key in applications_name:
+      if application_key in applications_config.keys():
+        application_info = applications_config[application_key]
+        application_name = application_info['name']
+
+        if verbose:
+          print(f"\n➡️  Treinando todos os modelos para a aplicação {application_name}")	
+
+        suggestion_variables = application_info['suggestions_parameters'] 
+        application_variables = application_info['application_parameters']  
+        group_variables = application_info['training']['group_parameters'] 
+        filter_variables = application_info['training']['filter_parameters']
+        prediction_variables = application_info['estimated_parameters']        
+        suggestion_prediction_variable = prediction_variables['suggestion']
+
+        input_variables = list(
+            set(
+                suggestion_variables
+                + application_variables
+                + group_variables
+            )
+        )
+
+        dataset_colunms = list(
+            set(
+                input_variables
+                + filter_variables
+                + list(prediction_variables.values())
+            )
+        )
+    
+        # Variáveis usadas no programa
+
+        dataset_list = application_info['training']['dataset_files']
+
+        dataset = read_training_data(dataset_list, base_files_path, 
+                                     system_config, dataset_colunms, 
+                                     verbose=verbose)
+
+        # Filtra os dados.
+        outlier_limit = training_config['filter']['outlier_limit']
+
+        #training_config['filter']['outlier_limit']
+        clean_dataset = filter_training_data(dataset, input_variables, 
+                                             filter_variables, outlier_limit, 
+                                             verbose=verbose)
+
+        if verbose:
+          print(f"➖➡️  Predições para a variável alvo {suggestion_prediction_variable}")
+
+
+        models = training_config['models']
+        
+        initialized_models, best_params = optimize_hyperparameters(
+          clean_dataset,
+          models,
+          suggestion_variables,
+          application_variables,
+          group_variables,
+          suggestion_prediction_variable,
+          verbose
+        )
+
+        best_model_name, best_model_score = choose_best_model(
+          clean_dataset, 
+          initialized_models, 
+          suggestion_variables,
+          application_variables, 
+          group_variables, 
+          suggestion_prediction_variable, 
+          verbose
+        ) 
+
+        predictor = generate_application_predictor(clean_dataset, 
+                                                   best_model_name, 
+                                                   best_model_score, 
+                                                   best_params,
+                                                   suggestion_variables,
+                                                   application_variables,
+                                                   group_variables,
+                                                   prediction_variables,
+                                                   verbose)
+
+        best_model_import_name = models[best_model_name]['name']
+
+        status = save_application_predictor(best_model_name, 
+                                            best_model_import_name,
+                                            predictor, predictors_file_path, 
+                                            predictors_info_config, 
+                                            predictors_info_config_obj, 
+                                            suggestion_prediction_variable, 
+                                            application_name, application_key)
+
+        if not status:
+          print("❌ Erro ao salvar o novo preditor para a aplicação "
+                f"{application_name}!")
+
+      else:  
+          print(f"⚠️  Ignorando aplicação desconhecida {application_key}!")
+
+    return True
+  except KeyError as e:
+    if application_name is None:
+      print("❌ Erro ao processar uma das estruturas indexadas por chave, a "
+            f"chave {e.args[0]} não existe, quando inicializando os "
+            "treinamentos das aplicações!")
+    else:
+      print("❌ Erro ao processar uma das estruturas indexadas por chave, a "
+            f"chave {e.args[0]} não existe, quando gerando o preditor para a "
+            f"aplicação {application_name}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return False
+  except AttributeError as e:
+    if application_name is None:
+      print("❌ Erro ao acessar um dos objetos internos do script, um dos "
+            "seus atributo não existe, quando inicializando os treinamentos "
+            "das aplicações!")
+    else:
+      print("❌ Erro ao acessar um dos objetos internos do script, um dos "
+            "seus atributo não existe, quando gerando o preditor para a "
+            f"aplicação {application_name}!")
+    print(f"❌ Erro gerado: '{e.args[0]}'")  
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return False
+  except ValueError as e:
+    if application_name is None:
+      print("❌ Erro ao inicializar ou usar estruturas internas do script, "
+            "quando inicializando os treinamentos das aplicações!")
+    else:
+      print("❌ Erro ao inicializar ou usar estruturas internas do script, "
+            f"quando gerando o preditor para a aplicação {application_name}!")
+    print(f"❌ Erro gerado: '{e.args[0]}'")  
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return False
+  except FileNotFoundError as e:
+    print(f"❌ Erro ao acessar o arquivo no caminho {e.filename}, o arquivo "
+          "não existe!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return False
+  except IsADirectoryError as e:
+    print(f"❌ Erro ao acessar o arquivo no caminho {e.filename}, o arquivo "
+          "é na verdade um diretório!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return False
+  except PermissionError as e:
+    print(f"❌ Erro ao acessar o arquivo no caminho {e.filename}, permissão "
+          "de acesso negada!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return False
+  except IOError as e:
+    print(f"❌ Erro de I/O ao ler o arquivo {e.filename}!")
+    print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return False
+  except Exception as e:
+    if application_name is None:
+      print("❌ Erro desconhecido ao inicializar os treinamentos das "
+            "aplicações!")
+    else:
+      print("❌ Erro desconhecido ao gerar o preditor para a aplicação "
+            f"{application_name}")
+    print(f"❌ Parâmetros do erro: {e.args}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return False
+
+def execute_commands(command, applications_configs, training_config, 
+                     system_config, verbose):
+ commands_dict = {
+   'applications': partial(applications_command, applications_configs),
+   'models': partial(models_command, training_config),
+   'train': partial(train_command, command[1:], applications_configs, training_config, system_config, verbose=verbose)  
+ } 
+
+ if len(command) > 0 and command[0] in commands_dict.keys():
+   Status = commands_dict[command[0]]()
+   if not Status:
+     print(f"Erro ao executar o comando {command[0]}!")
+   return Status
+ else:  
+  if command:
+    print(f"Comando {command[0]} inválido!")
+  else:  
+    print(f"O comando necessário não foi fornecido!")
+  return False
+    
+# Lê as configuraçoes;
+(
+  configs_file_path, 
+  system_config, 
+  applications_configs, 
+  training_config
+)  = read_configs(debug_code)
+
+if any(
+  v is None for v in [
+    configs_file_path, 
+    system_config,
+    applications_configs,
+    training_config
+  ]
+):
+  print("❌ Erro ao ler uma das configurações!")
+  exit(-1)
+
+# Processa os parâmetros do script.
+command, verbose, parser = process_script_args()
+
+# Executa os comandos do script.
+status = execute_commands(command, applications_configs, training_config, system_config, verbose)
+
+# Verifica se ocorreu algum erro.
+if not status:
+  exit(-2)

@@ -1,0 +1,9 @@
+{
+  "collect_consumed_energy": false,
+  "default_script_name": "script.sh",
+  "enable_submission_log": true,
+  "slurm": {
+    "submission_program": "sbatch",
+    "submission_message": ".*Submitted batch job (\\d+).*"
+  }
+}
