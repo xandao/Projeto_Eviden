@@ -15,10 +15,10 @@ import os
 from functools import partial
 import subprocess
 from Utils.Common import (
-  base_files_path_env_name, 
-  base_files_path, 
-  configs_files_dir, 
-  debug_code, 
+  BASE_FILES_PATH_ENV_NAME, 
+  BASE_FILES_PATH, 
+  CONFIGS_FILES_DIR, 
+  DEBUG_CODE, 
   CustomFormatter
 )
 import textwrap
@@ -57,10 +57,10 @@ def read_configs(verbose=False):
   # o que ocorrerá somente se a variável de ambiente 
   # APPOPTIMIZER_BASE_FILES_PATH estiver definida ao executar o script
   # de otimização. 
-  if base_files_path is None:
+  if BASE_FILES_PATH is None:
     # Se a varável de ambiente não estiver definida, imprime uma
     # mensagem de erro com o nome da variável de ambiente.
-    print(f"❌ Variável de ambiente {base_files_path_env_name} com o caminho "
+    print(f"❌ Variável de ambiente {BASE_FILES_PATH_ENV_NAME} com o caminho "
           "da base dos scripts não foi definida")
 
     # Como não temos como ler os arquivos de configuração pois não
@@ -71,12 +71,12 @@ def read_configs(verbose=False):
     # Como o diretório base dos arquivos dos scripts está definido,
     # descobrimos o caminho do diretório com os arquivos de
     # configuração, que será composto por este diretório base e o
-    # subdiretório definido na variável configs_files_dir (este nome de
+    # subdiretório definido na variável CONFIGS_FILES_DIR (este nome de
     # subdiretório é definido pela variável de ambiente 
     # APPOPTIMIZER_CONFIGS_DIR, que pode ser definida pelo adminstrador
     # do sistema para mudar o valor default "configs" usado quando a
     # variável não for definida.
-    configs_file_path = base_files_path / configs_files_dir
+    configs_file_path = BASE_FILES_PATH / CONFIGS_FILES_DIR
 
   # Lê as configurações do sistema, que são usadas para ler as
   # configurações das aplicações, pois é neste arquivo que está o nome
@@ -179,7 +179,7 @@ def read_configs(verbose=False):
     # definido na chave "predictors_info_config_filename" do dicionário
     # system_config.
     predictors_info_file_path = (
-        base_files_path
+        BASE_FILES_PATH
         / Path(system_config["predictors_path"])
         / system_config["predictors_info_config_filename"]
     )
@@ -773,7 +773,7 @@ def process_args(applications_config):
       # Como o usuário não passou o nome da aplicação, precisamos 
       # informar um erro para o usuário informando que é necessário 
       # fornecer o nome da aplicação.
-      print("⚠️  Não foi definido o nome da aplicação e pelo menos um "
+      print("⚠️ Não foi definido o nome da aplicação e pelo menos um "
             "argumento da aplicação!")
       
       # Como ocorreu um erro devido ao usuário não fornecer a aplicação,
@@ -783,7 +783,7 @@ def process_args(applications_config):
     # Se o usuário passou um nome da aplicação, que na verdade é um nome
     # do executável, e se application_id for None, então a aplicação não
     # é uma das que podem ser otimizadas pelo script de otimização. 
-      print(f"⚠️  A otimização da execução da aplicação {application_args[0]} "
+      print(f"⚠️ A otimização da execução da aplicação {application_args[0]} "
             "ainda não é suportada!")
     
   # Retorna a tupla composta pelo objeto da classe NameSpace com os 
@@ -1501,8 +1501,8 @@ def convert_user_params(required_applicaion_params, conversions,
       # do Pandas, mostrando o nome do arquivo dataframe_map_file_name e
       # a tabela lida, usando a referência ao dataframe com a tabela
       # colocada em df_map. 
-      if debug_code:
-        print(f"➡️  Tabela com o mapeamento {dataframe_map_file_name}:")
+      if DEBUG_CODE:
+        print(f"🐛 Tabela com o mapeamento {dataframe_map_file_name}:")
         print("\n", df_map.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
               sep="")
 
@@ -2130,8 +2130,7 @@ def generate_submission_script(template_file_path, template_params):
 
 def submission_log(application_config, system_config, suggestion, 
                    template_params, required_applicaion_params,  
-                   user_application_params, application_args, job_id, 
-                   verbose=False):
+                   user_application_params, application_args, job_id):
   """
   Função para gerar o log de submissão do trabalho para a aplicação, 
   quando esse trabalho for automaticamente submetido pelo usuário, pois
@@ -2305,7 +2304,7 @@ def submission_log(application_config, system_config, suggestion,
   # submissões feitas para a aplicação cujas configurações estão em
   # application_args.
   try:
-    log_filepath = (base_files_path / Path(system_config['logs_path']) 
+    log_filepath = (BASE_FILES_PATH / Path(system_config['logs_path']) 
                     / f"{application_config['user']['log_file']}")
     if log_filepath.is_file():
       # O arquivo com os logs de otimização dos usuários para a
@@ -2361,8 +2360,8 @@ def submission_log(application_config, system_config, suggestion,
     # anteriores, se existirem. Esta variável deve ser setada, na função
     # de otimização, pela variável de ambiente para depuração do código,
     # pois não tem sentido o usuário ver este dataframe.
-    if verbose:
-      print("⚠️ Dataframe com os logs das otimizações feitas pelo script de "
+    if DEBUG_CODE:
+      print("🐛 Dataframe com os logs das otimizações feitas pelo script de "
             f"otimização para a aplicação {application_name}:")
       print("\n", logs_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
             sep="")
@@ -2511,7 +2510,7 @@ def list_applications(applications_config):
       # application_config com as configurações da aplicação. A mensagem
       # impressa indica o identificador interno da aplucação, e os nomes
       # dos executáveis que podem ser usados pelos usuários
-      print(f"➡️  Aplicação {application_id}, possíveis nomes para os "
+      print(f"➡️ Aplicação {application_id}, possíveis nomes para os "
             "executáveis: "
             f"{', '.join(application_config['user']['executable_names'])}")
 
@@ -2778,7 +2777,7 @@ def get_custom_configurations(application_name, application_id,
         # o nome da aplicação usado pelo usuário na linha de comando do
         # script e passado em application_name, e mostramos a lista com
         # todas as possíveis partições, como informações adicionais.
-        print("⚠️  Descartando todos os valores para a opção \033[31m"
+        print("⚠️ Descartando todos os valores para a opção \033[31m"
               f"{suggestion_name}\033[0m maiores do que {max_possible_value} "
               "permitidos pelas possíveis partições \033[1;34m"
               f"{', '.join(application_partitions_names)}\033[0m da aplicação "
@@ -3092,7 +3091,7 @@ def get_template_params(application_name, user_args, application_args,
     # Verifica se o tempo da partição é maior do que o temṕo predito, e
     # dá um aviso se isso ocorrer
     if predicted_time > partition_used['max_time']:
-      print(f"⚠️  O tempo predito aproximado {predicted_time} é maior do que "
+      print(f"⚠️ O tempo predito aproximado {predicted_time} é maior do que "
             f"o tempo máximo {partition_used['max_time']} de execução da "
             f"partição {partition_used['partition']}!")
 
@@ -3202,8 +3201,8 @@ def submit_submission_script(script_file_name, template_content,
             # temporário, dado pelo campo nome do objeto temp.
             script_file_name = temp.name 
 
-        if debug_code:
-          print(f"➡️  Arquivo temporário {script_file_name} criado para "
+        if DEBUG_CODE:
+          print(f"🐛 Arquivo temporário {script_file_name} criado para "
                 "armazenar o script de submissão.")
     else:
       # Como script_file_name não é None, então ele é o caminho para o
@@ -3249,7 +3248,7 @@ def submit_submission_script(script_file_name, template_content,
     # pelo programa externo de submissão, iria gerar a exceção
     # subprocess.CalledProcessError, tratada a seguir em um bloco 
     # expect.
-    print("➡️  Script de submissão submetido com sucesso!")
+    print("➡️ Script de submissão submetido com sucesso!")
 
     # Para obter o ID do trabalho da saída do programa de submissão, 
     # precisamos saber como encontrar exatamente o ID nessa saída. A
@@ -3276,16 +3275,16 @@ def submit_submission_script(script_file_name, template_content,
     job_id = resultado.group(1) 
 
     # Depois de obter o ID do trabalho submetido, imprime ele na tela.
-    print(f"➡️  O trabalho foi submetido com o identificador {job_id}.")
+    print(f"➡️ O trabalho foi submetido com o identificador {job_id}.")
 
     # Impressão de depuraçõ para ver o código de retorno ao executar o
     # programa externo que submete o trabalho. Como habilitamos a
     # geração subprocess.CalledProcessError, o retorno deveria sempre
     # ser 0.
-    if debug_code:
-      print("➡️  O código de retorno da execução do programa de submissão "
+    if DEBUG_CODE:
+      print("🐛 O código de retorno da execução do programa de submissão "
             f"{submission_program} foi {result.returncode}")
-      print("➡️  O campo returncode do objeto CompletedProcess deveria ser 0, "
+      print("🐛 O campo returncode do objeto CompletedProcess deveria ser 0, "
             "pois um valor diferente de 0 deveria gerar a exceção "
             "subprocess.CalledProcessError.")
 
@@ -3294,11 +3293,11 @@ def submit_submission_script(script_file_name, template_content,
     # as saídas são impressar juntas e intercaladas.
     if verbose:
       # Imprime a saída do stdout da execução do programa de submissão.
-      print(f"➡️  stdout da execução de {submission_program}:\n\n")
+      print(f"➡️ stdout da execução de {submission_program}:\n\n")
       print(result.stdout)
 
       # Imprime a saída do stdee da execução do programa de submissão.
-      print(f"\n\n➡️  stderr de execução de {submission_program}:\n\n")
+      print(f"\n\n➡️ stderr de execução de {submission_program}:\n\n")
       print(result.stderr)      
 
   # Exceção gerada quando o programa externo de submissão termina a sua
@@ -3339,8 +3338,8 @@ def submit_submission_script(script_file_name, template_content,
       #  tenporário, script_file_name era inicialmente None, indicando
       # qua o usuário não usou a opção -s ou --script para salvar o
       # arquivo com o script de submissão).
-      if debug_code:
-        print(f"➡️  Tentando remover o arquivo temporário {script_file_name}.")
+      if DEBUG_CODE:
+        print(f"🐛 Tentando remover o arquivo temporário {script_file_name}.")
       try:
         # Verifica se o arquivo temporário realmente existe, usando a 
         # função exists da classe path da biblioteca os (que permite usar
@@ -3355,8 +3354,8 @@ def submit_submission_script(script_file_name, template_content,
         # Se a depuração estiver habilitada, gera um amensagem
         # informando que o arquivo script_file_name foi removido com
         # sucesso.  
-        if debug_code:
-          print(f"➡️  Arquivo temporário {script_file_name} removido com "
+        if DEBUG_CODE:
+          print(f"🐛 Arquivo temporário {script_file_name} removido com "
                 "sucesso.")
 
       # Se agum erro ocorrer ao executar a função exists ou remove da
@@ -3368,9 +3367,9 @@ def submit_submission_script(script_file_name, template_content,
         # deburação não estiver habilitada, pois ainda não sei se é
         # interessante o usuário ver umamensagem de um arquivo que ele
         # nem sabia que existia.
-        if debug_code:
-          print(f"⚠️  Não foi possível remover o arquivo {e.filename}")
-          print(f"⚠️  Código do erro: {e.errno}; Mensagem: {e.strerror}!")
+        if DEBUG_CODE:
+          print(f"⚠️ Não foi possível remover o arquivo {e.filename}")
+          print(f"⚠️ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
 
   # Retorna o identificador do trabalho se o programa externo de
   # submissão conseguiu submeter o script de submissão sem erros, ou 
@@ -3490,7 +3489,7 @@ def optimize_application(configs_file_path, system_config, application_config,
     # não foi definido o que fazer com a melhor sugestçao de
     # configuração.
     if not user_args.suggestion and not user_args.script and not user_args.run:
-      print("⚠️  Não foi definida uma opção para definir o que devemos "
+      print("⚠️ Não foi definida uma opção para definir o que devemos "
             "fazer com a otimização da execução da aplicação! Supondo que é "
             "para salvar o script de submissão no arquivo com o nome default "
             f"de {default_script_name}!")
@@ -3598,7 +3597,7 @@ def optimize_application(configs_file_path, system_config, application_config,
 
     # Imprime as informações de processamento da aplicação se as
     # mensagens de depuraçã estiverem habilitadas.
-    if debug_code:
+    if DEBUG_CODE:
       print("Parâmetros obrigatórios processados da aplicação: "
             f"{required_applicaion_params}")
       print("Parâmetros não necessaŕios às predições dos modelos: "
@@ -3644,7 +3643,7 @@ def optimize_application(configs_file_path, system_config, application_config,
 
     # Determina o caminho em que está o arquivo pickle do preditor para
     # a aplicação que o usuário deseja otimizar a sua execução. O
-    # caminho é uma junção do caminho base_files_path, o diretório raiz
+    # caminho é uma junção do caminho BASE_FILES_PATH, o diretório raiz
     # dos arquivos dos scripts de otimização e treinamento, o nome do
     # diretório em que todos os arquivos pickle com os preditores são
     # salvos pelo script de treinamento, dado na chave 'predictors_path'
@@ -3652,7 +3651,7 @@ def optimize_application(configs_file_path, system_config, application_config,
     # preditor nesse diretório, definido pela chave application_id, a
     # mesma chave usada para identificar a aplicação no dicionário 
     # applications_configs com as configurações de todas as aplicações.
-    predictor_path = (base_files_path 
+    predictor_path = (BASE_FILES_PATH 
                       / Path(system_config['predictors_path']) 
                       / predictors_info_config[application_id]
     )
@@ -3681,13 +3680,13 @@ def optimize_application(configs_file_path, system_config, application_config,
     # valores customizados foram definidos pelo usuário do script de
     # otimização, ou None se deverão ser consideradas todas as 
     # configurações usadas ao treinar os modelos do preditor. O
-    # parâmetro verbose igual a debug_code, habilita a verbosidade
+    # parâmetro verbose igual a DEBUG_CODE, habilita a verbosidade
     # interna da classe SuggestionsPredictor se a depuração do código,
     # definida pela variável de ambiente DEBUG_CODE, for "true", "1", 
     # "yes", "on", "t" (a definição não é sensível ao caso).
     suggestion = predictor.get_suggestion(user_application_params, 
                                           custom_suggestions, 
-                                          verbose=debug_code)
+                                          verbose=DEBUG_CODE)
 
 
     # Cria um dicionário reversed_suggestions_map com o mapeamento
@@ -3795,7 +3794,7 @@ def optimize_application(configs_file_path, system_config, application_config,
 
     # Descobre caminho completo do template do script de submissão usado
     # pela aplicação para a qual p usuário está otimizando a execução.
-    template_file_path = (base_files_path 
+    template_file_path = (BASE_FILES_PATH 
                           / Path(system_config['templates_path']) 
                           / script_config['script_template_name']
     )
@@ -3824,9 +3823,9 @@ def optimize_application(configs_file_path, system_config, application_config,
     # Se a verbosidade estiver habilitada, imprime na tela o script de
     # submissão gerado.
     # TODO: Será que isso deveria ser uma depuração, com a impressão
-    #       somente ocorrendo se debug_code for True? 
+    #       somente ocorrendo se DEBUG_CODE for True? 
     if user_args.verbose:      
-      print("➡️  Script de submissão: \n")
+      print("➡️ Script de submissão: \n")
       print(template_content)
       print()
 
@@ -3882,7 +3881,7 @@ def optimize_application(configs_file_path, system_config, application_config,
         # Informa ao usuário que o script de submissão foi salvo no 
         # arquivo cujo caminho (ou nome) é definido por
         # script_file_name. 
-        print(f"➡️  Script de submissão {script_file_name} criado com "
+        print(f"➡️ Script de submissão {script_file_name} criado com "
               "sucesso!")
 
       # Esta exceção ocorre se o usuário não tem permissões para salvar
@@ -3937,7 +3936,7 @@ def optimize_application(configs_file_path, system_config, application_config,
                         system_config, suggestion, template_params,
                         required_applicaion_params, 
                         user_application_params,
-                        application_args[1:], job_id, debug_code)
+                        application_args[1:], job_id)
 
     # Como conseguimos fazer todo o processamento, ou sejam obter a 
     # melhor sugestão de configuração, gerar o script de submissão,
@@ -4189,7 +4188,7 @@ ter as suas execuções otimizada, ou otimiza a execução de uma aplicação.
   applications_configs, 
   user_config, 
   predictors_info_config
-) = read_configs(verbose=debug_code)
+) = read_configs(verbose=DEBUG_CODE)
 
 # Verifica se ocorreu algum erro ao obter as informações descritas
 # anteriormente. Se ocorreu um erro ao obter uma das configurações, serã

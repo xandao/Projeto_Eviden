@@ -19,10 +19,10 @@ import textwrap
 from pathlib import Path
 from functools import partial
 from Utils.Common import (
-  base_files_path_env_name, 
-  base_files_path, 
-  configs_files_dir, 
-  debug_code, 
+  BASE_FILES_PATH_ENV_NAME, 
+  BASE_FILES_PATH, 
+  CONFIGS_FILES_DIR, 
+  DEBUG_CODE, 
   CustomFormatter
 )
 
@@ -60,10 +60,10 @@ def read_configs(verbose=False):
   # o que ocorrerá somente se a variável de ambiente 
   # APPOPTIMIZER_BASE_FILES_PATH estiver definida ao executar o script
   # de otimização. 
-  if base_files_path is None:
+  if BASE_FILES_PATH is None:
     # Se a varável de ambiente não estiver definida, imprime uma
     # mensagem de erro com o nome da variável de ambiente.
-    print(f"❌ Variável de ambiente {base_files_path_env_name} com o caminho "
+    print(f"❌ Variável de ambiente {BASE_FILES_PATH_ENV_NAME} com o caminho "
           "da base dos scripts não foi definida")
 
     # Como não temos como ler os arquivos de configuração pois não
@@ -74,12 +74,12 @@ def read_configs(verbose=False):
     # Como o diretório base dos arquivos dos scripts está definido,
     # descobrimos o caminho do diretório com os arquivos de
     # configuração, que será composto por este diretório base e o
-    # subdiretório definido na variável configs_files_dir (este nome de
+    # subdiretório definido na variável CONFIGS_FILES_DIR (este nome de
     # subdiretório é definido pela variável de ambiente 
     # APPOPTIMIZER_CONFIGS_DIR, que pode ser definida pelo adminstrador
     # do sistema para mudar o valor default "configs" usado quando a
     # variável não for definida.
-    configs_file_path = base_files_path / configs_files_dir
+    configs_file_path = BASE_FILES_PATH / CONFIGS_FILES_DIR
 
   # Lê as configurações do sistema, que são usadas para ler as
   # configurações das aplicações, pois é neste arquivo que está o nome
@@ -361,7 +361,7 @@ def applications_command(applications_config):
     # Para cada chave application_name do dicionário 
     # applications_config, que é o nome interno da aplicação, imprimimos
     # esse nome no terminal.
-    print(f"➡️  {application_name}")
+    print(f"➡️ {application_name}")
 
   # Como o comando applications sempre deve ser executado com sucesso,
   # retornamos True.
@@ -401,18 +401,15 @@ def models_command(training_config):
       # Para cada chave model_name do dicionário definido pela chave 
       # "models" do dicionário training_config, que é o nome do modelo, 
       # imprimimos esse nome no terminal.
-      print(f"➡️  {model_name}")
+      print(f"➡️ {model_name}")
 
   # Captura a exceção KeyError caso a chave "models" não exista no
   # dicionário training_config.    
   except KeyError as e:
-    # Como a chave "models" não existe no dicionário training_config,
-    # porque a exceção KeyError foi capturada, imprimimos uma mensagem 
-    # de erro no terminal, informando que a chave não foi encontrada no
-    # arquivo de configuração d treinamento.
-    print(f"❌ A chave {e.args[0]} não foi encontrada no arquivo de "
+    print(f"❌ A chave '{e.args[0]}' não foi encontrada no arquivo de "
           "configuração de treinamento, logo não foi possível listar os "
           "modelos!")
+    print(f"❌ Mensagem de erro: {str(e)}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
 
     # Retorna False, pois o comando não pôde ser executado com sucesso.
@@ -450,7 +447,7 @@ def read_predictor_info_config(system_config, verbose=False):
   # Define o caminho do diretório com os arquivos dos preditores e do 
   # arquivo de configuração com qual preditor é o melhor para cada
   # aplicação.
-  predictors_file_path = (base_files_path / 
+  predictors_file_path = (BASE_FILES_PATH / 
                           Path(system_config['predictors_path']))
   
   # Define o caminho do arquivo de configuração com as informações dos
@@ -484,7 +481,7 @@ def read_predictor_info_config(system_config, verbose=False):
     # Imprime uma mensagem de informação indicando cada aplicação e o
     # nome do arquivo com o preditor que foi treinado para essa
     # aplicação.
-    print("➡️  Informações dos preditores lidas do arquivo de configuração:")
+    print("➡️ Informações dos preditores lidas do arquivo de configuração:")
 
     # Varre a lista de preditores e imprime as informações para cada
     # aplicação que pode ter a sua execução otimizada e para a qual portanto
@@ -492,7 +489,7 @@ def read_predictor_info_config(system_config, verbose=False):
     for application_name, predictor_file_name in predictors_info_config.items():
       # Imprime o nome da aplicação e o nome do arquivo com o preditor
       # que foi treinado para essa aplicação.
-      print(f"➖➡️  Aplicação: {application_name}; "
+      print(f"➖➡️ Aplicação: {application_name}; "
             f"Nome do arquivo com o preditor treinado: {predictor_file_name}")
       
     # Imprime uma linha em branco para separar as informações dos
@@ -508,8 +505,8 @@ def read_predictor_info_config(system_config, verbose=False):
   return (predictors_file_path, predictors_info_config, 
           predictors_info_config_obj)
 
-def read_training_data(dataset_files, base_files_path, system_config, 
-                       used_columns, verbose=False):
+def read_training_data(dataset_files, system_config, used_columns, 
+                       verbose=False):
   """
   Função para ler os dados de treinamento de uma aplicação, usando as
   informações da aplicação e do sistema.
@@ -518,10 +515,6 @@ def read_training_data(dataset_files, base_files_path, system_config,
     dataset_files (list): Lista com os nomes dos arquivos com os 
                           conjuntos de dados a serem lidos e
                           concatenados.
-    base_files_path (Path): Caminho para o diretório base dos arquivos
-                            de todos os scripts, que é definido pela
-                            variável de ambiente 
-                            APPOPTIMIZER_BASE_FILES_PATH.
     system_config (dict): Dicionário com as configurações gerais
                           relacionadas aos scripts de otrimização e de
                           treinamento. No caso da função, iremos usar
@@ -558,7 +551,7 @@ def read_training_data(dataset_files, base_files_path, system_config,
       # dicionário system_config e pelo nome do arquivo com o conjunto
       # de dados da aplicação.
       full_file_path = (
-        base_files_path / Path(system_config['dataset_path']) /  file_name
+        BASE_FILES_PATH / Path(system_config['dataset_path']) /  file_name
       )
 
       # Lê o arquivo com o conjunto de dados da aplicação, usando
@@ -583,60 +576,93 @@ def read_training_data(dataset_files, base_files_path, system_config,
     if verbose:
       # Imprime o conjunto de dados original da aplicação final, já com
       # todos os conjuntos de dados concatenados.
-      print("➖➡️  Conjunto de dados original da aplicação:")
+      print("➖➡️ Conjunto de dados original da aplicação:")
       print("\n", dataset.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
             sep="")
 
       # Imprime os dados estatísticos referentes a esse conjunto de
       # dados.
-      print("➖➖➡️  Dados estatísticos referentes ao conjunto de dados "
+      print("➖➖➡️ Dados estatísticos referentes ao conjunto de dados "
             "original:")
       print("\n", dataset.describe().to_markdown(tablefmt="grid", 
                                                  floatfmt=".2f"), "\n", sep="")
       
+    # Como conseguimos ler o(s) conjunto(s) de dados, então retornamos o
+    # DataFrame com esse(s) conjunto(s).
+    return dataset
+
   # O arquivo não foi encontrado.
   except FileNotFoundError as e:
     print(f"❌ O arquivo {full_file_path.name} não foi encontrado!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Retorna None porque o(s) conjunto(s) de dados não foi(foram) lidos
+    # com sucesso.
     return None
+
   # O caminho é para um diretório e não um arquivo.
   except IsADirectoryError as e:
     print(f"❌ O caminho {full_file_path.name} é um diretório!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Retorna None porque o(s) conjunto(s) de dados não foi(foram) lidos
+    # com sucesso.
     return None
+
   # O arquivo não pôde ser aberto devido a problemas de permissão.
   except PermissionError as e:
     print(f"❌ Erro de permissão ao acessar o arquivo {full_file_path.name}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Retorna None porque o(s) conjunto(s) de dados não foi(foram) lidos
+    # com sucesso.
     return None
+
   # Ocorreu um erro de I/O ao acessar o arquivo.
   except IOError as e:
     print(f"❌ Erro de I/O ao acessar o arquivo {full_file_path.name}!")
     print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Retorna None porque o(s) conjunto(s) de dados não foi(foram) lidos
+    # com sucesso.
     return None
+
   # Ocorreu um erro de codigicação dos caracteres do arquivo, por 
   # exemplo, o arquivo está no formato Latin-1 ao invés do UTF-8.
   except UnicodeDecodeError as e:
     print("❌ Erro de codificação ao acessar o arquivo "
           f"{full_file_path.name}!")
+    print(f"❌ Parâmetros do erro: {e.args}!")
+    print(f"❌ Mensagem de erro: {str(e)}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Retorna None porque o(s) conjunto(s) de dados não foi(foram) lidos
+    # com sucesso.
     return None
+
   # Algumas das colunas especificadas em used_columns não existem no
   # arquivo.
   except ValueError as e:
-    print(f"❌ Erro ao processar os dados do arquivo {full_file_path.name}!")
-    print(f"❌ mensagem de erro: {str(e)}!")
+    print(f"❌ Erro ao processar os dados do arquivo {full_file_path.name}, "
+          "um valor errado foi usado!")
+    print(f"❌ Parâmetros do erro: {e.args}!")
+    print(f"❌ Mensagem de erro: {str(e)}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Retorna None porque o(s) conjunto(s) de dados não foi(foram) lidos
+    # com sucesso.
     return None
+
   # Ocorreu alguma outra exceção inesperada.
   except Exception as e:
     print(f"❌ Erro desconhecido ao acessar o arquivo {full_file_path.name}!")
-    print(f"❌ Parâmetros do erro: {e.args}!")
+    print(f"❌ Mensagem de erro: {str(e)}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
-    return None
 
-  return dataset
+    # Retorna None porque o(s) conjunto(s) de dados não foi(foram) lidos
+    # com sucesso.
+    return None
 
 def filter_training_data(dataset, input_variables, filter_variables, 
                          outlier_limit, verbose=False):
@@ -687,14 +713,14 @@ def filter_training_data(dataset, input_variables, filter_variables,
     if verbose:
       # Imprime o conjunto de dados da aplicação após a filtragem dos
       # outliers.
-      print("➖➡️  Conjunto de dados da aplicação após a filtragem dos "
+      print("➖➡️ Conjunto de dados da aplicação após a filtragem dos "
             "outliers:")
       print("\n", clean_dataset.to_markdown(tablefmt="grid", floatfmt=".2f"), 
             "\n", sep="")
 
       # Imprime os dados estatísticos referentes a esse conjunto de dados
       # filtrado.
-      print("➖➖➡️  Dados estatísticos referentes ao conjunto de dados "
+      print("➖➖➡️ Dados estatísticos referentes ao conjunto de dados "
             "filtrado:")
       print("\n", clean_dataset.describe().to_markdown(tablefmt="grid", 
                                                       floatfmt=".2f"), "\n", 
@@ -707,24 +733,37 @@ def filter_training_data(dataset, input_variables, filter_variables,
   # Foi passado um tipo inválido em um dos parâmetros da função Filter.
   except ValueError as e:
     print("❌ Erro ao filtrar os outliers do conjunto de dados da "
-          "aplicação!")
-    print(f"❌ mensagem de erro: {str(e)}!")
+          "aplicação, um valor errado foi usado!")
+    print(f"❌ Parâmetros do erro: {e.args}!")
+    print(f"❌ Mensagem do erro: {str(e)}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como não conseguimos filtrar o conjunto de dados com sucesso, 
+    # retorna None.
     return None
+
   # Em um dos parâmetros de variáveis da func~ão Filter, foi passada uma
   # variável que não existe no conjunto de dados da aplicação.
   except KeyError as e:
     print("❌ Erro ao filtrar os outliers do conjunto de dados da "
-          "aplicação!")
-    print(f"❌ mensagem de erro: {str(e)}!")
+          "aplicação, uma chave errada foi usada!")
+    print(f"❌ Parâmetros do erro: {e.args}!")
+    print(f"❌ Mensagem do erro: {str(e)}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como não conseguimos filtrar o conjunto de dados com sucesso, 
+    # retorna None.
     return None
+
   # Ocorreu alguma outra exceção inesperada.
   except Exception as e:
     print("❌ Erro desconhecido ao filtrar os outliers do conjunto de dados "
           "da aplicação!")
-    print(f"❌ Parâmetros do erro: {e.args}!")
+    print(f"❌ Mensagem do erro: {str(e)}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como não conseguimos filtrar o conjunto de dados com sucesso, 
+    # retorna None.
     return None
 
 def optimize_hyperparameters(clean_dataset, models, 
@@ -844,7 +883,7 @@ def optimize_hyperparameters(clean_dataset, models,
       # a lista com os possíveis valores a serem consideramdos para esse
       # hiperparâmetro.
       if verbose:
-        print(f"➖➡️  Otimizando o modelo {model_info['name']} usando os "
+        print(f"➖➡️ Otimizando o modelo {model_info['name']} usando os "
               f"hiperparâmetros {model_info['grid_search_parms']} e a busca em "
               "grade:")
         
@@ -871,7 +910,8 @@ def optimize_hyperparameters(clean_dataset, models,
       # Python importlib para dinâmicamente importar a biblioteca que
       # implementa o modelo, sendo a referência ao objeto que representa
       # a biblioteca armazenada em model_module.
-      # If the module cannot be imported, import_module() will raise ImportError or an appropriate subclass like ModuleNotFoundError.
+      # If the module cannot be imported, import_module() will raise 
+      # ImportError or an appropriate subclass like ModuleNotFoundError.
       model_module = importlib.import_module(module_path)
 
       # Uma vez que a biblioteca tenha sido importada em um objeto
@@ -886,12 +926,12 @@ def optimize_hyperparameters(clean_dataset, models,
       model = getattr(model_module, model_name, None)
 
       # Verifica o objeto model_module tem o atributo model_name.
-      if model is None:
-        # Como o objeto model_module tem o atributo model_name,  então
-        # vamos criar um objeto da classe BestHiperparams, usada para 
-        # otimizar os hiperparâmetros de um modelo, e armazenar a 
-        # rederência a esse objeto em best_hyper.
-        best_hyper = BestHiperparams(verbose=debug_code)
+      if model is not None:
+        # Como o objeto model_module mão é None, ou seja, tem o atributo
+        # model_name,  então vamos criar um objeto da classe
+        # BestHiperparams, usada para otimizar os hiperparâmetros de um 
+        # modelo, e armazenar a rederência a esse objeto em best_hyper.
+        best_hyper = BestHiperparams(verbose=DEBUG_CODE)
 
         # Chamamos a função optimize do objeto best_hyper para otimizar
         # os hiperparâmetros do modelo que estamos avaliando. Para a
@@ -943,7 +983,7 @@ def optimize_hyperparameters(clean_dataset, models,
           # Imprime o nome do modelo, o dicionário com os melhores
           # valores para os hiperparâmetros avaliados e a pontuação 
           # associada aos melhores valores dos hiperparâmetros.         
-          print(f"➖➖➡️   Modelo {model_info['name']}: Melhores "
+          print(f"➖➖➡️  Modelo {model_info['name']}: Melhores "
                 f"hiperparâmetros -> {best_params}; Melhor score -> "
                 f"{best_score}")
 
@@ -951,7 +991,7 @@ def optimize_hyperparameters(clean_dataset, models,
           # otimização dos hiperparâmetros, com todas as informações
           # relevantes refrentes aos treinamentos feitos para escolher
           # os melhores valores para os hiperparâmetros. 
-          print("➖➖➖➡️  Dataframe com a avaliação de todas as combinações "
+          print("➖➖➖➡️ Dataframe com a avaliação de todas as combinações "
                 "dos hiperparâmetros:")         
 
           # Primeiramente obtem essas informações, que sáo retornadas
@@ -968,7 +1008,7 @@ def optimize_hyperparameters(clean_dataset, models,
         # models_info, ou seja, se foram definidos hiperparâmerros com
         # valores ficos (nos nossos testes, usamos o hiperparâmetro
         # random_state=42).
-        if 'fixed_params' is model_info:
+        if 'fixed_params' in model_info:
             # Se a chave 'fixed_params' existe no dicionário model_info,
             # então ela é um dicionário em que a chave é um 
             # hiperparâmetro fixo e a referência da chave esse valor, 
@@ -1000,7 +1040,7 @@ def optimize_hyperparameters(clean_dataset, models,
         # TODO: Eu não tinha verificado esse erro antes, deveremos 
         # abortar, ou ignorar o modelo?
         print(f"❌ O caminho de importação {model_info['import_path']} é "
-              f"inválido. A classe do modelo {model_module} não existe na "
+              f"inválido. A classe do modelo {model_name} não existe na "
               f"bibloteca referenciada por {module_path}!")
 
     # Retorna os dicionários com os modelos avaliados já inicializados e 
@@ -1011,25 +1051,61 @@ def optimize_hyperparameters(clean_dataset, models,
 
   # Foi passado um tipo inválido em um dos parâmetros da função Filter.
   except ValueError as e:
-    print("❌ Erro ao filtrar os outliers do conjunto de dados da "
-          "aplicação!")
-    print(f"❌ mensagem de erro: {str(e)}!")
+    print("❌ Erro ao otimizar os hiperparâmetros dos modelos, um valor "
+          "errado foi usado!")
+    print(f"❌ Parâmetros do erro: {e.args}!")
+    print(f"❌ Mensagem de erro: {str(e)}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como não foi possível otimizar os hiperparâmetros de algum dos
+    # models, retorna None para os dois elementos da tupla.
     return None, None
-  # Em um dos parâmetros de variáveis da func~ão Filter, foi passada uma
+  
+  # Em um dos parâmetros de variáveis da função Filter, foi passada uma
   # variável que não existe no conjunto de dados da aplicação.
   except KeyError as e:
-    print("❌ Erro ao filtrar os outliers do conjunto de dados da "
-          "aplicação!")
-    print(f"❌ mensagem de erro: {str(e)}!")
+    print("❌ Erro ao otimizar os hiperparâmetros dos modelos, uma chave "
+          "errada foi usada!")
+    print(f"❌ Parâmetros do erro: {e.args}!")
+    print(f"❌ Mensagem de erro: {str(e)}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como não foi possível otimizar os hiperparâmetros de algum dos
+    # models, retorna None para os dois elementos da tupla.
     return None, None
+
+  # Ocorreu um erro ao importar um dos modelos.
+  except ImportError as e:
+    print("❌ Erro ao otimizar os hiperparâmetros dos modelos, uma classe "
+          f"{e.name} errada foi usada")
+    print(f"❌ Parâmetros do erro: {e.args}!")
+    print(f"❌ Mensagem de erro: {str(e)}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como não foi possível otimizar os hiperparâmetros de algum dos
+    # models, retorna None para os dois elementos da tupla.
+    return None, None
+
+  # Ocorreu um erro ao importar um dos modelos.
+  except ModuleNotFoundError as e:
+    print("❌ Erro ao otimizar os hiperparâmetros dos modelos, uma biblioteca "
+          f"{e.name} errada foi usada")
+    print(f"❌ Parâmetros do erro: {e.args}!")
+    print(f"❌ Mensagem de erro: {str(e)}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como não foi possível otimizar os hiperparâmetros de algum dos
+    # models, retorna None para os dois elementos da tupla.
+    return None, None
+  
   # Ocorreu alguma outra exceção inesperada.
   except Exception as e:
-    print("❌ Erro desconhecido ao filtrar os outliers do conjunto de dados "
-          "da aplicação!")
-    print(f"❌ Parâmetros do erro: {e.args}!")
+    print("❌ Erro ao otimizar os hiperparâmetros dos modelos!")
+    print(f"❌ Mensagem de erro: {str(e)}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como não foi possível otimizar os hiperparâmetros de algum dos
+    # models, retorna None para os dois elementos da tupla.
     return None, None
   
 def choose_best_model(clean_dataset, initialized_models, suggestion_variables,
@@ -1043,11 +1119,11 @@ def choose_best_model(clean_dataset, initialized_models, suggestion_variables,
 
   # Determina o melhor modelo, usando a validacao cruzada.;
   if verbose:	
-    print("➖➡️    Determinando o melhor modelo dentre os modelos da lista  "
+    print("➖➡️ Determinando o melhor modelo dentre os modelos da lista  "
           f"{', '.join(initialized_models.keys())}, usando a validação "
           "cruzada com o LOGO:")
 
-  cross_validator = DiscoverBestModel(verbose=debug_code)	
+  cross_validator = DiscoverBestModel(verbose=DEBUG_CODE)	
   (
     best_model_name, 
     best_model_score, 
@@ -1059,10 +1135,10 @@ def choose_best_model(clean_dataset, initialized_models, suggestion_variables,
                                  initialized_models)
  
   if verbose:					
-    print(f"➖➖➡️    Dataframe com os resultados das avaliações dos modelos:")
+    print(f"➖➖➡️ Dataframe com os resultados das avaliações dos modelos:")
     print("\n", results_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
           sep="")
-    print("➖➖➡️    Dataframe com os resultados médios para cada modelo, "
+    print("➖➖➡️ Dataframe com os resultados médios para cada modelo, "
           "ordenado do melhor para o pior modelo:")
     print("\n", mean_scores_models_df.to_markdown(tablefmt="grid", 
                                                   floatfmt=".2f"), "\n", 
@@ -1081,7 +1157,7 @@ def generate_application_predictor(clean_dataset, best_model_name,
 
   """
 
-  print("➖➡️    Treinando agora o preditor com o melhor modelo "
+  print("➖➡️ Treinando agora o preditor com o melhor modelo "
         f"{best_model_name} (pontuação: {best_model_score}), usando "
         f"{best_model_params} como os hiperparâmetros customizados.")
   # Descobre e importa o modelo de modo dinâmico.
@@ -1093,13 +1169,13 @@ def generate_application_predictor(clean_dataset, best_model_name,
   predictor = SuggestionsPredictor()
   predictor.fit(clean_dataset, suggestion_variables, application_variables,
                 group_variables, prediction_variables, model, best_model_params, 
-                debug_code)
+                DEBUG_CODE)
   if verbose:
     print('➖➖➡️ Dataframe do oráculo:')
     oracle_df = predictor.get_oracle()
     print("\n", oracle_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
   # Obtém as imformações das importâncias, se o modelo as define  
-  importances_df = predictor.get_importances(verbose=debug_code)
+  importances_df = predictor.get_importances(verbose=DEBUG_CODE)
   if verbose and importances_df is not None:
     print('➖➖➡️ Dataframe com as importâncias do modelo:')
     print("\n", importances_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
@@ -1172,7 +1248,7 @@ def train_command(applications_name, applications_config, training_config,
         application_name = application_info['name']
 
         if verbose:
-          print(f"\n➡️  Treinando todos os modelos para a aplicação {application_name}")	
+          print(f"\n➡️ Treinando todos os modelos para a aplicação {application_name}")	
 
         suggestion_variables = application_info['suggestions_parameters'] 
         application_variables = application_info['application_parameters']  
@@ -1201,9 +1277,8 @@ def train_command(applications_name, applications_config, training_config,
 
         dataset_list = application_info['training']['dataset_files']
 
-        dataset = read_training_data(dataset_list, base_files_path, 
-                                     system_config, dataset_colunms, 
-                                     verbose=verbose)
+        dataset = read_training_data(dataset_list, system_config, 
+                                     dataset_colunms, verbose=verbose)
 
         # Filtra os dados.
         outlier_limit = training_config['filter']['outlier_limit']
@@ -1214,7 +1289,7 @@ def train_command(applications_name, applications_config, training_config,
                                              verbose=verbose)
 
         if verbose:
-          print(f"➖➡️  Predições para a variável alvo {suggestion_prediction_variable}")
+          print(f"➖➡️ Predições para a variável alvo {suggestion_prediction_variable}")
 
 
         models = training_config['models']
@@ -1267,7 +1342,7 @@ def train_command(applications_name, applications_config, training_config,
                 f"{application_name}!")
 
       else:  
-          print(f"⚠️  Ignorando aplicação desconhecida {application_key}!")
+          print(f"⚠️ Ignorando aplicação desconhecida {application_key}!")
 
     return True
   except KeyError as e:
@@ -1360,7 +1435,7 @@ def execute_commands(command, applications_configs, training_config,
   system_config, 
   applications_configs, 
   training_config
-)  = read_configs(debug_code)
+)  = read_configs(DEBUG_CODE)
 
 if any(
   v is None for v in [

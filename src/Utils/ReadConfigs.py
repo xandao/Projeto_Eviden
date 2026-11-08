@@ -819,7 +819,7 @@ class PredictorsInfoConfig:
         # ocorrer no script de treinamento. No script de otimização, o
         # arquivo sempre deve existir.
         if self.verbose:
-          print(f"⚠️  O arquivo {predictors_info_config_path.name} não foi "
+          print(f"⚠️ O arquivo {predictors_info_config_path.name} não foi "
                 "encontrado, mas não tem problema se o aviso for gerado pelo "
                 "script de treinamento!")
 

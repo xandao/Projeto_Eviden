@@ -5,19 +5,19 @@ from pathlib import Path
 # Nome da variável de ambiente com o caminho do diretório base dos 
 # scripts de treinamento e de otimização, usado para acessar todos os 
 # subdiretórios e arquivos.
-base_files_path_env_name = 'APPOPTIMIZER_BASE_PATH'
+BASE_FILES_PATH_ENV_NAME = 'APPOPTIMIZER_BASE_PATH'
 
-# Tenta ler a variável de ambiente base_files_path_env_name. Se a 
+# Tenta ler a variável de ambiente BASE_FILES_PATH_ENV_NAME. Se a 
 # variável de ambiente existir, define appoptimizer_base_path como o 
 # conteúdo desta variável, que supomos ser o caminho do diretório base
 # e, em cado contrário, define a variável como None.
-appoptimizer_base_path = os.getenv(base_files_path_env_name, None)
+appoptimizer_base_path = os.getenv(BASE_FILES_PATH_ENV_NAME, None)
 
-# Se a variável appoptimizer_base_path for None, então base_files_path 
+# Se a variável appoptimizer_base_path for None, então BASE_FILES_PATH 
 # também será None. Porém, se appoptimizer_base_path for uma string 
-# (lida da variável de ambiente), base_files_path será um objeto Path 
+# (lida da variável de ambiente), BASE_FILES_PATH será um objeto Path 
 # definido pelo caminho dado em appoptimizer_base_path.
-base_files_path = (
+BASE_FILES_PATH = (
     None
     if appoptimizer_base_path is None
     else Path(appoptimizer_base_path)
@@ -33,7 +33,7 @@ configs_files_dir_env_name = 'APPOPTIMIZER_CONFIGS_DIR'
 # o definido pela variável. A variável configs_files_dir será um objeto 
 # Path para o nome do diretório definido por configs_files_dir_env_name
 # ou para o diretório default "configs".
-configs_files_dir = Path(os.getenv(configs_files_dir_env_name, 
+CONFIGS_FILES_DIR = Path(os.getenv(configs_files_dir_env_name, 
                                    'configs'))
 
 # Nome da variável de ambiente que define se depuração deve ser usada.
@@ -51,12 +51,12 @@ debug_variable = (
 )
 
 # Converte o valor da variável debug_variable para true ou false. A 
-# variável debug_code será True se a string em debug_variable for 
+# variável DEBUG_CODE será True se a string em debug_variable for 
 # "true", "1", "yes", "on" ou "t" (e todas as variantes com mistura de 
 # letras maiúsculas e minísculas devido à conversão para letras 
 # minísculas feita ao definir debug_variable), e para False se for 
 # alguma outra string diferente das anteriores.
-debug_code = debug_variable in ("true", "1", "yes", "on", "t")
+DEBUG_CODE = debug_variable in ("true", "1", "yes", "on", "t")
 class CustomFormatter(argparse.RawTextHelpFormatter):
   """
   Classe para fazer uma formatação customizada, derivada da classe

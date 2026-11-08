@@ -10,7 +10,6 @@ import sklearn.preprocessing as skpp
 import pickle
 import itertools
 from sklearn.base import BaseEstimator
-from Utils.Common import debug_code			
 
 def min_edp_config_diff(y_true, y_pred):
 	"""
@@ -1324,11 +1323,11 @@ class DiscoverBestModel:
 			# modelo resultante da validação cruzada e as estatístcas deste
 			# DataFrame usando a função describe.
 			if self.verbose:
-				print(f"🐛  Tabela de resultados para o modelo {name}:")
+				print(f"🐛 Tabela de resultados para o modelo {name}:")
 				print("\n", cv_results_df.to_markdown(tablefmt="grid", 
 																					    floatfmt=".2f"), 
 							"\n", sep="")
-				print(f"🐛  Estatísticas desta tabela para o modelo {name}:")
+				print(f"🐛 Estatísticas desta tabela para o modelo {name}:")
 				print("\n", cv_results_df.describe().to_markdown(tablefmt="grid", 
 																										     floatfmt=".2f"), 
 							"\n", sep="")
@@ -1872,29 +1871,29 @@ class SuggestionsPredictor:
 		# usados para gerar a tabela do oráculo na função que retorna o
 		# DataFrame com o oráculo para o conjunto de dados com os testes.
 		if verbose:
-			print("🐛  Parâmetros de sugestão usados no treinamento: "
+			print("🐛 Parâmetros de sugestão usados no treinamento: "
 				    f"{self.suggestion_params}")
-			print("🐛  Parâmetros de aplicação usados no treinamento: "
+			print("🐛 Parâmetros de aplicação usados no treinamento: "
 				    f"{self.application_params}")
-			print("🐛  Parâmetros de usuário usados no treinamento: "
+			print("🐛 Parâmetros de usuário usados no treinamento: "
 				    f"{self.user_params}")
-			print("🐛  Variável alvo do modelo auxiliar usado na escolha da melor "
+			print("🐛 Variável alvo do modelo auxiliar usado na escolha da melor "
 				    f"sugestão: {self.predicted_name}")
 			if self.predicted_time_name is not None:
-				print("🐛  Varíavel alvo do modelo predizer o tempo de execução da "
+				print("🐛 Varíavel alvo do modelo predizer o tempo de execução da "
 					    f"melhor sugestão: {self.predicted_time_name}")
-			print("🐛  X usado no treinamento dos modelos:")
+			print("🐛 X usado no treinamento dos modelos:")
 			print("\n", self.X.to_markdown(tablefmt="grid", floatfmt=".2f" ), 
 				    "\n", sep="")
-			print("🐛  y usado no treinamento do modelo auxiliar para escolher a ")
+			print("🐛 y usado no treinamento do modelo auxiliar para escolher a ")
 			print("melhor sugestão de configuração:", "\n", 
 				    self.y.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
 			if self.model_time is not None:
-				print("🐛  y usado pelo modelo para a predição dos tempos das ")
+				print("🐛 y usado pelo modelo para a predição dos tempos das ")
 				print("melhores sugestões de coinfiguração: ", "\n", 
 					    self.y_time.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
 							sep="")
-			print("🐛  Dataframe contendo todas as variáceis usadas nos "
+			print("🐛 Dataframe contendo todas as variáceis usadas nos "
 				    "treinamentos:")
 			print("\n", data.to_markdown(tablefmt="grid", floatfmt=".2f"), 
 				    "\n", sep="")
@@ -1955,7 +1954,7 @@ class SuggestionsPredictor:
 		# Se a verbosidade estiver habilitada, imprime o DataFrame df_aux
 		# criado anteriormente com as medianas.
 		if verbose:
-			print(f"🐛  Medianas da variável {self.predicted_name} para todas as "
+			print(f"🐛 Medianas da variável {self.predicted_name} para todas as "
 				    "repetições de cada combinação dos valores das variáveis "
 						f"{self.suggestion_names+self.user_names}:")
 			print("\n", df_aux.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
@@ -1987,7 +1986,7 @@ class SuggestionsPredictor:
 		# programa que chamou a função get_oracle do objeto, como faz o
 		# script de treinamento.
 		if verbose:
-			print("🐛  Dataframe do oráculo:")
+			print("🐛 Dataframe do oráculo:")
 			print("\n", df_oracle.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
 				    sep="")
 
@@ -2068,14 +2067,14 @@ class SuggestionsPredictor:
 			# importâncias e também o DataFrame final com as importâncias
 			# gerado a partir deste dicionário.
 			if verbose:
-				print(f"🐛  Diciońario com as importâncias: {importances_dict}")		
-				print("🐛  Dataframe das importâncias")
+				print(f"🐛 Diciońario com as importâncias: {importances_dict}")		
+				print("🐛 Dataframe das importâncias")
 				print("\n", importances_df.to_markdown(tablefmt="grid", 
 																					 		 floatfmt=".2f"))
 		else:		
 			# Se o objeto da classe do modelo não possuir um campo
 			if verbose:
-				print("🐛  O modelo usado não define as importâncias das variáveis!")		
+				print("🐛 O modelo usado não define as importâncias das variáveis!")		
 			importances_df = None
 
 		# Retorna o DataFrame criado com as características e suas
@@ -2276,7 +2275,7 @@ class SuggestionsPredictor:
 		# que serão usadas para fazer a predição da variável alvo do modelo
 		# auxiliar.
 		if verbose:
-			print("🐛  X usado quando foi predito todos os valores da variável "
+			print("🐛 X usado quando foi predito todos os valores da variável "
 				    f"alvo {self.predicted_name} para todas as possíveis sugestões:")	
 			print("\n", X.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
 
@@ -2289,7 +2288,7 @@ class SuggestionsPredictor:
 		# possíveis configurações, que estão no DataFrame X criado
 		# anteriormente.
 		if verbose:
-			print(f"🐛  y predito da variável alvo {self.predicted_name} para todas "
+			print(f"🐛 y predito da variável alvo {self.predicted_name} para todas "
 				    "as possíveis sugestões:")
 			# Cria uma Series do Pandas a partir do vetor y_pred, para
 			# facilitar a impressão do vetor com os valores preditos y_pred,
@@ -2503,7 +2502,7 @@ class SuggestionsPredictor:
 			# a melhor configuração de sugestão e o DataFrame X_aux criado
 			# anteriormente.
 			if verbose:
-				print("🐛  X auxiliar usado ao predizer a o tempo da melhor sugestão "
+				print("🐛 X auxiliar usado ao predizer a o tempo da melhor sugestão "
 					    f"de configuração {y_suggestion}, usando os parâmetros da "
 							f"aplicação {user_applicaion_params}:")
 				print("\n", X_aux.to_markdown(tablefmt="grid", floatfmt=".2f"), 
@@ -2530,7 +2529,7 @@ class SuggestionsPredictor:
 			# para esta configuração e os parâmetros da aplicação definidos
 			# pelo usuário. 
 			if verbose:	
-				print("🐛  Tempo de execução predito para a melhor sugestão de "
+				print("🐛 Tempo de execução predito para a melhor sugestão de "
 					    f"configuração {y_suggestion}, usando os parâmetros da " 
 							f"aplicação {user_applicaion_params}: {y_time[0]}") 
 
@@ -2645,7 +2644,7 @@ class SuggestionsPredictor:
 			# aplicação indexadas no DataFrane user_applications_params_df 
 			# pelo índice idx.
 			if verbose:
-				print("🐛  Descobrindo a melhor sugestão de configuração para "
+				print("🐛 Descobrindo a melhor sugestão de configuração para "
 					    f"as vbariáveis {user_params} da aplicação definidas " 
 							"pelo usuário")
 
@@ -2856,24 +2855,24 @@ class SuggestionsPredictor:
 		# todas as configurações em X, e o tempo predito para a melhor 
 		# sugestão de configuração, dependendo dos parâmetros show_score, 
 		# show_X, show_y_pred e show_time.			
-		print(f"🐛  Sugestão: {formatted_suggestion}")
+		print(f"➡️ Sugestão: {formatted_suggestion}")
 
 		# Se show_time for True, imprime o tempo predito para a melhor
 		# sugestão de configuração, caso também tenha sido treinado o modelo
 		# para estimar o tempo de execução dessa sugestão e esse tempo
 		# calculado.
 		if show_time and 'Time' in info_suggestion:
-			print(f"🐛  Tempo para a sugestão: {info_suggestion['Time']:.2f} s")
+			print(f"➡️ Tempo para a sugestão: {info_suggestion['Time']:.2f} s")
 
 		# Se show_score for True, imprime a pontuação da melhor sugestão de 
 		# configuração.
 		if show_score:
-			print(f"🐛  Pontuação da sugestão: {info_suggestion['Score']:.2f}")
+			print(f"➡️ Pontuação da sugestão: {info_suggestion['Score']:.2f}")
 
 		# Se show_X for True, imprime o DataFrame com todas as configurações
 		# consideradas, que estão no campo X do dicionário info_suggestion.
 		if show_X:
-			print("🐛  X, com todas as configurações, usado nas predições feitas "
+			print("➡️ X, com todas as configurações, usado nas predições feitas "
 			      "quando estavamos escolhendo a malhor sugestão:")
 			print("\n", info_suggestion['X'].to_markdown(tablefmt="grid", 
 																								   floatfmt=".2f"), "\n", 
@@ -2885,7 +2884,7 @@ class SuggestionsPredictor:
 		# imprime o menor valor predito da variável alvo do modelo auxiliar
 		# e a posição deste menor valor no vetor com as predições y_pred.				
 		if show_y_pred:
-			print("🐛  y predito usado para escolher a melhor sugestão, sendo que "
+			print("➡️ y predito usado para escolher a melhor sugestão, sendo que "
 				    f"o mínimo {info_suggestion['y_pred_minimum']} está na posição "
 						f"{info_suggestion['y_pred_minimum_position']}:")
 			print("\n", info_suggestion['y_pred'].to_markdown(tablefmt="grid", 
