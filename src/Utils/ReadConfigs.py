@@ -101,7 +101,7 @@ class ReadSystemConfig:
       print("❌ Erro ao validar o JSON do arquivo de sistema "
             f"{system_config_path.name}!")
       print(f"❌ Detalhes do erro: {e.message}")
-      print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+      print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
       return None
     # Ocorreu um erro de sintaxe ao ler o arquivo JSON.
     except json.JSONDecodeError as e:
@@ -136,7 +136,7 @@ class ReadSystemConfig:
       return None
     # Ocorreu alguma outra exceção inesperada.
     except Exception as e:
-      print(f"❌ Erro desconhecido ao processar o arquivo "
+      print("❌ Erro desconhecido ao processar o arquivo "
             f"{system_config_path.name}!")
       print(f"❌ Parâmetros do erro: {e.args}!")
       print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
@@ -180,8 +180,7 @@ class ReadTrainingConfig:
             "type": "object",
             "additionalProperties": {
                 "type": "object",
-                "required": ["grid_search_parms", "fixed_params", "name", 
-                             "import_path"],
+                "required": ["grid_search_parms", "name", "import_path"],
                 "properties": {
                     "grid_search_parms": {"type": "object"},  
                     "fixed_params": {"type": "object"},       
@@ -905,8 +904,9 @@ class PredictorsInfoConfig:
     # Verifica se self.predictors_info_config_path foi inicializado, ou
     # seja, se a função read_predictors_info_config foi chamada.
     if self.predictors_info_config_path is None:
-      print(f"⚠️ Não foi lida a configuração de mapeamento dos "
-            "preditores! O arquivo não será salvo!")
+      print("⚠️ Não foi lida a configuração de mapeamento dos "
+            f"preditores! O arquivo {self.predictors_info_config_path} não "
+            "será salvo!")
     else:
       # Atualiza o dicionário das configurações dos preditores com a 
       # nova versão das configurações.

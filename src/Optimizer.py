@@ -1502,8 +1502,9 @@ def convert_user_params(required_applicaion_params, conversions,
       # a tabela lida, usando a referência ao dataframe com a tabela
       # colocada em df_map. 
       if debug_code:
-        print(f"➡️  Dataframe de mapeamento {dataframe_map_file_name}: \n\n")
-        print(df_map.to_markdown(tablefmt="grid"))
+        print(f"➡️  Tabela com o mapeamento {dataframe_map_file_name}:")
+        print("\n", df_map.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
+              sep="")
 
       # Cria uma chave com o nome dataframe_map_file_name do arquivo com
       # a tabela de mapeamento lida e associa esta chave à referência ao
@@ -1610,8 +1611,8 @@ def convert_user_params(required_applicaion_params, conversions,
       else:                
         # Frase quando mais de uma variável da aplucação impediu o
         # mapeamento.
-        print(f"❌ Valores inválidos dados para as opções: "
-              "{', '.join(list_erros)}")
+        print("❌ Valores inválidos dados para as opções: "
+              f"{', '.join(list_erros)}")
   
       # Como não podemos fazer o mapeamento devido à não existirem
       # mapeamentos para todas as variáveis de aplicação definidos pelo
@@ -1639,7 +1640,7 @@ def convert_user_params(required_applicaion_params, conversions,
             "passados pelo usuário, como indicado na tabela a seguir")
       print("\n", result_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
             sep="")
-      print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+      print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
 
       # Como não podemos fazer o mapeamento devido à ambiguidade,
       # retornamos None.
@@ -1787,7 +1788,7 @@ def convert_user_params(required_applicaion_params, conversions,
   except IOError as e:
     print(f"❌ Erro de I/O ao ler o arquivo {e.filename}!")
     print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
-    print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
 
     # Como oocorreu una exceção inesperada, retorna None ao invés do 
     # dicionário com os valores convertidos das variáveis de aplicação.
@@ -1799,7 +1800,7 @@ def convert_user_params(required_applicaion_params, conversions,
   # que o usuário está tentando otimizar.
   except KeyError as e:
     print(f"❌ Erro interno ao processar o valor da opção {e.args}.")
-    print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
 
     # Como oocorreu una exceção inesperada, retorna None ao invés do 
     # dicionário com os valores convertidos das variáveis de aplicação.
@@ -2401,7 +2402,7 @@ def submission_log(application_config, system_config, suggestion,
   except IOError as e:
     print(f"❌ Erro de I/O ao ler o arquivo {e.filename}!")
     print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
-    print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
 
     # Como ocorreu uma exceção, retorna false para indicar que ocorreu
     # um erro ao tentar gerar o log de submissão do trabalho para a
@@ -2638,7 +2639,7 @@ def get_custom_configurations(application_name, application_id,
       # de configuração de um recurso que ainda não foi implementada.
       print(f"❌ A configuração necessária {suggestion_name} não existe nas "
             f"opções do script para a aplicação {application_id}.")
-      print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+      print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
 
       # Neste caso, retorna False no primeiro parâmetro, para indicar
       # que um erro ocorreu ao tentar obter a lista de valores
@@ -2739,7 +2740,7 @@ def get_custom_configurations(application_name, application_id,
         print(f"❌ A configuração necessária {suggestion_name} não existe nas "
               "configurações de uma das partições da lista de partições da "  
               f"aplicação {application_id}.")
-        print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+        print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
 
         # Neste caso, retorna False no primeiro parâmetro, para indicar
         # que um erro ocorreu ao tentar obter um valor de um dos
@@ -3304,14 +3305,14 @@ def submit_submission_script(script_file_name, template_content,
   # execução com erro, indicando que nçao foi possível submeter o script
   # de submmissão.
   except subprocess.CalledProcessError as e:
-    print("❌ Não foi possível executar o comando {submission_program}!")
-    print("❌ Código de saída:", e.returncode)
-    print("❌ mensagem de erro:", e.stderr)
+    print(f"❌ Não foi possível executar o comando {submission_program}!")
+    print(f"❌ Código de saída: {e.returncode}")
+    print(f"❌ mensagem de erro: {e.stderr}")
   # Exceção gerada se o nome do programa externo que faz a submissão,
   # armazenado em submission_program, não existir.
   except FileNotFoundError:
     print(f"❌ O programa {submission_program} não foi achado no sistema!")
-    print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
   except PermissionError as e:
     print("❌ O uauário não tem permissão para usar o programa "
           f"{submission_program} ou não tem permissão para criar arquivos "
@@ -3323,7 +3324,7 @@ def submit_submission_script(script_file_name, template_content,
   except IOError as e:
     print(f"❌ Não foi possível criar o arquivo temporário. {e.filename}")
     print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
-    print(f"❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
 
   # Aqui vamos, se necessário, remover o arquivo temporário. Foi
   # escolhido o finally porque este bloco é executado mesmo quando uma
@@ -3465,24 +3466,6 @@ def optimize_application(configs_file_path, system_config, application_config,
   #application_name = None
   
   try:
-    # Verifica se o uauário realmente passou parâmertros. Como já foi
-    # verificao na função a seguir, process_script_options, que 
-    # application_args não é None ou uma lista vazia, então 
-    # application_args sempre deveria ser uma lista não vazia.
- #   if not application_args:
- #     # Como application_args é None ou tem uma lista vazia, o que não
- #     # poderia ocorrer, existe neste caso um bug no script de
- #     # otimização, então mostramos uma mensagem na tela informando para
- #     # o usuário entrar em contato com o suporte informando o erro.
- #     print("❌ Não foi fornecido o nome da aplicação a ser otimizada e os "
- #           "seus parâmetros de execução.")
- #     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
-#
- #     # Como application_args ser None ou uma lista vazia é inesperado,
- #     # retornamos False porque não foi possível otimizar a execução da
- #     # aplicação.
- #     return False
-    
     # Determina o diretorio dos arquivos de configuração das aplicações.
     # Ele será o subdiretório 'applications' do diretório base com
     # todas as configurações usadas pelos scripts de otimização e de
@@ -3496,31 +3479,6 @@ def optimize_application(configs_file_path, system_config, application_config,
     # da apliação passados pelo usuário, sendo o que segue o separador
     # "--".
     application_name = application_args[0]
-
-    # Usa a função find_application_config para verificar seo nome 
-    # aplicação, dado como o primeiro argumento dos parâmetros da
-    # aplicação passados pelo usuário, é uma aplicação que pode ser 
-    # otimizada e, caso seja, retorna a ID da aplicação no dicionário de
-    # configuração das aplicações, ou seja, a chave deste dicionário com
-    # a referência para o dicionário com as configurações dessa 
-    # aplicação. Em caso contráio, ou seja, a aplicação não é uma das 
-    # aplicações cuja execução pode ser otimiada, a função
-    # find_application_config retornará None.
-    #application_id = find_application_config(applications_config,
-    #                                          application_name)
-
-    # Verifica se application_id é None, ou seja, se a aplicação não é
-    # uma das aplicações que podem ter a sua execução otimizada pelo
-    # script de otimização.
-    #if application_id is None:
-    #  # Como a aplicação não pode ter a sua execução otimizada, 
-    #  # informamos esta fato ao usuário.
-    #  print(f"⚠️  A otimização para a aplicação {application_name} ainda "
-    #        "não é suportada!")  
-    #
-    #  # Como a aplicação não pode ter a sua execução otimizada, então
-    #  # retornamos False.
-    #  return False
 
     # Armazena o nome default em que o script de submissão será salvo. O
     # nome é definido pela chave 'default_script_name' do dicionário com

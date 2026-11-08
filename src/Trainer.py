@@ -485,11 +485,16 @@ def read_predictor_info_config(system_config, verbose=False):
     # nome do arquivo com o preditor que foi treinado para essa
     # aplicação.
     print("➡️  Informações dos preditores lidas do arquivo de configuração:")
+
+    # Varre a lista de preditores e imprime as informações para cada
+    # aplicação que pode ter a sua execução otimizada e para a qual portanto
+    # será treidado os modelos para gerar o preditor.
     for application_name, predictor_file_name in predictors_info_config.items():
       # Imprime o nome da aplicação e o nome do arquivo com o preditor
       # que foi treinado para essa aplicação.
       print(f"➖➡️  Aplicação: {application_name}; "
             f"Nome do arquivo com o preditor treinado: {predictor_file_name}")
+      
     # Imprime uma linha em branco para separar as informações dos
     # preditores dos outros logs.
     print("")
@@ -637,14 +642,23 @@ def filter_training_data(dataset, input_variables, filter_variables,
                          outlier_limit, verbose=False):
   """
   Função para filtrar os dados de treinamento de uma aplicação, usando as
-  informações da aplicação e do sistema.
+  informações da aplicação e do sistema. A filtragem será feita pela
+  função filter de um objeto da classe Filter, usando as variáveis de
+  filtragem, dadas na lista filter_variables, e o limite definido a 
+  partir do valor em ponto flutuante definido em outlier_limit. A 
+  filtragem, para cada uma dessas variáveis, será feita usando o desvio
+  absoluto em relação à mediana dos valores dessa variável para as 
+  repetições de cada teste e o valor dado em outlier_limit.
 
   Parâmetros:
     dataset (DataFrame): Dados de treinamento.
-    input_variables (list): Lista com os nomes das variáveis de entrada.
-    filter_variables (list): Lista com os nomes das variáveis de filtro.
+    input_variables (list[str]): Lista com os nomes das variáveis de 
+                                 entrada.
+    filter_variables (list[str]): Lista com os nomes das variáveis de
+                                  filtro.
     outlier_limit (float): Limite para identificação de outliers.
-    verbose (bool): Indica se deve imprimir mensagens de log.
+    verbose (bool): Indica se a verbosidade está habilitada, ou seja, se
+                    deverão ser impressas as mensagens de log.
 
   Retorna:
     DataFrame | None : O conjunto de dados da aplicação com os outliers 
@@ -664,7 +678,7 @@ def filter_training_data(dataset, input_variables, filter_variables,
     # identificação de outliers. O resultado é um novo conjunto de dados 
     # da aplicação, com os outliers removidos, que tem que a sua
     # referência armazenada na variável clean_dataset.
-    clean_dataset = dataset_filter.Filter(dataset, input_variables, 
+    clean_dataset = dataset_filter.filter(dataset, input_variables, 
                                           filter_variables, outlier_limit)
 
     # Se a verbosidade está habilitada, imprimimos o conjunto de dados da
@@ -720,52 +734,304 @@ def optimize_hyperparameters(clean_dataset, models,
                              suggestion_prediction_variable,
                              verbose=False): 
   """
-  Função para otimizar os hiperparâmetros dos modelos de uma aplicação,
-  usando as informações da aplicação e do sistema.
+  Função para otimizar os hiperparâmetros dos modelos que serão 
+  considerados e terão os seus hiperparâmetros selecionados otimizados
+  antes do melhor modelo, escolhido pela validação cruzada, ser usado
+  para construir o preditor, composto pelo modelo auxiliar cujas
+  predições serão usadas para o script de otimização escolher a melhor
+  sugestão de configuração e, se habilidato, o modelo para predizer o
+  tempo de execução ao executar a aplicação com essa eguestão. A escolha
+  dos melhores valores para os hiperparâmetros selecionados de cada
+  modelo será feita pela classe BestHiperparams, que internatemtne usará
+  na função optimize um objeto da classe GridSearchCV do scikit-learn
+  para otimizar os hiperparãmetros de um modelo. Como a classe 
+  GridSearchCV usa internamente uma validação cruzada, será usada a
+  validação LOGO com os grupos definidos pelas variáveis dadas na
+  lista group_variables, sendo que as variáveis da aplicação, dadas na
+  lista application_variables, e as relacionadas às componentes de cada
+  configuação que define uma sugestão, dadas na lista 
+  suggestion_variables, serão usadas para treinar um modelo, cujo 
+  conjunto de dados, que inclui colunas para todas as variáveis 
+  definidas pelas listas suggestion_variables, application_variables,
+  group_variables e suggestion_prediction_variable, irá predizer a
+  variável dada em suggestion_prediction_variable (no nosso caso, 
+  atualmente a variável, para todas as aplicações, é a EDP).
+    
+  Parâmetros:
+    models (dict): Dicionário em que cada chava é o nome interno do 
+                   modelo, por exemplo , ExtraTressRegressor é ETR,
+                   e o conteúdo da chave é também um dicionário em que
+                   cada chave é um dos hiperparâmetros do modelo
+                   associado à chave, e o conteúdo é os valores dos
+                   hiperparâmetros que serão avaliados.
+    suggestion_variables (list[str]): Lista com os nomes das variáveis
+                                      que definem as componentes de uma
+                                      sugestão de configuração.
+    application_variables (list[str]): Lista com os nomes das variáveis
+                                       da aplicação, mas mão exatamente
+                                       as originais passadas pelos 
+                                       usuários, mas as que foram 
+                                       convertidas, sendo as originais
+                                       usadas somente se nenhuma
+                                       conversão foi efetivamente
+                                       feita (a conversão "copy" no
+                                       script de otimização). Por 
+                                       exemplo, no RAxML, não foi usado 
+                                       o nome do arquivo, mas o tamanho
+                                       desse arquivo.
+    group_variavbles (list[str]): Lista com as variáveis, em geral as
+                                  variáveis da aplicação definidas pelo
+                                  usuário ou convertidas, que definem os
+                                  grupos usados pela validação LOGO.
+    suggestion_prediction_variable (str): Nome da variável alvo dos
+                                          modelos treinados para avaliar
+                                          as possíveis combinações de
+                                          hiperparâmetros para cada
+                                          modelo, usando a validação
+                                          cruzada e o LOGO. Esta 
+                                          variável é a mesma usada pelo
+                                          modelo auxiliar usado pelo
+                                          script de otimização ao 
+                                          escolher a melhor sugestão de
+                                          comfiguração. Nas aplicações
+                                          que estamos avaliando, usamos
+                                          a variável EDP.                                                              
+    verbose (bool): Indica se a verbosidade está habilitada, ou seja, se
+                    deverão ser impressas as mensagens de log.
 
+    Retorna:
+      tuple: Uma tupla com dois elementos. Se não ocorrerem erros, o 
+             primeiro elemento da tupla é um Diciońario em que cada 
+             chave é o indentificador interno do modelo e a referência
+             o objeto do modelo representado pela chave já inicializado,
+             e o segundo elemento é também um dicionário, também 
+             indexado pelo nome interno do modelo, com os melhores
+             hiperparâmetros para este modelo. Se algum erro ocorrer,
+             retorna None para ambos os elementos.
   """
 
+  # Inicializa o dicionário com os modelos já inicialiados com os 
+  # melhores hiperoarâmetros. A chave será o nome interno do modelo que
+  # são as chaves do dicionário referenciado pela chabe 'models" do 
+  # arquivo de configuração do treinamento e a referência da chave será
+  # o modelo inicialozado com os melhores valores para os
+  # hiperparâmetros otimizados.
   initialized_models = {}
 
-  for preditor_key, model_info in models.items():
-    if verbose:
-      print(f"➖➡️  Otimizando o modelo {model_info['name']} usando os "
-            f"hiperparâmetros {model_info['grid_search_parms']} e a busca em "
-            "grade:")
-    # Descobre e importa o modelo de modo dinâmico.
-    module_path, model_name = model_info['import_path'].rsplit(".", 1)
-    # Importa e obtem dinamicamente o modelo.
-    model_module = importlib.import_module(module_path)
-    model = getattr(model_module, model_name)
+  # Inicializa o dicionário com os melhores valores dos hiperparâmetros
+  # para cada modelo. A chave é, como no dicionário initialized_models,
+  # a chave do dicionário referenciado pela chave 'models' do arquivo de
+  # configuração de treinamento,
+  best_params_models = {}
 
-    # Faz a otimização dos hiperparâmetros.
-    best_hyper = BestHiperparams(verbose=debug_code)
-    best_params, best_score = best_hyper.optimize(
-      clean_dataset, 
-      suggestion_variables,
-      application_variables,
-      group_variables,
-      suggestion_prediction_variable, 
-      model() if model_info['fixed_params'] is None else model(**model_info['fixed_params']),
-      model_info['grid_search_parms']
-      )
+  try:
+    # Vamos executar a otimização dos hiperparâmetros para cada modelo
+    # definido em models, que é a mesma referência ao dicionário 
+    # definido pela chave 'models' do dicionário de configuração do 
+    # treinamento que foi lido do arquivo de configuração ao inicializar
+    # o script de treinamento. Para cada entrada do dicionário models,
+    # sendo a chave aramzenada em preditor_key, o nome interno do 
+    # modelo, e model_info o dicionário com as informações para o uso
+    # e otimização dos parâmetros deste modelo.
+    for preditor_key, model_info in models.items():
+      # Se a verbosidade estiver habilitada, mostra o modelo com o nome 
+      # interno preditor_key e o nome definido pela chave 'name' do
+      # dicionário models_info, e os hiperparâmetros que serão 
+      # otimizados e os possíveis valores considerados para cada 
+      # hiperparâmetro, que são definidos no dicionário definido pela
+      # chave 'grid_search_parms' de model_info, sendo cada chave um dos
+      # hiperparâmetros a serem otimizados e a referência desta chave
+      # a lista com os possíveis valores a serem consideramdos para esse
+      # hiperparâmetro.
+      if verbose:
+        print(f"➖➡️  Otimizando o modelo {model_info['name']} usando os "
+              f"hiperparâmetros {model_info['grid_search_parms']} e a busca em "
+              "grade:")
+        
+      # Descobre e importa o modelo com o nome interno preditor_key, 
+      # de modo dinâmico, sendo que o  caminho para importar esse
+      # modelo é definido na chave 'import_path' do dicionário 
+      # model_info. Como o caminho indica como o modelo seria acessado
+      # diretamente, importando somente a bibliotea básica do python que
+      # está implementado o modelo, por exemplo, para a Extra Trees
+      # egressor do scikit-learn sklearn.ensemble.ExtraTreesRegressor, 
+      # então usamos o rsplilt da classe string, para separar as strings
+      # por um separador, no caso o ",", a partir da direita (o "r" em
+      # rsplit), em duas strings de acordo com o último ponto, sendo o
+      # primeiro, armazenado em module_path, o caminho que seria usado 
+      # em um "from" para importar um objeto específico da biblioteca
+      # (ou módulo), e o segundo, armazenado em model_name, o nome da 
+      # classe do objeto. No caso das Extra Trees, module_path seria
+      # uma referência para a string "sklearn.ensemble" e model_neme
+      # seria uma referência para a string "ExtraTreesRegressor".
+      module_path, model_name = model_info['import_path'].rsplit(".", 1)
 
-    if verbose:
-      print(f"➖➖➡️   Modelo {model_info['name']}: Melhores hiperparâmetros -> "
-            f"{best_params}; Melhor score -> {best_score}")
-      print("➖➖➖➡️  Dataframe com a avaliação de todas as combinações dos "
-            "hiperparâmetros:")         
-      hyperparams_score = best_hyper.get_hyperparams_scores() 
-      print("\n", hyperparams_score.to_markdown(tablefmt="grid", 
-                                                floatfmt=".2f"), "\n", sep="")
+      # Uma vez que definimos o caminho completo na biblioteca ou 
+      # módulo, usamos a função import_module da biblioteca padrão do
+      # Python importlib para dinâmicamente importar a biblioteca que
+      # implementa o modelo, sendo a referência ao objeto que representa
+      # a biblioteca armazenada em model_module.
+      # If the module cannot be imported, import_module() will raise ImportError or an appropriate subclass like ModuleNotFoundError.
+      model_module = importlib.import_module(module_path)
 
+      # Uma vez que a biblioteca tenha sido importada em um objeto
+      # referenciado por model_module, os seus atributos serão o que
+      # podemos importar dessa bibliotca, ou seja, um desses atributos
+      # deveria ser o nome daa classe do objeto que implementa o modelo
+      # para o qual iremos otimizar os seus hiperparâmetros, supondo que
+      # o nome passado na chave 'import_path' do dicionário model_info
+      # está correto. Se estiver correto, retorna a referência para a
+      # classe do modelo e, em caso contrário (se o atributo não 
+      # existir, retorna None).
+      model = getattr(model_module, model_name, None)
 
-    if model_info['fixed_params'] is not None:
-        best_params = dict(**best_params, **model_info['fixed_params'])
-    initialized_models[preditor_key] = model(**best_params) 
+      # Verifica o objeto model_module tem o atributo model_name.
+      if model is None:
+        # Como o objeto model_module tem o atributo model_name,  então
+        # vamos criar um objeto da classe BestHiperparams, usada para 
+        # otimizar os hiperparâmetros de um modelo, e armazenar a 
+        # rederência a esse objeto em best_hyper.
+        best_hyper = BestHiperparams(verbose=debug_code)
 
-  return initialized_models, best_params
+        # Chamamos a função optimize do objeto best_hyper para otimizar
+        # os hiperparâmetros do modelo que estamos avaliando. Para a
+        # função são passados o conjunto de dados fultrado 
+        # (clean_dataset), as variáveis suggestion_variables associadas
+        # as sugestões das configurações, as variáveis 
+        # application_variables associadas aos parâmetros da aplicação
+        # passados pelos usuários e convertidos quando necessário, as
+        # variáveis group_variables usadas para definir os grupos usados
+        # pela validação LOGO usada internamente ao escolher a melhor
+        # combinação para os valores dos hiperparâmtros, a variável
+        # suggestion_prediction_variable que define a variável alvo 
+        # usadas nos treinamentos feitos ao verificar cada combinação
+        # para os valores dos hiperparâmetros (nos testes que fizemos,
+        # usamos a EDP), e o modelo inicializado. Como o obejo model é
+        # uma referência para a classe do modelo que estamos otimizando,
+        # podemos usar model como se fosse usada ao criar um objeto da
+        # classe, como em model() se não definimos hiperparâmetros fixos
+        # para o modelo que não veriam durante a escolha dos melhores
+        # valores para os hiperparâmetros que variam, ou seja, se 
+        # model_info não tem a chave 'fixed_params' e 
+        # model(**model_info['fixed_params']) se essa chave existir 
+        # (como estamos fazendo uma descompactação do dicionário, cada 
+        # entrada, definida por uma chave x como o nome do
+        # hiperparâmerro x e o valor y como o valor desse hiperparâmetro
+        # para x-y.), e finalmente, o dicionário com os hiperparâmetros
+        # do modelo a serem otimizados, sendo a chave um dos
+        # hiperparâmetros e o seu valor uma lista com os valores a serem
+        # avaliados para esse hiperparâmetro. A função retorna um
+        # dicionário, cuja referência é aemazenada best_params, em que
+        # cada chave é um hiperparâmtro avaliado e a referência dessa
+        # chave o melhor valor escolhido para esse hiperparâmetro, e a
+        # melhor pontuação associada os melhores valores para os
+        # hiperparâmetros, armazenada em best_score. 
+        best_params, best_score = best_hyper.optimize(
+          clean_dataset, 
+          suggestion_variables,
+          application_variables,
+          group_variables,
+          suggestion_prediction_variable, 
+          model(**model_info['fixed_params']) if 'fixed_params' in model_info 
+                                              else model(),
+          model_info['grid_search_parms']
+        )
 
+        # Se a verbosidade estiver habilitada, imperime informações 
+        # referenteas a otimização dos hiperparâmetros do
+        if verbose:
+          # Imprime o nome do modelo, o dicionário com os melhores
+          # valores para os hiperparâmetros avaliados e a pontuação 
+          # associada aos melhores valores dos hiperparâmetros.         
+          print(f"➖➖➡️   Modelo {model_info['name']}: Melhores "
+                f"hiperparâmetros -> {best_params}; Melhor score -> "
+                f"{best_score}")
+
+          # Imprime o DataFrame com as informações referentes a 
+          # otimização dos hiperparâmetros, com todas as informações
+          # relevantes refrentes aos treinamentos feitos para escolher
+          # os melhores valores para os hiperparâmetros. 
+          print("➖➖➖➡️  Dataframe com a avaliação de todas as combinações "
+                "dos hiperparâmetros:")         
+
+          # Primeiramente obtem essas informações, que sáo retornadas
+          # pela função get_hyperparams_scores do ojeto best_hyper em
+          # um DataFrame do Pandas.
+          hyperparams_score = best_hyper.get_hyperparams_scores() 
+
+          # Imprime o DataFrame do Pandas obtido.
+          print("\n", hyperparams_score.to_markdown(tablefmt="grid", 
+                                                    floatfmt=".2f"), "\n", 
+                sep="")
+
+        # Verifica se a chave 'fixed_params' existe no dicionário
+        # models_info, ou seja, se foram definidos hiperparâmerros com
+        # valores ficos (nos nossos testes, usamos o hiperparâmetro
+        # random_state=42).
+        if 'fixed_params' is model_info:
+            # Se a chave 'fixed_params' existe no dicionário model_info,
+            # então ela é um dicionário em que a chave é um 
+            # hiperparâmetro fixo e a referência da chave esse valor, 
+            # então juntamos o dicionpario best_params com o dicionário
+            # rferenciado pela chave 'fixed_params' do dicionário 
+            # model_info e armazenados o resultado, ou seja, a refeência
+            # ao novo dicionário, em best_params.
+            best_params = dict(**best_params, **model_info['fixed_params'])
+
+        # Adiciona ao dicionário dos modelos inicializados, na chave 
+        # preditor_key com o nome interno do modelo, o modelo 
+        # inicializado (lembrando que podemos usar o objeto model para
+        # criar um objeto da classe referenciada por esse objeto), 
+        # inicializado com os hiperparâmetros definidos no dicionário
+        # best_params. Como estamos fazendo uma descompactação do
+        # dicionário, cada entrada, definida por uma chave x como o nome
+        # do hiperparâmerro x e o valor y como o valor desse 
+        # hiperparâmetro para x-y.
+        initialized_models[preditor_key] = model(**best_params) 
+
+        # Armazana, na chave com o mesmo nome interno do model
+        # opreditor_key, os hiperparâmerros com os valores otimizados,
+        # assim como os hiperparâmetros com os valores fixos.
+        best_params_models[preditor_key] = best_params
+      else:
+        # Como não foi encontrado uma classe com o nome model_name na
+        # bibloreca referenciada por model_module, mostra um erro 
+        # informando que o modelo não existe.
+        # TODO: Eu não tinha verificado esse erro antes, deveremos 
+        # abortar, ou ignorar o modelo?
+        print(f"❌ O caminho de importação {model_info['import_path']} é "
+              f"inválido. A classe do modelo {model_module} não existe na "
+              f"bibloteca referenciada por {module_path}!")
+
+    # Retorna os dicionários com os modelos avaliados já inicializados e 
+    # os melhores valores para os hiperparâmetros para os modelos 
+    # avaliados, conjuntamente com os hiperparâmetros com os valores
+    # fixos se foram definidos.
+    return initialized_models, best_params_models
+
+  # Foi passado um tipo inválido em um dos parâmetros da função Filter.
+  except ValueError as e:
+    print("❌ Erro ao filtrar os outliers do conjunto de dados da "
+          "aplicação!")
+    print(f"❌ mensagem de erro: {str(e)}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return None, None
+  # Em um dos parâmetros de variáveis da func~ão Filter, foi passada uma
+  # variável que não existe no conjunto de dados da aplicação.
+  except KeyError as e:
+    print("❌ Erro ao filtrar os outliers do conjunto de dados da "
+          "aplicação!")
+    print(f"❌ mensagem de erro: {str(e)}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return None, None
+  # Ocorreu alguma outra exceção inesperada.
+  except Exception as e:
+    print("❌ Erro desconhecido ao filtrar os outliers do conjunto de dados "
+          "da aplicação!")
+    print(f"❌ Parâmetros do erro: {e.args}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return None, None
+  
 def choose_best_model(clean_dataset, initialized_models, suggestion_variables,
                       application_variables, group_variables, 
                       suggestion_prediction_variable, verbose=False): 
@@ -804,15 +1070,11 @@ def choose_best_model(clean_dataset, initialized_models, suggestion_variables,
 
   return best_model_name, best_model_score 
 
-def generate_application_predictor(clean_dataset, 
-                                            best_model_name, 
-                                            best_model_score,
-                                            best_params,
-                                            suggestion_variables,
-                                            application_variables, 
-                                            group_variables, 
-                                            prediction_variables, 
-                                            verbose=False):
+def generate_application_predictor(clean_dataset, best_model_name, 
+                                   best_model_score, best_model_params,
+                                   suggestion_variables, application_variables, 
+                                   group_variables, prediction_variables, 
+                                   verbose=False):
   """ 
   Função para treinar o melhor modelo de uma aplicação, usando as
   informações da aplicação e do sistema.
@@ -821,7 +1083,7 @@ def generate_application_predictor(clean_dataset,
 
   print("➖➡️    Treinando agora o preditor com o melhor modelo "
         f"{best_model_name} (pontuação: {best_model_score}), usando "
-        f"{best_params} como os hiperparâmetros customizados.")
+        f"{best_model_params} como os hiperparâmetros customizados.")
   # Descobre e importa o modelo de modo dinâmico.
   module_path, model_name = training_config["models"][best_model_name]['import_path'].rsplit(".", 1)
   # Importa e obtem dinamicamente o modelo.
@@ -830,19 +1092,19 @@ def generate_application_predictor(clean_dataset,
 
   predictor = SuggestionsPredictor()
   predictor.fit(clean_dataset, suggestion_variables, application_variables,
-                group_variables, prediction_variables, model, best_params, 
-                verbose)
+                group_variables, prediction_variables, model, best_model_params, 
+                debug_code)
   if verbose:
-    print('---> Dataframe do oráculo:')
+    print('➖➖➡️ Dataframe do oráculo:')
     oracle_df = predictor.get_oracle()
     print("\n", oracle_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
   # Obtém as imformações das importâncias, se o modelo as define  
   importances_df = predictor.get_importances(verbose=debug_code)
   if verbose and importances_df is not None:
-    print('---> Dataframe com as importâncias do modelo:')
+    print('➖➖➡️ Dataframe com as importâncias do modelo:')
     print("\n", importances_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
   elif verbose:
-    print("---> O modelo não avalia as importâncias das características.")
+    print("➖➖➡️ O modelo não avalia as importâncias das características.")
 
   return predictor
 
@@ -867,18 +1129,18 @@ def save_application_predictor(best_model_name, best_model_import_name,
     old_preditor_file_name = predictors_info_config[application_key]
     old_preditor_file_path = predictors_file_path / f"{old_preditor_file_name}"
     if verbose:
-      print(f'--> Removendo o preditor antigo {old_preditor_file_name}')  
+      print(f'➖➡️ Removendo o preditor antigo {old_preditor_file_name}')  
     old_preditor_file_path.unlink(missing_ok=True)
   
   # Salva o arquivo do preditor no formato .pickle.
-  print(f"--> Salvando o preditor treinado como o modelo {best_model_name} "
+  print(f"➖➡️ Salvando o preditor treinado como o modelo {best_model_name} "
         f"(nome {best_model_import_name}) no arquivo {preditor_file_name}.")
 
   predictor.save_predictor(preditor_file_name)
 
   # Salva as informações do arquivo do modelo do preditor.
   if verbose:
-    print("--> Salvndo a informação do caminhio do preditor "
+    print("➖➡️ Salvndo a informação do caminhio do preditor "
           f"{preditor_file_name} para a aplicação {application_key} no "
           "arquivo de configuração dos preditores.")
   predictors_info_config[application_key] = preditor_file_name.name
@@ -957,7 +1219,7 @@ def train_command(applications_name, applications_config, training_config,
 
         models = training_config['models']
         
-        initialized_models, best_params = optimize_hyperparameters(
+        initialized_models, best_params_models = optimize_hyperparameters(
           clean_dataset,
           models,
           suggestion_variables,
@@ -977,10 +1239,12 @@ def train_command(applications_name, applications_config, training_config,
           verbose
         ) 
 
+        best_model_params = best_params_models[best_model_name]
+
         predictor = generate_application_predictor(clean_dataset, 
                                                    best_model_name, 
                                                    best_model_score, 
-                                                   best_params,
+                                                   best_model_params,
                                                    suggestion_variables,
                                                    application_variables,
                                                    group_variables,
@@ -995,7 +1259,8 @@ def train_command(applications_name, applications_config, training_config,
                                             predictors_info_config, 
                                             predictors_info_config_obj, 
                                             suggestion_prediction_variable, 
-                                            application_name, application_key)
+                                            application_name, application_key,
+                                            verbose)
 
         if not status:
           print("❌ Erro ao salvar o novo preditor para a aplicação "
