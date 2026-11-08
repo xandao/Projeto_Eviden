@@ -695,20 +695,20 @@ def filter_training_data(dataset, input_variables, filter_variables,
   """
 
   try:
-    # Cria um objeto da classe FilterOutliers, que será usado para filtrar
-    # os outliers do conjunto de dados da aplicação.
+    # Cria um objeto da classe FilterOutliers, que será usado para 
+    # filtrar os outliers do conjunto de dados da aplicação.
     dataset_filter = FilterOutliers()
 
-    # Filtra os outliers do conjunto de dados da aplicação dataset, usando
-    # as variáveis de entrada, as variáveis de filtro e o limite para
-    # identificação de outliers. O resultado é um novo conjunto de dados 
-    # da aplicação, com os outliers removidos, que tem que a sua
+    # Filtra os outliers do conjunto de dados da aplicação dataset,
+    # usando as variáveis de entrada, as variáveis de filtro e o limite
+    # para identificação de outliers. O resultado é um novo conjunto de
+    # dados da aplicação, com os outliers removidos, que tem que a sua
     # referência armazenada na variável clean_dataset.
     clean_dataset = dataset_filter.filter(dataset, input_variables, 
                                           filter_variables, outlier_limit)
 
-    # Se a verbosidade está habilitada, imprimimos o conjunto de dados da
-    # aplicação após a filtragem dos outliers e os dados estatísticos
+    # Se a verbosidade está habilitada, imprimimos o conjunto de dados
+    # da aplicação após a filtragem dos outliers e os dados estatísticos
     # referentes a esse conjunto de dados filtrado.
     if verbose:
       # Imprime o conjunto de dados da aplicação após a filtragem dos
@@ -718,19 +718,19 @@ def filter_training_data(dataset, input_variables, filter_variables,
       print("\n", clean_dataset.to_markdown(tablefmt="grid", floatfmt=".2f"), 
             "\n", sep="")
 
-      # Imprime os dados estatísticos referentes a esse conjunto de dados
-      # filtrado.
+      # Imprime os dados estatísticos referentes a esse conjunto de 
+      # dados filtrado.
       print("➖➖➡️ Dados estatísticos referentes ao conjunto de dados "
             "filtrado:")
       print("\n", clean_dataset.describe().to_markdown(tablefmt="grid", 
                                                       floatfmt=".2f"), "\n", 
             sep="")
 
-    # Retorna uma referência para o conjunto de dados da aplicação com os
-    # outliers filtrados.
+    # Retorna uma referência para o conjunto de dados da aplicação com
+    # os outliers filtrados.
     return clean_dataset
 
-  # Foi passado um tipo inválido em um dos parâmetros da função Filter.
+  # Foi passado um tipo inválido em um dos parâmetros da função filter.
   except ValueError as e:
     print("❌ Erro ao filtrar os outliers do conjunto de dados da "
           "aplicação, um valor errado foi usado!")
@@ -742,7 +742,7 @@ def filter_training_data(dataset, input_variables, filter_variables,
     # retorna None.
     return None
 
-  # Em um dos parâmetros de variáveis da func~ão Filter, foi passada uma
+  # Em um dos parâmetros de variáveis da funcão filter, foi passada uma
   # variável que não existe no conjunto de dados da aplicação.
   except KeyError as e:
     print("❌ Erro ao filtrar os outliers do conjunto de dados da "
@@ -776,9 +776,9 @@ def optimize_hyperparameters(clean_dataset, models,
   Função para otimizar os hiperparâmetros dos modelos que serão 
   considerados e terão os seus hiperparâmetros selecionados otimizados
   antes do melhor modelo, escolhido pela validação cruzada, ser usado
-  para construir o preditor, composto pelo modelo auxiliar cujas
+  para construir o preditor, composto pelo estimador auxiliar cujas
   predições serão usadas para o script de otimização escolher a melhor
-  sugestão de configuração e, se habilidato, o modelo para predizer o
+  sugestão de configuração e, se habilitado, o estimador para predizer o
   tempo de execução ao executar a aplicação com essa eguestão. A escolha
   dos melhores valores para os hiperparâmetros selecionados de cada
   modelo será feita pela classe BestHiperparams, que internatemtne usará
@@ -786,23 +786,24 @@ def optimize_hyperparameters(clean_dataset, models,
   para otimizar os hiperparãmetros de um modelo. Como a classe 
   GridSearchCV usa internamente uma validação cruzada, será usada a
   validação LOGO com os grupos definidos pelas variáveis dadas na
-  lista group_variables, sendo que as variáveis da aplicação, dadas na
+  lista group_variables. As variáveis da aplicação, dadas na
   lista application_variables, e as relacionadas às componentes de cada
   configuação que define uma sugestão, dadas na lista 
-  suggestion_variables, serão usadas para treinar um modelo, cujo 
-  conjunto de dados, que inclui colunas para todas as variáveis 
-  definidas pelas listas suggestion_variables, application_variables,
-  group_variables e suggestion_prediction_variable, irá predizer a
-  variável dada em suggestion_prediction_variable (no nosso caso, 
-  atualmente a variável, para todas as aplicações, é a EDP).
+  suggestion_variables, serão usadas para treinar os modelos da
+  validação cruzada, cujo conjunto de dados, que inclui colunas para 
+  todas as variáveis definidas pelas listas suggestion_variables, 
+  application_variables, group_variables e
+  uggestion_prediction_variable, irá predizer a variável dada em
+  suggestion_prediction_variable (no nosso caso, atualmente a variável,
+  para todas as aplicações, é a EDP).
     
   Parâmetros:
     models (dict): Dicionário em que cada chava é o nome interno do 
-                   modelo, por exemplo , ExtraTressRegressor é ETR,
-                   e o conteúdo da chave é também um dicionário em que
-                   cada chave é um dos hiperparâmetros do modelo
-                   associado à chave, e o conteúdo é os valores dos
-                   hiperparâmetros que serão avaliados.
+                   modelo, por exemplo ExtraTressRegressor,e o conteúdo
+                   da chave é também um dicionário em que cada chave é
+                   um dos hiperparâmetros do modelo associado à chave, e
+                   o conteúdo é os valores dos hiperparâmetros que serão
+                   avaliados.
     suggestion_variables (list[str]): Lista com os nomes das variáveis
                                       que definem as componentes de uma
                                       sugestão de configuração.
@@ -965,7 +966,14 @@ def optimize_hyperparameters(clean_dataset, models,
         # cada chave é um hiperparâmtro avaliado e a referência dessa
         # chave o melhor valor escolhido para esse hiperparâmetro, e a
         # melhor pontuação associada os melhores valores para os
-        # hiperparâmetros, armazenada em best_score. 
+        # hiperparâmetros, armazenada em best_score. A função retorna
+        # as seguintes referências:
+        # 
+        # best_params: dicionário em que a chave é um dos 
+        #              hiperparâmetros e o valor o melhor valor para
+        #              esse hiperparâmetro. 
+        # best_score: Pontuação para os melhores valores dos 
+        #             hiperparâmetros. A pontuação usada é a acurácia.
         best_params, best_score = best_hyper.optimize(
           clean_dataset, 
           suggestion_variables,
@@ -1049,7 +1057,8 @@ def optimize_hyperparameters(clean_dataset, models,
     # fixos se foram definidos.
     return initialized_models, best_params_models
 
-  # Foi passado um tipo inválido em um dos parâmetros da função Filter.
+  # Foi passado um tipo inválido em um dos parâmetros da função
+  # optimize.
   except ValueError as e:
     print("❌ Erro ao otimizar os hiperparâmetros dos modelos, um valor "
           "errado foi usado!")
@@ -1061,8 +1070,8 @@ def optimize_hyperparameters(clean_dataset, models,
     # models, retorna None para os dois elementos da tupla.
     return None, None
   
-  # Em um dos parâmetros de variáveis da função Filter, foi passada uma
-  # variável que não existe no conjunto de dados da aplicação.
+  # Em um dos parâmetros de variáveis da função optimize, foi passada
+  # uma variável que não existe no conjunto de dados da aplicação.
   except KeyError as e:
     print("❌ Erro ao otimizar os hiperparâmetros dos modelos, uma chave "
           "errada foi usada!")
@@ -1100,7 +1109,7 @@ def optimize_hyperparameters(clean_dataset, models,
   
   # Ocorreu alguma outra exceção inesperada.
   except Exception as e:
-    print("❌ Erro ao otimizar os hiperparâmetros dos modelos!")
+    print("❌ Erro desconhecido ao otimizar os hiperparâmetros dos modelos!")
     print(f"❌ Mensagem de erro: {str(e)}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
 
@@ -1112,39 +1121,197 @@ def choose_best_model(clean_dataset, initialized_models, suggestion_variables,
                       application_variables, group_variables, 
                       suggestion_prediction_variable, verbose=False): 
   """
-  Função para escolher o melhor modelo de uma aplicação, usando as
-  informações da aplicação e do sistema.
-  
+  Função para escolher o melhor modelo dentre os modelos que serão 
+  considerados, send este modelo o usado para construir o preditor, 
+  composto pelo estimador auxiliar cujas predições serão usadas para o 
+  script de otimização escolher a melhor sugestão de configuração e, se 
+  habilitado, o estimador para predizer o tempo de execução ao executar
+  a aplicação com essa suguestão. A escolha do melhor modelo será feita 
+  pela classe DiscoverBestModel, que internatemente usará,
+  na função best_model, a função cross_validate do scikit-learn
+  para fazer a validação cruzada para cada um dos modelos, para depois
+  escolher o melhor modelo, como a melhor pontuação. A validação
+  usada será a LOGO com os grupos definidos pelas variáveis dadas na
+  lista group_variables. As variáveis da aplicação, dadas na lista 
+  application_variables, e as relacionadas às componentes de cada 
+  configuação que define uma sugestão, dadas na lista 
+  suggestion_variables, serão usadas para treinar os modelos da
+  validação cruzada, cujo conjunto de dados, que inclui colunas para 
+  todas as variáveis definidas pelas listas suggestion_variables, 
+  application_variables, group_variables e 
+  suggestion_prediction_variable, irá predizer a variável dada em 
+  suggestion_prediction_variable (no nosso caso, atualmente a variável, 
+  para todas as aplicações, é a EDP).
+    
+
+    Parâmetros:
+    initialized_models (dict): Dicionário em que cada chava é o nome
+                               interno do modelo, por exemplo 
+                               ExtraTressRegressor, e o conteúdo da 
+                               chave é um objeto do modelo já 
+                               inicializado e pronto para ser treinado,
+                               com os melhores valores para os
+                               hiperparâmetros otimizados e os
+                               hiperparâmetros fixos.
+    suggestion_variables (list[str]): Lista com os nomes das variáveis
+                                      que definem as componentes de uma
+                                      sugestão de configuração.
+    application_variables (list[str]): Lista com os nomes das variáveis
+                                       da aplicação, mas mão exatamente
+                                       as originais passadas pelos 
+                                       usuários, mas as que foram 
+                                       convertidas, sendo as originais
+                                       usadas somente se nenhuma
+                                       conversão foi efetivamente
+                                       feita (a conversão "copy" no
+                                       script de otimização). Por 
+                                       exemplo, no RAxML, não foi usado 
+                                       o nome do arquivo, mas o tamanho
+                                       desse arquivo.
+    group_variavbles (list[str]): Lista com as variáveis, em geral as
+                                  variáveis da aplicação definidas pelo
+                                  usuário ou convertidas, que definem os
+                                  grupos usados pela validação LOGO.
+    suggestion_prediction_variable (str): Nome da variável alvo dos
+                                          modelos treinados para avaliar
+                                          as possíveis combinações de
+                                          hiperparâmetros para cada
+                                          modelo, usando a validação
+                                          cruzada e o LOGO. Esta 
+                                          variável é a mesma usada pelo
+                                          modelo auxiliar usado pelo
+                                          script de otimização ao 
+                                          escolher a melhor sugestão de
+                                          comfiguração. Nas aplicações
+                                          que estamos avaliando, usamos
+                                          a variável EDP.                                                              
+    verbose (bool): Indica se a verbosidade está habilitada, ou seja, se
+                    deverão ser impressas as mensagens de log.
+
+  Retorna:
+    tuple: Uma tupla com dois elementos. Se não ocorrerem erros, o 
+           primeiro elemento da tupla é uma string com o nome interno do
+           melhor modelo e o segundo elemento a pontuação dada a esse
+           melhor modelo. Se algum erro ocorrer, retorna None para ambos
+           os elementos.
   """
 
-  # Determina o melhor modelo, usando a validacao cruzada.;
-  if verbose:	
-    print("➖➡️ Determinando o melhor modelo dentre os modelos da lista  "
-          f"{', '.join(initialized_models.keys())}, usando a validação "
-          "cruzada com o LOGO:")
+  try:
+    # Se a verbosidade estiver habilitada, imprime uma mensagem 
+    # mostrando todos os modelos que serão avaliados pela validação
+    # cruzada cujos resultados para cada modelo serão usados para
+    # determinar a sua pontuação e depois escolher o melhor modelo.
+    if verbose:	
+      print("➖➡️ Determinando o melhor modelo dentre os modelos da lista  "
+            f"{', '.join(initialized_models.keys())}, usando a validação "
+            "cruzada com o LOGO:")
 
-  cross_validator = DiscoverBestModel(verbose=DEBUG_CODE)	
-  (
-    best_model_name, 
-    best_model_score, 
-    results_df, 
-    mean_scores_models_df
-  ) = cross_validator.best_model(clean_dataset, suggestion_variables,
-                                 application_variables, group_variables,
-                                 suggestion_prediction_variable, 
-                                 initialized_models)
- 
-  if verbose:					
-    print(f"➖➖➡️ Dataframe com os resultados das avaliações dos modelos:")
-    print("\n", results_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
-          sep="")
-    print("➖➖➡️ Dataframe com os resultados médios para cada modelo, "
-          "ordenado do melhor para o pior modelo:")
-    print("\n", mean_scores_models_df.to_markdown(tablefmt="grid", 
-                                                  floatfmt=".2f"), "\n", 
-          sep="")
+    # Cria um objeto da classe DiscoverBestModel, que será usada para
+    # descobriri o melhor modelo dentre os que foram inicializados e
+    # armazenados no dicionário initialized_models, e armazena a 
+    # referência ao objeto em discover_best_model.
+    discover_best_model = DiscoverBestModel(verbose=DEBUG_CODE)
 
-  return best_model_name, best_model_score 
+    # Usa a função 	best_model do objeto referenciado por 
+    # discover_best_model para descobrir o melhor modelo dentre os 
+    # definidos pelas chaves do dicionário initialized_models. A função
+    # retorna quatro referências, duas que retornaremos, pois são usadas
+    # fora da função, e duas que somente usaremos para a opção de 
+    # verbosidade. A função retorna o seguinte:
+    #
+    # best_model_name: Nome interno do melhor modelo, sendo o nome uma
+    #                  das chaves do dicionário initialized_models.
+    # best_model_score: Pontuação do melhir nodelo. Como podemos ter
+    #                   mais de uma pontuação, é um dicionário em que
+    #                   cada chave é uma das pontuações e o valor e
+    #                   dessa pontuação. No nossos testes temos duas
+    #                   pontuações, a acurácia e o negativo da 
+    #                   diferença, sendo a acurácia usada para escolher
+    #                   o melhor modelo e a diferença usada se algum
+    #                   empate ocorrer.
+    # results_df: DataFrame do Pandas com todos resultados de todas os
+    #             treinamentos e validações, utilizando a validação
+    #             LOGO, para todos os grupos definidos pela LOGO e todos
+    #             os modelos. As colunas dependem da validação, mas 
+    #             existe uma coluna 'Model' que identifica o modelo, 
+    #             usando o seu nome interno.
+    # mean_scores_models_df: DataFrame com as pontuações médias das
+    #                        validações cruzadas para cada um dos 
+    #                        modelos avaliados, sendo as colunas as
+    #                        pontuações e o índice das linhas os nomes
+    #                        internos do modelo. As linhas do DataFrame
+    #                        são ordenadas em ordem descrescente de
+    #                        acordo com as pontuações e, como escolhemos
+    #                        as pontuações máximas, então os modelos
+    #                        são ordenados, do melhor para o pior, sendo
+    #                        o modelo da primeira linha o melhor modelo
+    #                        cujo nome interno foi retornado em 
+    #                        best_model_name.
+    (
+      best_model_name, 
+      best_model_score, 
+      results_df, 
+      mean_scores_models_df
+    ) = discover_best_model.best_model(clean_dataset, suggestion_variables,
+                                       application_variables, group_variables,
+                                       suggestion_prediction_variable, 
+                                       initialized_models)
+
+    # Se a verbosidade estiver habilitada, imprime os DataFrames 
+    # results_df e mean_scores_models_df. 
+    if verbose:					
+      # Imprimei o DataFrame results_df com as informações de todos os
+      # treinamentos feitos em todas as validações cruzadas para todos
+      # os modelos.
+      print(f"➖➖➡️ Dataframe com os resultados das avaliações dos modelos:")
+      print("\n", results_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
+            sep="")
+
+      # Imprime o DataFrame mean_scores_models_df com as pontuações 
+      # médias dos modelos, que foram usadas para escolher o melhor 
+      # modelo, que será o da primeira linha do DataFrame. Nos nossos
+      # testes, as pontuações são a acurária (coluna 'accuracy') e o
+      # negativo da diferença (coluna 'difference').
+      print("➖➖➡️ Dataframe com os resultados médios para cada modelo, "
+            "ordenado do melhor para o pior modelo:")
+      print("\n", mean_scores_models_df.to_markdown(tablefmt="grid", 
+                                                    floatfmt=".2f"), "\n", 
+            sep="")
+
+    # Retorna o nome interno do melhor modelo e o dicionário com as
+    # pontuações desse melhor modelo.
+    return best_model_name, best_model_score 
+
+  # Foi passado um tipo inválido em um dos parâmetros da função
+  # best_model.
+  except ValueError as e:
+    print("❌ Erro ao otimizar escolher o melhor modelo, um valor errado foi "
+          "usado!")
+    print(f"❌ Parâmetros do erro: {e.args}!")
+    print(f"❌ Mensagem de erro: {str(e)}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como não foi possível otimizar os hiperparâmetros de algum dos
+    # models, retorna None para os dois elementos da tupla.
+    return None, None
+  
+  # Em um dos parâmetros de variáveis da função best_model, foi passada
+  # uma variável que não existe no conjunto de dados da aplicação.
+  except KeyError as e:
+    print("❌ Erro ao escolher o melhor modelo, uma chave errada foi usada!")
+    print(f"❌ Parâmetros do erro: {e.args}!")
+    print(f"❌ Mensagem de erro: {str(e)}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+  # Ocorreu alguma outra exceção inesperada.
+  except Exception as e:
+    print("❌ Erro desconhecido ao escolher o melhor modelo!")
+    print(f"❌ Mensagem de erro: {str(e)}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como não foi possível escolher o melhor modelo, retorna None para
+    # os dois elementos da tupla.
+    return None, None
 
 def generate_application_predictor(clean_dataset, best_model_name, 
                                    best_model_score, best_model_params,
