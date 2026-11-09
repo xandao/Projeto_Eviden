@@ -804,6 +804,16 @@ def optimize_hyperparameters(clean_dataset, models,
                    um dos hiperparâmetros do modelo associado à chave, e
                    o conteúdo é os valores dos hiperparâmetros que serão
                    avaliados.
+    clean_dataset (DataFrame): Conjunto de dados já filtrado com os
+                               testes para a aplicação para a qual 
+                               desejamos otimizar os hiperparâmetros dos
+                               modelos que serão avaliados, que será
+                               usado em todos os treinamendos da
+                               validação cruzada, usando o LOGO, feita
+                               quando cada combinação de valores de
+                               hiperparâmetros é avaliada para cada um
+                               dos modelos definidos pelas chaves do
+                               dicionário models.
     suggestion_variables (list[str]): Lista com os nomes das variáveis
                                       que definem as componentes de uma
                                       sugestão de configuração.
@@ -1144,7 +1154,16 @@ def choose_best_model(clean_dataset, initialized_models, suggestion_variables,
   para todas as aplicações, é a EDP).
     
 
-    Parâmetros:
+  Parâmetros:
+    clean_dataset (DataFrame): Conjunto de dados já filtrado com os
+                               testes para a aplicação para a qual 
+                               desejamos escolher o melhor modelo dentre
+                               os modelos que serão avaliados, que será
+                               usado em todos os treinamendos da
+                               validação cruzada, usando o LOGO, feita
+                               quando as pontuações para cada um dos
+                               modelos é calculada, para depois escolher
+                               o modelo com a maior pontuação.
     initialized_models (dict): Dicionário em que cada chava é o nome
                                interno do modelo, por exemplo 
                                ExtraTressRegressor, e o conteúdo da 
@@ -1303,6 +1322,10 @@ def choose_best_model(clean_dataset, initialized_models, suggestion_variables,
     print(f"❌ Mensagem de erro: {str(e)}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
 
+    # Como não foi possível otimizar os hiperparâmetros de algum dos
+    # models, retorna None para os dois elementos da tupla.
+    return None, None
+
   # Ocorreu alguma outra exceção inesperada.
   except Exception as e:
     print("❌ Erro desconhecido ao escolher o melhor modelo!")
@@ -1314,42 +1337,194 @@ def choose_best_model(clean_dataset, initialized_models, suggestion_variables,
     return None, None
 
 def generate_application_predictor(clean_dataset, best_model_name, 
-                                   best_model_score, best_model_params,
-                                   suggestion_variables, application_variables, 
-                                   group_variables, prediction_variables, 
-                                   verbose=False):
+                                   best_model_score, best_model_info,
+                                   best_model_params, suggestion_variables, 
+                                   application_variables, group_variables, 
+                                   prediction_variables, verbose=False):
   """ 
-  Função para treinar o melhor modelo de uma aplicação, usando as
-  informações da aplicação e do sistema.
+  Função para gerar o preditor descrito no artigo do SSCAD. 
 
+  Parâmetros:
+    clean_dataset (DataFrame): Conjunto de dados já filtrado com os
+                               testes para a aplicação para a qual 
+                               desejamos escolher o melhor modelo dentre
+                               os modelos que serão avaliados, que será
+                               usado em todos os treinamendos da
+                               validação cruzada, usando o LOGO, feita
+                               quando as pontuações para cada um dos
+                               modelos é calculada, para depois escolher
+                               o modelo com a maior pontuação.
+    best_model_name (str): Nome interno do melhor modelo, que teve a
+                           maior pontuação dentre todos os modelos 
+                           avaliados pela função choose_best_model, e 
+                           que foi retornado por essa função.
+    best_model_score (dict): Dicionário com as melhores pontuações do
+                             melhor modelo, em que cada chave é uma das
+                             pontuações usadas e o valor da chave é o
+                             valor dessa pontuação. É somente usado para
+                             na função para uma impressão se a
+                             verbosidade estiver habilitada.
+    best_model_info (dict): Dicionário com as informações do melhor
+                            modelo. É o dicionário referenciado pela
+                            chave do modelo no dicionário 'models' do
+                            dicionário com as configurções de
+                            treinamento.
+    best_model_params (dict): Dicionário com os hiperparâmetros que
+                              foram otimizados do melhor modelo e os 
+                              hiperparâmetos fixos desse modelo. Cada
+                              chave é um hiperparâmetro (fixo ou 
+                              otimizado), e a referência da chave é o
+                              valor do hiperparâmetro. Este dicionário
+                              foi retornado pela função 
+                              optimize_hyperparameters ao otimizar os
+                              hiperparâmetros de cada modelo.                                          
+    suggestion_variables (list[str]): Lista com os nomes das variáveis
+                                      que definem as componentes de uma
+                                      sugestão de configuração.
+    application_variables (list[str]): Lista com os nomes das variáveis
+                                       da aplicação, mas mão exatamente
+                                       as originais passadas pelos 
+                                       usuários, mas as que foram 
+                                       convertidas, sendo as originais
+                                       usadas somente se nenhuma
+                                       conversão foi efetivamente
+                                       feita (a conversão "copy" no
+                                       script de otimização). Por 
+                                       exemplo, no RAxML, não foi usado 
+                                       o nome do arquivo, mas o tamanho
+                                       desse arquivo.
+    group_variavbles (list[str]): Lista com as variáveis, em geral as
+                                  variáveis da aplicação definidas pelo
+                                  usuário ou convertidas, que definem os
+                                  grupos usados pela validação LOGO.
+    prediction_variables (dict): Dicionário, obtido a partir da chave
+                                 'estimated_parameters' do dicionário
+                                 com as configurações da aplicação, que
+                                 possui duas chaves, uma obrigatória,
+                                 a 'suggestion', que define a variável
+                                 alvo do modelo auxiliar usado pelo
+                                 script de otimização para escolher a
+                                 melhor sugestão de configuração (nos
+                                 nossos testes, a EDP), e uma chave
+                                 opcional, a 'time', que define a
+                                 variável alvo do modelo a ser treinado
+                                 se a chave for definida, que será 
+                                 usado para estimar o tempo de execução
+                                 da aplicação com a melhor sugestão de
+                                 configuração.
+    verbose (bool): Indica se a verbosidade está habilitada, ou seja, se
+                    deverão ser impressas as mensagens de log.
+
+  Retorna:
+    SuggestionsPredictor: Se não ocorrer nenhum erro, refeência para o
+                          objeto da classe SuggestionsPredictor com o
+                          modelo auxiliar treinado usado para escolher
+                          as melhores sugestões de configuração e, se
+                          for definido, o modelo treinado para predizer
+                          o tempo de execução da aplicação ao usar 
+                          essa sugestão. O objeto também será usado para
+                          obter outras informações, como as importâncias
+                          das variáveis após o treinamento do modelo
+                          auxilar usado para escolher a melhor sugestão,
+                          o DataFrame com os oráculos para cada
+                          combinação dos parâmetros das variáveis de
+                          configuração e da aplicação, e a
+                          funcionalidade usada pelo script de
+                          otimização para escolher a melhor sugestçao de
+                          configuração. Este é efetivamente o Preditor
+                          descrito no artigo do SSCAD. Caso algum erro
+                          ocorra ao gerar o preditor, retorna None.
   """
 
-  print("➖➡️ Treinando agora o preditor com o melhor modelo "
-        f"{best_model_name} (pontuação: {best_model_score}), usando "
-        f"{best_model_params} como os hiperparâmetros customizados.")
-  # Descobre e importa o modelo de modo dinâmico.
-  module_path, model_name = training_config["models"][best_model_name]['import_path'].rsplit(".", 1)
-  # Importa e obtem dinamicamente o modelo.
-  model_module = importlib.import_module(module_path)
-  model = getattr(model_module, model_name)
+  # Se a verbosidade estiver habilitada, imprime as informações sobre
+  # a construção do preditor, no caso, o estimador
+  try:
+    print("➖➡️ Treinando agora o preditor com o melhor estimador "
+          f"{best_model_name} (pontuação: {best_model_score}), usando "
+          f"{best_model_params} como os hiperparâmetros customizados.")
 
-  predictor = SuggestionsPredictor()
-  predictor.fit(clean_dataset, suggestion_variables, application_variables,
-                group_variables, prediction_variables, model, best_model_params, 
-                DEBUG_CODE)
-  if verbose:
-    print('➖➖➡️ Dataframe do oráculo:')
-    oracle_df = predictor.get_oracle()
-    print("\n", oracle_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
-  # Obtém as imformações das importâncias, se o modelo as define  
-  importances_df = predictor.get_importances(verbose=DEBUG_CODE)
-  if verbose and importances_df is not None:
-    print('➖➖➡️ Dataframe com as importâncias do modelo:')
-    print("\n", importances_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
-  elif verbose:
-    print("➖➖➡️ O modelo não avalia as importâncias das características.")
+    # Descobre e importa o modelo de modo dinâmico.
+    module_path, model_name = best_model_info['import_path'].rsplit(".", 1)
+    # Importa e obtem dinamicamente o modelo.
+    model_module = importlib.import_module(module_path)
+    model = getattr(model_module, model_name)
 
-  return predictor
+    predictor = SuggestionsPredictor()
+    predictor.fit(clean_dataset, suggestion_variables, application_variables,
+                  group_variables, prediction_variables, model, 
+                  best_model_params, DEBUG_CODE)
+    if verbose:
+      print('➖➖➡️ Dataframe do oráculo:')
+      oracle_df = predictor.get_oracle()
+      print("\n", oracle_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
+            sep="")
+    # Obtém as imformações das importâncias, se o modelo as define  
+    importances_df = predictor.get_importances(verbose=DEBUG_CODE)
+    if verbose and importances_df is not None:
+      print('➖➖➡️ Dataframe com as importâncias do modelo:')
+      print("\n", importances_df.to_markdown(tablefmt="grid", floatfmt=".2f"), 
+            "\n", sep="")
+    elif verbose:
+      print("➖➖➡️ O modelo não avalia as importâncias das características.")
+
+    return predictor
+
+  # Foi passado um tipo inválido em um dos parâmetros da função
+  # best_model.
+  except ValueError as e:
+    print("❌ Erro ao otimizar escolher o melhor modelo, um valor errado foi "
+          "usado!")
+    print(f"❌ Parâmetros do erro: {e.args}!")
+    print(f"❌ Mensagem de erro: {str(e)}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como não foi possível otimizar os hiperparâmetros de algum dos
+    # models, retorna None para os dois elementos da tupla.
+    return None
+  
+  # Em um dos parâmetros de variáveis da função best_model, foi passada
+  # uma variável que não existe no conjunto de dados da aplicação.
+  except KeyError as e:
+    print("❌ Erro ao escolher o melhor modelo, uma chave errada foi usada!")
+    print(f"❌ Parâmetros do erro: {e.args}!")
+    print(f"❌ Mensagem de erro: {str(e)}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+    return None
+
+  # Ocorreu um erro ao importar um dos modelos.
+  except ImportError as e:
+    print("❌ Erro ao otimizar os hiperparâmetros dos modelos, uma classe "
+          f"{e.name} errada foi usada")
+    print(f"❌ Parâmetros do erro: {e.args}!")
+    print(f"❌ Mensagem de erro: {str(e)}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como não foi possível otimizar os hiperparâmetros de algum dos
+    # models, retorna None para os dois elementos da tupla.
+    return None
+
+  # Ocorreu um erro ao importar um dos modelos.
+  except ModuleNotFoundError as e:
+    print("❌ Erro ao otimizar os hiperparâmetros dos modelos, uma biblioteca "
+          f"{e.name} errada foi usada")
+    print(f"❌ Parâmetros do erro: {e.args}!")
+    print(f"❌ Mensagem de erro: {str(e)}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como não foi possível otimizar os hiperparâmetros de algum dos
+    # models, retorna None para os dois elementos da tupla.
+    return None
+
+  # Ocorreu alguma outra exceção inesperada.
+  except Exception as e:
+    print("❌ Erro desconhecido ao escolher o melhor modelo!")
+    print(f"❌ Mensagem de erro: {str(e)}!")
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como não foi possível escolher o melhor modelo, retorna None para
+    # os dois elementos da tupla.
+    return None
+  
 
 def save_application_predictor(best_model_name, best_model_import_name, 
                                predictor,predictors_file_path, 
@@ -1482,10 +1657,12 @@ def train_command(applications_name, applications_config, training_config,
         ) 
 
         best_model_params = best_params_models[best_model_name]
+        best_model_info = training_config["models"][best_model_name]
 
         predictor = generate_application_predictor(clean_dataset, 
                                                    best_model_name, 
                                                    best_model_score, 
+                                                   best_model_info,
                                                    best_model_params,
                                                    suggestion_variables,
                                                    application_variables,
