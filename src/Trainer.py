@@ -902,9 +902,9 @@ def optimize_hyperparameters(clean_dataset, models,
       # de modo dinâmico, sendo que o  caminho para importar esse
       # modelo é definido na chave 'import_path' do dicionário 
       # model_info. Como o caminho indica como o modelo seria acessado
-      # diretamente, importando somente a bibliotea básica do python que
-      # está implementado o modelo, por exemplo, para a Extra Trees
-      # egressor do scikit-learn sklearn.ensemble.ExtraTreesRegressor, 
+      # diretamente, importando somente a bibliotea básica do Python que
+      # está implementado o modelo, por exemplo, para o regressor Extra 
+      # Trees do scikit-learn 'sklearn.ensemble.ExtraTreesRegressor', 
       # então usamos o rsplilt da classe string, para separar as strings
       # por um separador, no caso o ",", a partir da direita (o "r" em
       # rsplit), em duas strings de acordo com o último ponto, sendo o
@@ -938,10 +938,11 @@ def optimize_hyperparameters(clean_dataset, models,
 
       # Verifica o objeto model_module tem o atributo model_name.
       if model is not None:
-        # Como o objeto model_module mão é None, ou seja, tem o atributo
-        # model_name,  então vamos criar um objeto da classe
-        # BestHiperparams, usada para otimizar os hiperparâmetros de um 
-        # modelo, e armazenar a rederência a esse objeto em best_hyper.
+        # Como o objeto model mão é None, ou seja, como o objeto 
+        # model_module tem o atributo model_name,  então vamos criar um
+        # objeto da classe BestHiperparams, usada para otimizar os
+        # hiperparâmetros de um  modelo, e armazenar a rederência a esse 
+        # objeto em best_hyper.
         best_hyper = BestHiperparams(verbose=DEBUG_CODE)
 
         # Chamamos a função optimize do objeto best_hyper para otimizar
@@ -1054,12 +1055,13 @@ def optimize_hyperparameters(clean_dataset, models,
       else:
         # Como não foi encontrado uma classe com o nome model_name na
         # bibloreca referenciada por model_module, mostra um erro 
-        # informando que o modelo não existe.
-        # TODO: Eu não tinha verificado esse erro antes, deveremos 
-        # abortar, ou ignorar o modelo?
+        # informando que o modelo não existe e, por coerência com o erro
+        # do módulo não existir, geramos a exceção ImportError.
         print(f"❌ O caminho de importação {model_info['import_path']} é "
               f"inválido. A classe do modelo {model_name} não existe na "
               f"bibloteca referenciada por {module_path}!")
+        raise ImportError(f"O modelo {model_name} não existe no módulo "
+                          f"{module_path}!", name=module_path)
 
     # Retorna os dicionários com os modelos avaliados já inicializados e 
     # os melhores valores para os hiperparâmetros para os modelos 
@@ -1095,9 +1097,8 @@ def optimize_hyperparameters(clean_dataset, models,
 
   # Ocorreu um erro ao importar um dos modelos.
   except ImportError as e:
-    print("❌ Erro ao otimizar os hiperparâmetros dos modelos, uma classe "
-          f"{e.name} errada foi usada")
-    print(f"❌ Parâmetros do erro: {e.args}!")
+    print("❌ Erro ao otimizar os hiperparâmetros dos modelos, uma classe não "
+          f"existe no módulo {e.name}!")
     print(f"❌ Mensagem de erro: {str(e)}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
 
@@ -1109,7 +1110,6 @@ def optimize_hyperparameters(clean_dataset, models,
   except ModuleNotFoundError as e:
     print("❌ Erro ao otimizar os hiperparâmetros dos modelos, uma biblioteca "
           f"{e.name} errada foi usada")
-    print(f"❌ Parâmetros do erro: {e.args}!")
     print(f"❌ Mensagem de erro: {str(e)}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
 
@@ -1443,32 +1443,137 @@ def generate_application_predictor(clean_dataset, best_model_name,
           f"{best_model_name} (pontuação: {best_model_score}), usando "
           f"{best_model_params} como os hiperparâmetros customizados.")
 
-    # Descobre e importa o modelo de modo dinâmico.
+    # Descobre e importa o modelo com o nome interno best_model_name, 
+    # de modo dinâmico, sendo que o  caminho para importar esse modelo é 
+    # definido na chave 'import_path' do dicionário best_model_info. 
+    # Como o caminho indica como o modelo seria acessado diretamente, 
+    # importando somente a bibliotea básica do Python que está 
+    # implementado o modelo, por exemplo, para o regressor Extra Trees
+    # do scikit-learn 'sklearn.ensemble.ExtraTreesRegressor', então 
+    # usamos o rsplilt da classe string, para separar as strings por um 
+    # separador, no caso o ",", a partir da direita (o "r" em rsplit), 
+    # em duas strings de acordo com o último ponto, sendo o primeiro,
+    # armazenado em module_path, o caminho que seria usado em um "from" 
+    # para importar um objeto específico da biblioteca (ou módulo), e o
+    # segundo, armazenado em model_name, o nome da classe do objeto. No 
+    # caso das Extra Trees, module_path seria uma referência para a 
+    # string "sklearn.ensemble" e model_neme seria uma referência para a
+    # string "ExtraTreesRegressor".
     module_path, model_name = best_model_info['import_path'].rsplit(".", 1)
-    # Importa e obtem dinamicamente o modelo.
+
+    # Uma vez que definimos o caminho completo na biblioteca ou 
+    # módulo, usamos a função import_module da biblioteca padrão do
+    # Python importlib para dinâmicamente importar a biblioteca que
+    # implementa o modelo, sendo a referência ao objeto que representa
+    # a biblioteca armazenada em model_module.
     model_module = importlib.import_module(module_path)
-    model = getattr(model_module, model_name)
 
-    predictor = SuggestionsPredictor()
-    predictor.fit(clean_dataset, suggestion_variables, application_variables,
-                  group_variables, prediction_variables, model, 
-                  best_model_params, DEBUG_CODE)
-    if verbose:
-      print('➖➖➡️ Dataframe do oráculo:')
-      oracle_df = predictor.get_oracle()
-      print("\n", oracle_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
-            sep="")
-    # Obtém as imformações das importâncias, se o modelo as define  
-    importances_df = predictor.get_importances(verbose=DEBUG_CODE)
-    if verbose and importances_df is not None:
-      print('➖➖➡️ Dataframe com as importâncias do modelo:')
-      print("\n", importances_df.to_markdown(tablefmt="grid", floatfmt=".2f"), 
-            "\n", sep="")
-    elif verbose:
-      print("➖➖➡️ O modelo não avalia as importâncias das características.")
+    # Uma vez que a biblioteca tenha sido importada em um objeto
+    # referenciado por model_module, os seus atributos serão o que
+    # podemos importar dessa bibliotca, ou seja, um desses atributos
+    # deveria ser o nome daa classe do objeto que implementa o modelo
+    # para o qual iremos otimizar os seus hiperparâmetros, supondo que
+    # o nome passado na chave 'import_path' do dicionário model_info
+    # está correto. Se estiver correto, retorna a referência para a
+    # classe do modelo e, em caso contrário (se o atributo não 
+    # existir, retorna None).
+    model = getattr(model_module, model_name, None)
 
-    return predictor
+    # Verifica o objeto model_module tem o atributo model_name.
+    if model is not None:
+      # Como o objeto model mão é None, ou seja, o objeto model_module 
+      # tem o atributo model_name,  então vamos criar um objeto da 
+      # classe SuggestionsPredictor, usada para construir o preditor da
+      # aplicação, treinando com todos os dados do conjunto de dados
+      # clean_dataset o modelo auxiliar usado ao escolher a menor
+      # sugestão de configuração e, se definido, o modelo para estimar
+      # o tempo de execução quando a aplicação é executada com a melhor
+      # sugestão de configuração, e armazenar a rederência a esse objeto
+      # em predictor.
+      predictor = SuggestionsPredictor()
 
+      # Executa a função fit do objeto preditor para treimar o modelo
+      # auxiliar com todos os testes do conjunto de dados, usando as
+      # variáveis de configuração, dadas em suggestion_variables e as
+      # varipaveis da aplicação, dadad em application_variables, usando
+      # a variável alvo definida pela chave 'sugeestion' do dicionário
+      # prediction_variables. Se existir a chave 'time' no dicionário
+      # prediction_variables, o modelo usado para estimar o tempo de
+      # execução da aplicação quando utilizar a melhor sugestão de
+      # configuração, é treinado também com todos os testes em 
+      # clean_dataset, utilizando as variáveis dadas em 
+      # suggestion_variables e application_variables, e a variável alvo
+      # definida pela chave 'time'. AS variáeis dadas em group_variables
+      # são somente usadas para retornar o DataFrame com os oráculos
+      # para o modelo auxiliar usado para escoher a melhor sugestão de
+      # configuração. O retorno é descartado porque, seguindo o padrão
+      # dos métodos fit da scikit-learn, é uma referência para o próprio
+      # objeto, ou seja, a mesma referência armazenada em predictor. O
+      # último parâmetro, a constande DEBUG_CODE, habilita informações
+      # adiconais de depuração, para auxiliar a correção de eventuais
+      # erros (DEBUG_CODE é habilitado usando a variável de ambiente
+      # APPOPTIMIZER_DEBUG definida com true, T, 1 ou on, sendo que as
+      # strings não são sensíveis ao caso).
+      predictor.fit(clean_dataset, suggestion_variables, application_variables,
+                    group_variables, prediction_variables, model, 
+                    best_model_params, DEBUG_CODE)
+
+      # Se a verbosidade estiver habilidata, imprime as informações 
+      # referentes ao modelo auxiliar usado para escolher a melhor 
+      # sugestão de configuração.
+      # TODO; Devemos fazer algo similar para o modelo que prediz o
+      #       tempo de execução da aplicação ao usar a melhor sugestão
+      #       de configuração?
+      if verbose:
+        # Imprime o DataFrame com os oráculos para o modelo auxilar, 
+        # usando todas as combinações dos possíveis valores da lista de
+        # variáveis dadas em group_variables. Como antes, a constante
+        # DEBUG_CODE gera informações adicionais sobre  geração dos
+        # oráculos para a depuração;
+        print('➖➖➡️ Dataframe do oráculo:')
+        oracle_df = predictor.get_oracle(verbose=DEBUG_CODE)
+        print("\n", oracle_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
+              sep="")
+
+      # Tenda obter as importâncias das variáveis de entrada ao treinar
+      # o modelo auxiliar, ou seja, as variáveis dadas em 
+      # suggestion_variables e application_variables. Novamente, a 
+      # constante DEBUG_CODE mostra informações adicionais sobre a
+      # geração das importâncias que podem ser usadas para depuração.
+      importances_df = predictor.get_importances(verbose=DEBUG_CODE)
+
+      # Verifica se a verbosidade está habilitada e se as improtâncias
+      # foram definidas.
+      if verbose and importances_df is not None:
+        # Se o estimador usado ao treinar o modelo auxiliar definir as 
+        # importâncias para as variáveis de entrada, mostra o DataFrame
+        # com essas importâncias. 
+        print('➖➖➡️ Dataframe com as importâncias do modelo:')
+        print("\n", importances_df.to_markdown(tablefmt="grid", floatfmt=".2f"), 
+              "\n", sep="")
+      elif verbose:
+        # Se as importâncias não são definidas pelo estimador usado ao
+        # treinar o modelo auxiliar, informa isso em uma mensagem se a
+        # verbosidade estiver habilitada.
+        print("➖➖➡️ O modelo não avalia as importâncias das características.")
+
+      # Como não ocorreram erros ao treinar o modelo auxiliar usado para
+      # escolher a melhor sugestão de configuração e, se for definido,
+      # o modelo para estimar o tempo de execução da aplicação ao ser
+      # executada com essa configuração, retorna uma referência ao
+      # objeto do preditor.
+      return predictor
+    else:
+      # Como não foi encontrado uma classe com o nome model_name na
+      # bibloreca referenciada por model_module, mostra um erro
+      # informando que o modelo não existe e, por coerência com o erro
+      # do módulo não existir, geramos a exceção ImportError.
+      print(f"❌ O caminho de importação {best_model_info['import_path']} é "
+            f"inválido. A classe do modelo {model_name} não existe na "
+            f"bibloteca referenciada por {module_path}!")
+      raise ImportError(f"O modelo {model_name} não existe no módulo "
+                        f"{module_path}!", name=module_path)
+    
   # Foi passado um tipo inválido em um dos parâmetros da função
   # best_model.
   except ValueError as e:
@@ -1493,9 +1598,8 @@ def generate_application_predictor(clean_dataset, best_model_name,
 
   # Ocorreu um erro ao importar um dos modelos.
   except ImportError as e:
-    print("❌ Erro ao otimizar os hiperparâmetros dos modelos, uma classe "
-          f"{e.name} errada foi usada")
-    print(f"❌ Parâmetros do erro: {e.args}!")
+    print("❌ Erro ao gerar o preditor para a aplicação, uma classe não "
+          f"existe no módulo {e.name}!")
     print(f"❌ Mensagem de erro: {str(e)}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
 
@@ -1505,9 +1609,8 @@ def generate_application_predictor(clean_dataset, best_model_name,
 
   # Ocorreu um erro ao importar um dos modelos.
   except ModuleNotFoundError as e:
-    print("❌ Erro ao otimizar os hiperparâmetros dos modelos, uma biblioteca "
+    print("❌ Erro ao gerar o preditor para a aplicação, uma biblioteca "
           f"{e.name} errada foi usada")
-    print(f"❌ Parâmetros do erro: {e.args}!")
     print(f"❌ Mensagem de erro: {str(e)}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
 
@@ -1525,46 +1628,138 @@ def generate_application_predictor(clean_dataset, best_model_name,
     # os dois elementos da tupla.
     return None
   
-
-def save_application_predictor(best_model_name, best_model_import_name, 
-                               predictor,predictors_file_path, 
+def save_application_predictor(best_model_internal_name, best_model_name, 
+                               predictor, predictors_file_path, 
                                predictors_info_config,
                                predictors_info_config_obj, 
                                suggestion_prediction_variable, 
-                               application_name, application_key, 
-                               verbose=False):
+                               application_name, verbose=False):
   """ 
-  Função para treinar o melhor modelo de uma aplicação, usando as
-  informações da aplicação e do sistema.
+  Função para salvar o preditor da aplicação, com o modelo auxiliar 
+  treinado, com o conjunto de dados completo e filtrado, para predizer
+  a variável definida pela chave 'suggestion' do dicionário referenciado
+  pela chave 'estimated_parameters' do dicionário com os arquivos de
+  comfiguração dessa aplicação e, se for treinado, o modelo para
+  predizer o tempo de execução da aplicação ao ser executada usando a
+  melhor sugestão de configuraçãoa, que prediz a variável alvo dada pela
+  chave 'time' do dicionário referenciado pela chave
+  'estimated_parameters'. Esse último modelo somente será treinado se
+  a chave 'time', que é opcional, for definida.
 
+  Parâmetros:
+    best_model_internal_name (str): Nome interno do melhor modelo, que 
+                                    teve a maior pontuação dentre todos
+                                    os modelos avaliados pela função 
+                                    choose_best_model, e que foi 
+                                    retornado por essa função.
+    best_model_name (str): Nome do melhor modelo definido pela chave 
+                           'name' no arquivo de configuração do melhor
+                           modelo com o nome interno 
+                           best_model_internal_name. O nome é usado para
+                           compor o nome do arquivo com o preditor salvo. 
+    predictor (SuggestionsPredictor): Referência para o objeto com o
+                                      preditor da aplicação, gerado pela
+                                      função 
+                                      generate_application_predictor, 
+                                      com o modelo treinado para
+                                      auxiliar, pelo script de 
+                                      otimização, a escolha da melhor
+                                      sugestão de configuração e, se
+                                      foi treinado, o modelo para
+                                      estimar o tempo de execução da
+                                      aplicação usando essa sugestão. 
+                                      Como observamos, este objeto é a
+                                      implementação do Preditor descrito
+                                      no artigo do SSCAD.
+    predictors_info_config (dict): Referência para o dicionário com o
+                                   arquivo de configuração dos
+                                   preditores, sendo que cada chave é o
+                                   nome interno da aplicação, e o seu
+                                   valor é o nome do arquivo com o 
+                                   preditor salvo, que será lido e usado
+                                   pelo script de otimização. A 
+                                   configuração será atualizada com uma
+                                   chave para a aplicação, ou a 
+                                   alteração do nome da chave se ela já
+                                   existir, referenciando uma string com
+                                   o nome do arquivo em que o preditor
+                                   foi salvo.
+    predictors_info_config_obj (PredictorsInfoConfig): Referência para o
+                                                       objeto do 
+                                                       preditor, 
+                                                       necessária para
+                                                       salvar o arquivo
+                                                       de configuração
+                                                       atualizado com o
+                                                       novo preditor
+                                                       treinado para a
+                                                       aplicação.
+    suggestion_prediction_variable (str): Nome da variável alvo usada ao
+                                          treinar o modelo auxiliar
+                                          usado para escolher a melhor
+                                          sugestão de configuração. O
+                                          nome é usado para compor o
+                                          nome do arquivo com o preditor
+                                          salvo.
+    application_name (str): Nome interno da aplicação, também usado para 
+                            compor o nome do arquivo com o preditor 
+                            salvo. 
+
+  Retorna:
+    bool: True se o preditor foi salvo com sucesso e o arquivo de 
+          configuração dos preditores atualizado com sucesso e False se
+          ocorreu algum erro ao salvar o preditor ou o arquivo de 
+          configuração dos preditores.
   """
 
   preditor_file_name = (predictors_file_path / 
-                        f"{application_name}_{best_model_import_name}_"
+                        f"{application_name}_{best_model_name}_"
                         f"{suggestion_prediction_variable}.pickle")
-  # Removendo o arquivo anterior do preditor da aplicação, se existir.
-  if application_key in predictors_info_config:
-    old_preditor_file_name = predictors_info_config[application_key]
-    old_preditor_file_path = predictors_file_path / f"{old_preditor_file_name}"
-    if verbose:
-      print(f'➖➡️ Removendo o preditor antigo {old_preditor_file_name}')  
-    old_preditor_file_path.unlink(missing_ok=True)
   
   # Salva o arquivo do preditor no formato .pickle.
-  print(f"➖➡️ Salvando o preditor treinado como o modelo {best_model_name} "
-        f"(nome {best_model_import_name}) no arquivo {preditor_file_name}.")
+  print("➖➡️ Salvando o preditor treinado como o modelo "
+        f"{best_model_internal_name} (nome {best_model_name}) no arquivo "
+        f"{preditor_file_name}.")
 
-  predictor.save_predictor(preditor_file_name)
+  status = predictor.save_predictor(preditor_file_name)
 
-  # Salva as informações do arquivo do modelo do preditor.
-  if verbose:
-    print("➖➡️ Salvndo a informação do caminhio do preditor "
-          f"{preditor_file_name} para a aplicação {application_key} no "
-          "arquivo de configuração dos preditores.")
-  predictors_info_config[application_key] = preditor_file_name.name
-  predictors_info_config_obj.save_predictors_info_config(predictors_info_config)
+  if status:
+    # Salva as informações do arquivo do modelo do preditor.
+    if verbose:
+      print("➖➡️ Salvndo a informação do caminhio do preditor "
+            f"{preditor_file_name} para a aplicação {application_name} no "
+            "arquivo de configuração dos preditores.")
+      
+    predictors_info_config[application_name] = preditor_file_name.name
+    status = predictors_info_config_obj.save_predictors_info_config(predictors_info_config)
+    if status and verbose:
+      print("➖➡️ Informação do caminho salva com sucesso par o aplicativo "
+            f"{application_name}!")
 
-  return True
+      # Removendo o arquivo anterior do preditor da aplicação, se existir.
+      if application_name in predictors_info_config:
+        old_preditor_file_name = predictors_info_config[application_name]
+        old_preditor_file_path = predictors_file_path / f"{old_preditor_file_name}"
+
+        if verbose:
+          print(f'➖➡️ Removendo o preditor antigo {old_preditor_file_name}')  
+
+        old_preditor_file_path.unlink(missing_ok=True)
+    elif not status:
+      print("❌ Erro ao salvar o arquivo de configuração dos preditores "
+            f"atualizado para a aplicação {application_name}!")
+
+      # TODO: Se não for possível atualizar o arquivo de configuração dos
+      #       preditores com o novo preditor, será que devemos remover o
+      #       preditor criado?
+      print(f"❌ Removendo o preditor criado {preditor_file_name}, já que não "
+            "foi possível atualizar o arquivo de configuração dos preditores!")  
+      preditor_file_name.unlink(missing_ok=True)      
+  else:
+    print(f"❌ Erro ao salvar o preditor no caminho {preditor_file_name} "
+          f"para a aplicação {application_name}!")
+
+  return status
 
 
 def train_command(applications_name, applications_config, training_config, 
@@ -1584,10 +1779,9 @@ def train_command(applications_name, applications_config, training_config,
 
     application_name = None
     
-    for application_key in applications_name:
-      if application_key in applications_config.keys():
-        application_info = applications_config[application_key]
-        application_name = application_info['name']
+    for application_name in applications_name:
+      if application_name in applications_config.keys():
+        application_info = applications_config[application_name]
 
         if verbose:
           print(f"\n➡️ Treinando todos os modelos para a aplicação {application_name}")	
@@ -1678,15 +1872,14 @@ def train_command(applications_name, applications_config, training_config,
                                             predictors_info_config, 
                                             predictors_info_config_obj, 
                                             suggestion_prediction_variable, 
-                                            application_name, application_key,
-                                            verbose)
+                                            application_name, verbose)
 
         if not status:
           print("❌ Erro ao salvar o novo preditor para a aplicação "
                 f"{application_name}!")
 
       else:  
-          print(f"⚠️ Ignorando aplicação desconhecida {application_key}!")
+          print(f"⚠️ Ignorando aplicação desconhecida {application_name}!")
 
     return True
   except KeyError as e:

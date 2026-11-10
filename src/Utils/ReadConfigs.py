@@ -893,7 +893,9 @@ class PredictorsInfoConfig:
                                      aplicação correspondente.
 
     Retorna:
-      Sem retorno.                 
+      bool: True se foi possível salvar o arquivo de configuração dos
+            preditores atualizado, ou False se algum erro ocorreu ao
+            salvar o arquivo.
     """
       
     # TODO: Será que devemos copiar o arquivo anterior para um arquivo 
@@ -907,6 +909,7 @@ class PredictorsInfoConfig:
       print("⚠️ Não foi lida a configuração de mapeamento dos "
             f"preditores! O arquivo {self.predictors_info_config_path} não "
             "será salvo!")
+      return False
     else:
       # Atualiza o dicionário das configurações dos preditores com a 
       # nova versão das configurações.
@@ -918,24 +921,46 @@ class PredictorsInfoConfig:
         with open(self.predictors_info_config_path, 'w') as file:
           json.dump(self.predictors_info_config, file, indent="\t")
 
+        # Se a verbosidade estiver habilitada, imprime uma mensagem
+        # informando que o arquivo de configuração dos preditores 
+        # atualizado foi salvo com sucesso.
         if self.verbose:
           print(f"✅ Arquivo {self.predictors_info_config_path.name} "
-                "foi atualizado com sucesso!")
+                "foi salvo com sucesso!")
+
+        # Como o arquivo de configuração dos preditores foi salvo com
+        # sucesso, retornados True.
+        return True  
+       
       # O usuário que executou o script não tem permissão para acessar o 
       # arquivo.
       except PermissionError as e:
-        print("❌ Erro de permissão ao acessar o arquivo "
-              f"{self.predictors_info_config_path.name}!")
+        print("❌ Erro de permissão ao salvar as configurações dos preditores "
+              "no arquivo {self.predictors_info_config_path.name}!")
         print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+        # Como não foi possível salvar o arquivo de configuração dos
+        # preditores, retornamos False.
+        return False
+
       # Ocorreu um erro de I/O ao acessar o arquivo.
       except IOError as e:
-        print("❌ Erro de I/O ao ler o arquivo "
-              f"{self.predictors_info_config_path.name}!")
+        print("❌ Erro de I/O ao salvar as configurações dos preditores no "
+              f"arquivo {self.predictors_info_config_path.name}!")
         print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
         print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+        # Como não foi possível salvar o arquivo de configuração dos
+        # preditores, retornamos False.
+        return False
+
       # Ocorreu alguma outra exceção inesperada.
       except Exception as e:
-        print("❌ Erro desconhecido ao processar salvar o arquivo "
-              f"{self.predictors_info_config_path.name}!")
+        print("❌ Erro desconhecido ao salvar configurações dos preditores "
+              f"no arquivo {self.predictors_info_config_path.name}!")
         print(f"❌ Parâmetros do erro: {e.args}!")
         print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+        # Como não foi possível salvar o arquivo de configuração dos
+        # preditores, retornamos False.
+        return False

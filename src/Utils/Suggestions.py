@@ -2780,21 +2780,66 @@ class SuggestionsPredictor:
 											 classe SuggestionsPredictor será salvo.
 
 		Retorna:
-			Não tem retorno (retorna None).
+			bool: True se o arquivo foi salvo com sucesso e False se algum
+			      erro ocorreu ao salvar o preditor.
 		"""
 
-		# Salva o objeto da classe SuggestionsPredictor em um arquivo 
-		# binário usando a biblioteca pickle do Python. O caminho do arquivo 
-		# é passado como parâmetro em file_name. O ambiente with é usado 
-		# para abrir o arquivo e garantir que ele será fechado corretamente, 
-		# mesmo que ocorra uma exceção durante a execução da função dump do
-		# pickle. O arquivo é aberto no modo 'wb', que significa escrita em 
-		# binário e sobreposição se o arquivo já existir. 
-		with open(file_name, 'wb') as file:
-			# Usa a função dump() do pickle para serializar o objeto da classe 
-			# SuggestionsPredictor e gravá-lo no arquivo binário.
-			pickle.dump(self, file)		
+		try:
+			# Salva o objeto da classe SuggestionsPredictor em um arquivo 
+			# binário usando a biblioteca pickle do Python. O caminho do arquivo 
+			# é passado como parâmetro em file_name. O ambiente with é usado 
+			# para abrir o arquivo e garantir que ele será fechado corretamente, 
+			# mesmo que ocorra uma exceção durante a execução da função dump do
+			# pickle. O arquivo é aberto no modo 'wb', que significa escrita em 
+			# binário e sobreposição se o arquivo já existir. 
+			with open(file_name, 'wb') as file:
+				# Usa a função dump() do pickle para serializar o objeto da classe 
+				# SuggestionsPredictor e gravá-lo no arquivo binário.
+				pickle.dump(self, file)		
 
+			# Como conseguimos salvar o preditor com sucesso, retornamos True.
+			return True
+
+    # O caminho é para um diretório e não um arquivo.
+		except IsADirectoryError:
+			print(f"❌ O caminho {self.predictors_info_config_path.name} é um "
+            "diretório!")
+			print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+			return False
+
+		# O usuário que executou o script não tem permissão para acessar o 
+		# arquivo.
+		except PermissionError as e:
+			print("❌ Erro de permissão ao salvor o preditor no arquivo "
+						f"{self.predictors_info_config_path.name}!")
+			print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+			# Como ocorreu um erro ao salvar o preditor, retornamos False.
+			return False
+
+		# Ocorreu um erro de I/O ao acessar o arquivo.
+		except IOError as e:
+			print("❌ Erro de I/O ao salvar o preditor no arquivo "
+						f"{self.predictors_info_config_path.name}!")
+			print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
+			print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+			# Como ocorreu um erro ao salvar o preditor, retornamos False.
+			return False
+
+		# Ocorreu alguma outra exceção inesperada.
+		except Exception as e:
+			print("❌ Erro desconhecido ao salvar o preditor no arquivo "
+						f"{self.predictors_info_config_path.name}!")
+			print(f"❌ Parâmetros do erro: {e.args}!")
+			print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+			# Como ocorreu um erro ao salvar o preditor, retornamos False.
+			return False
+
+	def get_object_info(self):
+		pass
+	
 	@classmethod
 	def print_suggestion(cls, info_suggestion, show_score=False, show_X=False, 
 											 show_y_pred=False, show_time=False, 
@@ -2906,22 +2951,65 @@ class SuggestionsPredictor:
 		Retorna:
 			SuggestionsPredictor: Se não ocorrerem erros, retorna o objeto
 													  da classe SuggestionsPredictor carregado do
-													  arquivo binário. Se algum erro ocorrer, gera
-													  uma exceção do Python.
+													  arquivo binário. Se algum erro ocorrer, 
+														retorna None.
 		"""
 
-		# Carrega o objeto da classe SuggestionsPredictor de um arquivo
-		# binário usando a biblioteca pickle do Python. O caminho do arquivo
-		# é passado como parâmetro em file_name. O ambiente with é usado
-		# para abrir o arquivo e garantir que ele será fechado corretamente,
-		# mesmo que ocorra uma exceção durante a execução da função load do
-		# pickle. O arquivo é aberto no modo 'rb', que significa leitura em
-		# binário.	 	 
-		with open(file_name, 'rb') as file:
-			# Usa a função pickle.load() para desserializar o objeto da
-			# classe SuggestionsPredictor salvo no arquivo binário.
-			predictor = pickle.load(file)
+		try:
+			# Carrega o objeto da classe SuggestionsPredictor de um arquivo
+			# binário usando a biblioteca pickle do Python. O caminho do arquivo
+			# é passado como parâmetro em file_name. O ambiente with é usado
+			# para abrir o arquivo e garantir que ele será fechado corretamente,
+			# mesmo que ocorra uma exceção durante a execução da função load do
+			# pickle. O arquivo é aberto no modo 'rb', que significa leitura em
+			# binário.	 	 
+			with open(file_name, 'rb') as file:
+				# Usa a função pickle.load() para desserializar o objeto da
+				# classe SuggestionsPredictor salvo no arquivo binário.
+				predictor = pickle.load(file)
 
-		# Retorna o objeto da classe SuggestionsPredictor carregado do 
-		# arquivo.
-		return predictor
+			# Retorna o objeto da classe SuggestionsPredictor carregado do 
+			# arquivo.
+			return predictor
+
+		except IsADirectoryError:
+			print(f"❌ O caminho {file_name} é um diretório!")
+			print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+			# Como não conseguimos ler o preditor com sucesso, retorna None.
+			return None
+		
+    # O arquivo não foi encontrado.
+		except FileNotFoundError:
+			print(f"❌ O arquivo {file_name} não foi encontrado!")
+			print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+			# Como não conseguimos ler o preditor com sucesso, retorna None.
+			return None
+		
+    # O usuário que executou o script não tem permissão para acessar o 
+    # arquivo.
+		except PermissionError as e:
+			print(f"❌ Erro de permissão ao acessar o arquivo {file_name}!")
+			print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+			# Como não conseguimos ler o preditor com sucesso, retorna None.
+			return None
+		
+    # Ocorreu um erro de I/O ao acessar o arquivo.
+		except IOError as e:
+			print(f"❌ Erro de I/O ao ler o arquivo {file_name}!")
+			print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
+			print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+			# Como não conseguimos ler o preditor com sucesso, retorna None.
+			return None
+    
+		# Ocorreu alguma outra exceção inesperada.
+		except Exception as e:
+			print(f"❌ Erro desconhecido aoler o arquivo {file_name}!")
+			print(f"❌ Parâmetros do erro: {e.args}!")
+			print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+			# Como não conseguimos ler o preditor com sucesso, retorna None.
+			return None
