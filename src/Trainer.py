@@ -1283,8 +1283,8 @@ def choose_best_model(clean_dataset, initialized_models, suggestion_variables,
       # treinamentos feitos em todas as validações cruzadas para todos
       # os modelos.
       print(f"➖➖➡️ Dataframe com os resultados das avaliações dos modelos:")
-      print("\n", results_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
-            sep="")
+      print("\n", results_df.to_markdown(tablefmt="grid", floatfmt=".2f"), 
+            "\n", sep="")
 
       # Imprime o DataFrame mean_scores_models_df com as pontuações 
       # médias dos modelos, que foram usadas para escolher o melhor 
@@ -1532,8 +1532,8 @@ def generate_application_predictor(clean_dataset, best_model_name,
         # oráculos para a depuração;
         print('➖➖➡️ Dataframe do oráculo:')
         oracle_df = predictor.get_oracle(verbose=DEBUG_CODE)
-        print("\n", oracle_df.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", 
-              sep="")
+        print("\n", oracle_df.to_markdown(tablefmt="grid", floatfmt=".2f"), 
+              "\n", sep="")
 
       # Tenda obter as importâncias das variáveis de entrada ao treinar
       # o modelo auxiliar, ou seja, as variáveis dadas em 
@@ -1549,13 +1549,15 @@ def generate_application_predictor(clean_dataset, best_model_name,
         # importâncias para as variáveis de entrada, mostra o DataFrame
         # com essas importâncias. 
         print('➖➖➡️ Dataframe com as importâncias do modelo:')
-        print("\n", importances_df.to_markdown(tablefmt="grid", floatfmt=".2f"), 
+        print("\n", importances_df.to_markdown(tablefmt="grid", 
+                                               floatfmt=".2f"), 
               "\n", sep="")
       elif verbose:
         # Se as importâncias não são definidas pelo estimador usado ao
         # treinar o modelo auxiliar, informa isso em uma mensagem se a
         # verbosidade estiver habilitada.
-        print("➖➖➡️ O modelo não avalia as importâncias das características.")
+        print("➖➖➡️ O modelo não avalia as importâncias das "
+              "características.")
 
       # Como não ocorreram erros ao treinar o modelo auxiliar usado para
       # escolher a melhor sugestão de configuração e, se for definido,
@@ -1671,6 +1673,15 @@ def save_application_predictor(best_model_internal_name, best_model_name,
                                       Como observamos, este objeto é a
                                       implementação do Preditor descrito
                                       no artigo do SSCAD.
+    predictors_file_path (str): Caminho completo para o diretório em que
+                                são armazenados os preditores das
+                                aplicações, no formato .pickle em que
+                                os objetos do python são passados por
+                                um processo chamado de serialização para
+                                poder armazená-los e usá-los mais tarde,
+                                no caso, pelo script de otimiziação, e
+                                o arquivo de configuração dos 
+                                preditores.
     predictors_info_config (dict): Referência para o dicionário com o
                                    arquivo de configuração dos
                                    preditores, sendo que cada chave é o
@@ -1712,55 +1723,189 @@ def save_application_predictor(best_model_internal_name, best_model_name,
           configuração dos preditores.
   """
 
+  # Define o caminho completo do nome do arquivo do preditor da 
+  # aplicação que teve os seus modelos treinados pela função 
+  # generate_application_predictor. O caminho é composto por 
+  # predictors_file_path, o caminho para o diretório com os preditores
+  # e com o arquivo de configuração do preditores, e o nome do preditor,
+  # que é composto pelo nome interno da aplicação para o qual o prediror
+  # foi gerado, dado em application_name, o nome do melhor estimador que
+  # foi usado para treinar o modelo auxiliar e, se definido, o modelo
+  # para predizer os tempos armazenados no preditor, dado em 
+  # best_model_name, a variável alvo do modelo auxiliar do preditor, 
+  # dada em suggestion_prediction_variable, e a extensão .pickle, pois
+  # o preditor é armazenado neste formato.
   preditor_file_name = (predictors_file_path / 
                         f"{application_name}_{best_model_name}_"
                         f"{suggestion_prediction_variable}.pickle")
   
-  # Salva o arquivo do preditor no formato .pickle.
-  print("➖➡️ Salvando o preditor treinado como o modelo "
-        f"{best_model_internal_name} (nome {best_model_name}) no arquivo "
-        f"{preditor_file_name}.")
+  # Imprime uma mensagem informando que o preditor gerado para a
+  # aplicação será salvo no arquivo cujo caminho está definido pelo
+  # objeto Path com a referência armazenada em preditor_file_name,
+  # mostrando o nome da aplicação (dado em application_name), o nome 
+  # interno do melhor modelo (dado em best_model_internal_name), o nome
+  # do modelo definido pela chave 'name' do dicionário referenciado pelo
+  # nome interno do melhorvmodelo (dado em best_model_name), e o caminho
+  # em que o preditor será armazenado, d
+  print("➖➡️ Salvando o preditor treinado para a aplicação "
+        f"{application_name} como o modelo {best_model_internal_name} (nome "
+        f"{best_model_name}) no arquivo do caminho {preditor_file_name}.")
 
+  # Define uma variável old_preditor_file_name com o nome do preditor
+  # anteriormente criado para a aplicação, se isso foi feito antes, ou
+  # seja, se o nome interno da aplicação application_name é uma chave 
+  # válida do dicionário predictors_info_config. Como usamos a função
+  # get do dicionário com o parâmetro default definido como None, 
+  # old_preditor_file_name será o nome do preditor antigo se a chabe
+  # application_name existir, ou None se a chave não existir, ou seja,
+  # nenhum preditor foi criado antes para a aplicação. A variável será
+  # usada para remover o preditor anterior da aplicação se ele existir
+  # (a variável não for None)e o arquivo de configuração dos 
+  # preditores tiver sido atualizado com sucesso.
+  old_preditor_file_name = predictors_info_config.get(application_name, None)
+
+  # Chama a função save_predictor do obejto da classe 
+  # SuggestionsPredictor, que salva o preditor no arquivo definido pelo
+  # caminho preditor_file_name mo formato .pickle. O formaro pickle do
+  # Python faz o que se chama de a serialização de um objeto, no caso,
+  # o objeto da classe SuggestionsPredictor, que permite que esse objeto
+  # seja salvo em um arquivo e depois possa ser usado, quando for lido
+  # e desserizlizado desserizlizado do arquivo .pickle salvo, como se
+  # posse o objeto salvo. O processo de desserizlizado será feito no
+  # script de otimização quando o objeto for usado para escolher a 
+  # melhor sugestão de configuração usando a função get_suggestion do
+  # objeto. também existe uma função para obter várias sugestões ao
+  # mesmo tempo, get_suggestions, mas essa função ainda não foi usada,
+  # somente testada. Se o arquivo foi salvado corretamente, status será
+  # True e se algum erro ocorreu e o arquivo não pôde ser salvo, status
+  # será False.
   status = predictor.save_predictor(preditor_file_name)
 
+  # Verifica se o arquivo foi salvo ou não com sucesso.
   if status:
-    # Salva as informações do arquivo do modelo do preditor.
+    # Como o arquivo foi salvo com sucesso, pois status é True, então
+    # primeiramenre, se a verbosidade estiver habilitada, vamos mostrar
+    # uma mensagem informando que o arquivo de configuração vai ser
+    # atualizado. A mensagem mostra o caminho completo do predotor, 
+    # definido pelo objeto da classe Path cuja referência está 
+    # armazenada em preditor_file_name e o nome da aplicação;
     if verbose:
-      print("➖➡️ Salvndo a informação do caminhio do preditor "
+      print("➖➡️ Salvando a informação do caminho do preditor "
             f"{preditor_file_name} para a aplicação {application_name} no "
             "arquivo de configuração dos preditores.")
       
+    # Atualiza a informação do preidtor para a aplicação com o nome
+    # interno armazanado em application_name. Como as configurações dos
+    # preditores são salvas em um dicionário cujas chaves são os nomes
+    # inyternos dos arquivos e cuja referências são os nomes dos 
+    # arquivos dos preditores sem os caminhos (como os caminhos de todos
+    # os preditores são os mesmos, o diretório com todo os preditores e
+    # o arquivo de configuração dos preditores, o caminho é
+    # reconstruído pelo script de otimização), então o comando a seguir
+    # irá ou criar uma nova chave no dicionário referenciado por 
+    # predictors_info_config, se a chave application_name não existir no
+    # dicionário, ou irá atualizar a referência dela para o objeto str
+    # referenciado por preditor_file_name.name, sendo name um atributo
+    # do objeto da classe Path que define o nome do arquivo do caminho
+    # armazenado no objeto a atring cuja referência será associada à 
+    # chave application_name.
     predictors_info_config[application_name] = preditor_file_name.name
-    status = predictors_info_config_obj.save_predictors_info_config(predictors_info_config)
-    if status and verbose:
-      print("➖➡️ Informação do caminho salva com sucesso par o aplicativo "
-            f"{application_name}!")
 
-      # Removendo o arquivo anterior do preditor da aplicação, se existir.
-      if application_name in predictors_info_config:
-        old_preditor_file_name = predictors_info_config[application_name]
+    # Usa a função save_predictors_info_config do objeto da classe
+    # PredictorsInfoConfig, que leu o arquivo de configuração dos
+    # preditores no dicionário referenciado por predictors_info_config,
+    # com o dicionário alterado e passado no parâmetro
+    # predictors_info_config. O nome do arquivo será o mesmo usado ao
+    # ler o arquivo de configuração dos preditores na função 
+    # train_commanda descrita a seguir, que gerencia todos os passos de
+    # geração do preditor para cada uma das aplicações passadas no
+    # comando train. A função retorna True se foi possível atualizar o
+    # arquivo de configuração dos preditores ou criá-lo se ele ainda
+    # não existia, ou False se não foi possível salvar o arquivo.
+    status = predictors_info_config_obj.save_predictors_info_config(
+      predictors_info_config
+    )
+
+    # Verifica se o arquivo de configuração dos preditores foi salvo com
+    # sucesso.
+    if status:
+      # Se a verbosidade está habilitada, informa que o arquivo de 
+      # configuração dos preditores foi atualizado, sendo a atualização
+      # ocorrida para a aplicação application_name
+      if verbose:
+        print("➖➡️ Informação do caminho salva com sucesso para a aplicação "
+              f"{application_name}: a chave {application_name} do dicionário "
+              "de configuração dos preditores foi alterada para "
+              f"{preditor_file_name.name}")
+
+      # Verifica se anteriormente foi treinado um preditor para
+      # aplicação, o que ocorrerá somente se a variável
+      # old_preditor_file_name tiver um nome válido, armazenapd em uma
+      # string (objeto str) e não None.
+      if old_preditor_file_name is not None:
+        # Como existe um preditor anteriormente criado para a aplicação,
+        # vamos primeiramente descobrir o caminho. O caminho será
+        # composto pelo caminho definifo pelo objeto da classe Path
+        # predictors_file_path, que armazena o caminho do diretório com
+        # os preditores e o arquivo de configuração da aplicação, e
+        # o nome do preditor dado em old_preditor_file_name.
         old_preditor_file_path = predictors_file_path / f"{old_preditor_file_name}"
 
+        # Se a verbosidade estiver habilitada, mostra uma mensagem
+        # informando que o preditor criado anteriormente para aplicação
+        # será removido porque não é mais necessário.
         if verbose:
-          print(f'➖➡️ Removendo o preditor antigo {old_preditor_file_name}')  
+          print(f"➖➡️ Removendo o preditor antigo {old_preditor_file_name} "
+                f"da aplicação {application_name} porque ele não é mais necessário!")  
 
+        # Usa a função unlink do objeto da classe Path
+        # old_preditor_file_path, com o caminho completo do preditor
+        # criado anteriormente, para remover esse arquivo do preditor,
+        # sem gerar erros se por acado o arquivo não existir ou não
+        # puder ser removido, devido ao parâmetro nomeado missing_ok ter
+        # sido definido como True.
+        # TODO: Será que deveríamos deixar o erro ocorrer e capturar em
+        #       uma exceção?
         old_preditor_file_path.unlink(missing_ok=True)
-    elif not status:
+    else:
+      # Se ocorreu um erro ao atualizar o arquivo de configuração da
+      # aplicação, então primeiramente mostramos uma mensagem informando
+      # o erro ao uuário do script de treinamento.
       print("❌ Erro ao salvar o arquivo de configuração dos preditores "
             f"atualizado para a aplicação {application_name}!")
 
+      # Mostra uma mensagem informando que o preditor criado será
+      # removido porque não poderá ser  usado pelo script de otimização.
+      print(f"❌ Removendo o preditor criado {preditor_file_name}, já que não "
+            "foi possível atualizar o arquivo de configuração dos preditores!")  
+      
+      # Como não foi possível atualizar o arquivo de configuração dos
+      # preditores, o arquivo com o novo preditor criado deverá ser
+      # removido, pois o arquivo de configuração dos preditores não terá
+      # uma refeência para este arquivo e, com isso, ele não poderá ser
+      # usado pelo script de otimização. Logo, vamos novamente usar a
+      # função unlink do objeto da classe Path preditor_file_name, com o 
+      # caminho completo do preditor que foi criado, para remover esse
+      # arquivo do preditor, sem gerar erros se por acado o arquivo não
+      # puder ser removido, devido ao parâmetro nomeado missing_ok ter
+      # sido definido como True.
       # TODO: Se não for possível atualizar o arquivo de configuração dos
       #       preditores com o novo preditor, será que devemos remover o
       #       preditor criado?
-      print(f"❌ Removendo o preditor criado {preditor_file_name}, já que não "
-            "foi possível atualizar o arquivo de configuração dos preditores!")  
       preditor_file_name.unlink(missing_ok=True)      
   else:
+    # Como ocorreu um erro ao salvr o arquivo serializado com o preditor
+    # criado, mostramos uma mensagem informando isso ao usuário do
+    # script de treinamento.
     print(f"❌ Erro ao salvar o preditor no caminho {preditor_file_name} "
           f"para a aplicação {application_name}!")
 
+  # Retorna status que será. como observamos anteriormente, True se o
+  # preditor criado para a aplicação foi salvo com sucesso e também o
+  # arquivo de configuração dos preditores foi salvo com sucesso, ou 
+  # False em caso contrário, ou seja, se ocorreu um erro ao salvar o
+  # arquivo do preditor ou o arquivo com a configuração dos preditores.
   return status
-
 
 def train_command(applications_name, applications_config, training_config, 
                   system_config,verbose=False):
@@ -1913,26 +2058,6 @@ def train_command(applications_name, applications_config, training_config,
       print("❌ Erro ao inicializar ou usar estruturas internas do script, "
             f"quando gerando o preditor para a aplicação {application_name}!")
     print(f"❌ Erro gerado: '{e.args[0]}'")  
-    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
-    return False
-  except FileNotFoundError as e:
-    print(f"❌ Erro ao acessar o arquivo no caminho {e.filename}, o arquivo "
-          "não existe!")
-    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
-    return False
-  except IsADirectoryError as e:
-    print(f"❌ Erro ao acessar o arquivo no caminho {e.filename}, o arquivo "
-          "é na verdade um diretório!")
-    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
-    return False
-  except PermissionError as e:
-    print(f"❌ Erro ao acessar o arquivo no caminho {e.filename}, permissão "
-          "de acesso negada!")
-    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
-    return False
-  except IOError as e:
-    print(f"❌ Erro de I/O ao ler o arquivo {e.filename}!")
-    print(f"❌ Código do erro: {e.errno}; Mensagem: {e.strerror}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
     return False
   except Exception as e:
