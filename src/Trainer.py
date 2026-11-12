@@ -379,9 +379,10 @@ def models_command(training_config):
                             armazenados no diiconário cuja referência é
                             definida pela chave "models", então os nomes
                             dos modelos que podem ser treinados são as
-                            chas desse dicionário, e portanto podemos 
-                            listar as chaves deste dicionário para 
-                            descobrir os modelos que podem ser usados.
+                            chaves desse dicionário, logo basta listar 
+                            as chaves para podermos mostrar os modelos
+                            que serão usados ao construir o preditor de
+                            uma aplicação.
 
   Retorna:
     bool: True, se o comando foi executado com sucesso, o que somente 
@@ -421,7 +422,11 @@ def models_command(training_config):
 def read_predictor_info_config(system_config, verbose=False):
   """
   Função para ler o arquivo de configuração com as informações dos
-  preditores.
+  preditores. No arquivo de configuração, e no dicionário que é obtido
+  a partir da leitura do arquivo, a chave é o nome interno da aplicação,
+  e a refência desta chave é para uma string com o nome do arquivo do
+  preditor. Somente as aplicações que estão neste arquivo podem ter as
+  suas execuções otimizadas pelo script de otimização.
 
   Parâmetros:
     system_config (dict): Dicionário com as configurações gerais
@@ -431,17 +436,18 @@ def read_predictor_info_config(system_config, verbose=False):
                     deverão ser impressas as mensagens de log.
 
   Retorna:
-    tuple | None: Uma tupla com três elementos, sendo o primeiro 
-                  elemento o caminho do diretório com os arquivos dos 
-                  preditores e o arquivo com a configuração dos 
-                  preditores, o segundo elemento um dicionário com as
-                  informações dos preditores, e o terceiro elemento uma
-                  referência para o objeto da classe 
-                  PredictorsInfoConfig, que será necessário para
-                  atualizar o arquivo de configuração com as informações
-                  dos preditores. Se algum erro ocorrer durante a
-                  leitura do arquivo de configuração dos preditores, a
-                  função retorna None para o segundo elemento da tupla.
+    tuple: Uma tupla com três elementos, sendo o primeiro elemento o 
+           caminho do diretório com os arquivos dos preditores e o
+           arquivo com a configuração dos preditores, o segundo elemento
+           um dicionário com as informações dos preditores, e o terceiro
+           elemento uma referência para o objeto da classe
+           PredictorsInfoConfig, que será necessário para atualizar o 
+           arquivo de configuração com as informações dos preditores. Se
+           algum erro ocorrer durante a leitura do arquivo de
+           configuração dos preditores, a função retorna None para o
+           segundo elemento da tupla, o dicionário que deveria armazenar
+           as aplicaççoes como chaves e os nomes dos arquivos dos 
+           preditores como valores dessas chaves.
   """
   
   # Define o caminho do diretório com os arquivos dos preditores e do 
@@ -1715,6 +1721,8 @@ def save_application_predictor(best_model_internal_name, best_model_name,
     application_name (str): Nome interno da aplicação, também usado para 
                             compor o nome do arquivo com o preditor 
                             salvo. 
+    verbose (bool): Indica se a verbosidade está habilitada, ou seja, se
+                    deverão ser impressas as mensagens de log.
 
   Retorna:
     bool: True se o preditor foi salvo com sucesso e o arquivo de 
@@ -1849,14 +1857,16 @@ def save_application_predictor(best_model_internal_name, best_model_name,
         # predictors_file_path, que armazena o caminho do diretório com
         # os preditores e o arquivo de configuração da aplicação, e
         # o nome do preditor dado em old_preditor_file_name.
-        old_preditor_file_path = predictors_file_path / f"{old_preditor_file_name}"
+        old_preditor_file_path = (predictors_file_path / 
+                                  f"{old_preditor_file_name}")
 
         # Se a verbosidade estiver habilitada, mostra uma mensagem
         # informando que o preditor criado anteriormente para aplicação
         # será removido porque não é mais necessário.
         if verbose:
           print(f"➖➡️ Removendo o preditor antigo {old_preditor_file_name} "
-                f"da aplicação {application_name} porque ele não é mais necessário!")  
+                f"da aplicação {application_name} porque ele não é mais "
+                "necessário!")  
 
         # Usa a função unlink do objeto da classe Path
         # old_preditor_file_path, com o caminho completo do preditor
@@ -1909,35 +1919,209 @@ def save_application_predictor(best_model_internal_name, best_model_name,
 
 def train_command(applications_name, applications_config, training_config, 
                   system_config,verbose=False):
+  """
+  Função para executar o comando train, que gera o preditor, que será
+  usado pelo script de otimização, para cada aplicação passada como
+  parâmtro, sendo a aplicação identificada pelo seu nome interno, ou
+  seja, o nome dado pela chave 'name' do arquivo de configuração da
+  aplicação e do dicionário com as configuraçẽos da aplicação obtido a
+  partir deste arquivo. Cada aplicação listada tem o seu preditor
+  idependentemente gerado das outras aplicações. Para cada aplicação em
+  que o preditor foi gerado com sucesso, a sua entrada no arquivo de
+  configuração dos preditores ou será alterada para o nome do arquivo do
+  novo preditor, se a aplicação já tinha um preditor criado, sendo que
+  o preditor anterior da aplicação será removido, ou será criada uma
+  nova chave para a aplicação referenciando a string com o nome do 
+  preditor treinado para a aplicação.
+
+  Parâmetros:
+    applications_name (list[str]): Lista com os nomes internoa das 
+                                   aplicações para as quais desejamos
+                                   construir um novo preditor.
+    applications_config (dict): Dicionário com todas as configurações
+                                das aplicações que podem ser otimizadas
+                                pelo script de otimização, sendo que
+                                cada chave, associada e identificando
+                                uma aplicação, tem uma referência para o
+                                dicionário com as configurações dessa
+                                aplicação.
+    training_config (dict): Dicionário com todas as configurações
+                            de treinamento. Como os dicionários com as
+                            configurações de treinamento dos modelos são 
+                            armazenados no diiconário cuja referência é
+                            definida pela chave "models", então os nomes
+                            dos modelos que podem ser treinados são as
+                            chaves desse dicionário, sendo que cada
+                            chave referencia um diconário para o modelo
+                            com o nome interno da chave com todas as
+                            configurações necessárias para otimizar os
+                            hiperparâmetros do modelo, os 
+                            hiperparâmetros com valores fixos do modelo,
+                            o nome do modelo, e o nome usado para
+                            dinamicamente criar um objeto do modelo.
+    system_config (dict): Dicionário com as configurações gerais
+                          relacionadas aos scripts de otrimização e de
+                          treinamento. A função irá passar o dicionário
+                          para outras funções, que usarão os campos
+                          destritos no cabeçalho das funções,
+    verbose (bool): Indica se a verbosidade está habilitada, ou seja, se
+                    deverão ser impressas as mensagens de log.
+
+  Retorna:
+    bool: True se todos os preditores de todas as aplicações foram 
+          criados e disponibilizados com sucesso, ou seja, se cada
+          preditor foi criado, salvo com sucesso, em um arquivo no
+          formato .pickle, e a entrada da aplicação no arquivo de
+          configuração dos preditores foi alterado e o arquivo
+          atualizado salvo com sucesso.
+  """
+
   try:
+    # Define o nome da aplicação para None, para não mostrar um nome da
+    # aplicação se uma exceção, devido a algun erro de programação no
+    # código, ocorrer antes de começarmos a treinar as aplicações.
+    application_name = None
+
+    # Primeiramente vamos ler o arquivo de configuração dos preditores,
+    # pois saber se é possível ler o arquivo é importante pois
+    # precisamos ler o arquivo para remover os preditores antigos e
+    # salvar o arquivo para armazenar os nomes dos novos preditores para
+    # aplicações já treinadas, ou para novas aplicações, A Função
+    # retorna os seguintes parâmetros:
+    #
+    # predictors_file_path: Objeto da classe Path com o caminho do 
+    #                       diretório com o arquivo de configruação dos
+    #                       preditores e os arquivos dos preditores.
+    # predictors_info_config: Dicionário com o arquivo de configuração
+    #                         dos preditores lido, se nenhum erro
+    #                         ocorreu ao ler o arquivo, sendo cada chave
+    #                         o nome da aplicação e o valor da chave o
+    #                         nome do arquivo com o preditor da
+    #                         aplicação. Se não foi possível ler o
+    #                         arquivo, o valor será None.
+    # predictors_info_config_obj: Objeto da classe PredictorsInfoConfig
+    #                             que foi criado para ler o arquivo de
+    #                             configuração dos preditores. O objeto
+    #                             será necessário para atualizar o 
+    #                             arquivo de configuração com o nome do
+    #                             arquivo do nome preditor criado para
+    #                             cada aplicação passada no comando
+    #                             train.
     (
       predictors_file_path, 
       predictors_info_config, 
       predictors_info_config_obj
     ) = read_predictor_info_config(system_config, verbose=verbose)
 
+    # Verifica se foi possível ler o arquovo de configuração dos
+    # preditores.
     if predictors_info_config is None:
+      # Caso predictors_info_config seja None, então ocorreu um erro ao
+      # ler o arquivo de configuração. Logo, geremoas uma mensagem 
+      # informando sobre o erro.
       print("❌ Não foi possível ler o arquivo de configuração com as "
             "informações dos preditores, logo não foi possível treinar os "
             "modelos para as aplicações!")
+
+      # Como não foi possível ler o arquivo de configuração dos
+      # preditores, então não será possível criar nenhum preditor para
+      # nenhuma aplicação e, com isso, retornamos False.
       return False
 
-    application_name = None
-    
+    # Vamos começar a criação dos preditores para cada aplicação dada
+    # na lista applications_name.
     for application_name in applications_name:
+      # Vamos começar a fazer os passos necessários para construir o 
+      # preditor para a aplicação application_name. Primeiramente, 
+      # verificamos se podemos criar um preditor para a aplicação; Isso
+      # somente será possível se a aplicação possuir um arquivo de 
+      # configuração da aplicação, o que ocorrerá somente se existir,
+      # nas cjhaves do dicionário applications_config, uma chave com o
+      # nome da aplicação, porque cada aplicação que possuía um arquivo
+      # teve uma chave criada, com o nome da aplicação definido pela
+      # chave 'name' do arquivo de configuração desta apicação.
       if application_name in applications_config.keys():
+        # Se existir a chave com o noem da aplicação application_name em
+        # applications_config, ebtão podemos criar um preditor para essa
+        # aplicação. Para facilitar o acesso, vamoe definir a varável 
+        # application_info com o dicionário com as configurações da 
+        # aplicação, incluindo as configurações de treinamento, sendo o
+        # dicionário referenciado pela chave application_iname.
         application_info = applications_config[application_name]
 
+        # Se a verbosidade estiver habilitada, mostra uma mensagem 
+        # informando que vamos começar o processo de geração do 
+        # preditor para a aplicação.
         if verbose:
-          print(f"\n➡️ Treinando todos os modelos para a aplicação {application_name}")	
+          print("\n➡️ Treinando todos os modelos para a aplicação "
+                f"{application_name}")	
 
+        # Para faciliar o acesso, definimos a variável
+        # suggestion_variables com os nomes das varíaveis que compõe uma 
+        # configuração, como o número de nós, processos por nó e threads
+        # por processo.
         suggestion_variables = application_info['suggestions_parameters'] 
+
+        # Para faciliar o acesso, definimos a variável a
+        # application_variables com os nomes das varíaveis que definem
+        # os parâmetros da aplicação que serão usados nos treinamentos
+        # de todos os modelos, tanto os finais como so intermediários
+        # das fases de otiização dos hiperparâmetros e escolha do
+        # melhor modelo.
         application_variables = application_info['application_parameters']  
+
+        # Para faciliar o acesso, definimos a variável group_variables
+        # com os nomes das varíaveis usadas para construir os gruoos
+        # usados pela validação LOGO nas fases de otimização dos
+        # hiperparâmetros e escolha do melhor modelo. Os grupos serão
+        # obtidos por todas as combinações de valores diferentes deasas
+        # variáveis no conjunto de dados da aplicação, depois de
+        # filtrado.
         group_variables = application_info['training']['group_parameters'] 
+
+        # Para faciliar o acesso, definimos a variável filter_variables
+        # com os nomes das varíaveis que serão usadas para fazer a
+        # filtragem do conjunto de dados com o objetivo de remover os
+        # outliers que podem comprometer o treinamento dos modelos
+        # gerados em todo o processo de criação do preditor. Em geral,
+        # são as variáveis alvo e/ou variáveis relacionadas à elas. Nos
+        # nosso s testes, usamos as varáveis "ElapsedRaw" (tempo de
+        # execução, obtido pelo saccct), "Consumo de Energia Total (J)"
+        # consumo de energia, medido nos testes utilizando a arquitetura
+        # RAPL da Intel) e "EDP" (o produto de "ElapsedRaw" por 
+        # "Consumo de Energia Total (J)""). Apesar de termos usados as
+        # variáveis em todas as aplicações oara as quais criamos um 
+        # preditor, as variáveis podem variar dependendo da aplicação, 
+        # pois são definidas no arquivo de configurção da aplicação.
         filter_variables = application_info['training']['filter_parameters']
+
+        # Para faciliar o acesso, definimos a variável
+        # prediction_variables com o dicionário em que a chave
+        # obrigatória 'suggestion' define a variável alvo dos modelos
+        # usados ṕara otimizar os hiperparâmetros e escolher o melhor
+        # modelo e para o treinamento do modelo auxiliar, associado ao
+        # preditor criado, usado pelo script de otimização para escolher
+        # a melhor sugestão de configuração.
         prediction_variables = application_info['estimated_parameters']        
+
+        # Para faciliar o acesso, definimos a variável 
+        # suggestion_prediction_variable com o nome da variável alvo 
+        # obrigatoria definda, como objervamos anteriomente, pela
+        # chave 'suggestion' do dicionário prediction_variables. 
         suggestion_prediction_variable = prediction_variables['suggestion']
 
+        # Define as variáveis de enrrada dos modelos e das validações,
+        # usadas nos treinamentos dos modelos e nas construções dos
+        # grupos da validação LOGO. Como uma variável pode estar em mais
+        # de uma das variáveis definidas anteriormente, por exemplo, as
+        # variáveis de aplicação BootStrap e Tamanho que usamos nos
+        # treinamentos do RAxML estão tando em application_variables,
+        # como em group_variables. Para remover as duplicatas, 
+        # convertemos a concatenação das listas suggestion_variables,
+        # application_variables e group_variables, que é uma nova lista,
+        # em um conjunto do python, que automaticamente remove 
+        # duplicatas, no caso, strings iguais, e depois convertemos o
+        # conjunto sem as duplicatas novamente para uma lista.
         input_variables = list(
             set(
                 suggestion_variables
@@ -1946,6 +2130,22 @@ def train_command(applications_name, applications_config, training_config,
             )
         )
 
+        # Define todas as variáveis do conjunto de dados da aplicação 
+        # usadas em todos os processamentos ao criar o preditor de cada
+        # aplicação, que será a concatenação das listas input_variables,
+        # filter_variables e os valores das chaves do dicionário 
+        # prediction_variables (no momento temos no máximo duas, a
+        # obrigatória 'suggestion' com a variável alvo usada no 
+        # treinamento de todos os modelos da fase de otimização dos
+        # hiperparâmetros e escolha do melhor modelo e no treinamento do
+        # modelo auxiliar usado para escolher a melhor guestão de
+        # configuração). Novamente usamos a conversão da lista
+        # concatenada para conjunto e depois para a lista para remover
+        # possíveis nomes iguais de variáveis. Como essa variável é
+        # excluivamente usada pela função read_training_data para ler o
+        # conjunto de dados da aplicaççao, a remoção das duplicatas é
+        # para evitar que, no DataFrame que armazena o conjunto de
+        # dados, existam colunas duplicadas.
         dataset_colunms = list(
             set(
                 input_variables
@@ -1954,17 +2154,49 @@ def train_command(applications_name, applications_config, training_config,
             )
         )
     
-        # Variáveis usadas no programa
+        # Para faciliar o acesso, definimos a variável outlier_limit com
+        # o valor em ponto flutuante que define como é defnido o
+        # intervalo de exclusão dos outiliers, definido na chave 
+        # 'outlier_limit' do dicionário com as informações de filtragem
+        # (no momento, somente a outlier_limit) referenciado pela chave
+        # 'filter' do diconário com as configurações de treinamento. O
+        # intervalo será [mad-outlier_limit, mad+outlier_limit], onde
+        # mad é o desvid mediano absoluto de todos os valores de uma das
+        # variáveis de flitragem defindas em filter_variables. A
+        # flitrage é feita separadamente para cada variável em
+        # filter_variables.
+        outlier_limit = training_config['filter']['outlier_limit']
 
+        # Para faciliar o acesso, definimos a variável modelos com a
+        # referência ao dicionário, definido pela chave 'models1 do 
+        # arquivo de configuração de treinamento, com as configurações
+        # de cada modelo a ser avaliado, sendo cada chave do dicionário
+        # o modelo, e a referência desta chave o dicionário com as
+        # configurações deste modelo, que incluem, como vimos, os
+        # hiperparâmetros a serem otimizados, os hiperparâmetros fixos,
+        # o nome do modelo, e o identificador usado para importar
+        # dinamicamente a classe do modelo.
+        models = training_config['models']
+
+        # Para faciliar o acesso, definimos a variável dataset_list com
+        # a lista dos arquivos que armazenam, no formato cvs, todos os
+        # conjunto de dados que serão concetenados em um único conjunto 
+        # de dados que será  posteriormente passado para a fase de
+        # filtragem para a remoção dos outliers. Não é obrigstório
+        # definir vários arquivos, ou seja, a lista pode ser composta
+        # por somente um arquivo. Fiz a implementação com uma lista
+        # pensando em dados futuros, que poderiam ser axenados à parte,
+        # permitindo a preservação do conjunto de dados originalmente
+        # usado nas fases prelinimares da construção do preditor da
+        # aplicação.
         dataset_list = application_info['training']['dataset_files']
 
+        # Leitura do conjunto de dados.
         dataset = read_training_data(dataset_list, system_config, 
                                      dataset_colunms, verbose=verbose)
 
-        # Filtra os dados.
-        outlier_limit = training_config['filter']['outlier_limit']
 
-        #training_config['filter']['outlier_limit']
+        # Filtragem.
         clean_dataset = filter_training_data(dataset, input_variables, 
                                              filter_variables, outlier_limit, 
                                              verbose=verbose)
@@ -1973,8 +2205,8 @@ def train_command(applications_name, applications_config, training_config,
           print(f"➖➡️ Predições para a variável alvo {suggestion_prediction_variable}")
 
 
-        models = training_config['models']
-        
+
+        # Otimizalçao dos hiperparâmetros.
         initialized_models, best_params_models = optimize_hyperparameters(
           clean_dataset,
           models,
@@ -1985,6 +2217,7 @@ def train_command(applications_name, applications_config, training_config,
           verbose
         )
 
+        # Escolha do melhor modelo.
         best_model_name, best_model_score = choose_best_model(
           clean_dataset, 
           initialized_models, 
@@ -1998,6 +2231,7 @@ def train_command(applications_name, applications_config, training_config,
         best_model_params = best_params_models[best_model_name]
         best_model_info = training_config["models"][best_model_name]
 
+        # Criação do preditor.
         predictor = generate_application_predictor(clean_dataset, 
                                                    best_model_name, 
                                                    best_model_score, 
@@ -2011,6 +2245,8 @@ def train_command(applications_name, applications_config, training_config,
 
         best_model_import_name = models[best_model_name]['name']
 
+        # Salvamento do preditor e atualiação do arquivo de configuração
+        # dos preditores.
         status = save_application_predictor(best_model_name, 
                                             best_model_import_name,
                                             predictor, predictors_file_path, 
@@ -2055,6 +2291,7 @@ def train_command(applications_name, applications_config, training_config,
       print("❌ Erro ao inicializar ou usar estruturas internas do script, "
             "quando inicializando os treinamentos das aplicações!")
     else:
+
       print("❌ Erro ao inicializar ou usar estruturas internas do script, "
             f"quando gerando o preditor para a aplicação {application_name}!")
     print(f"❌ Erro gerado: '{e.args[0]}'")  
