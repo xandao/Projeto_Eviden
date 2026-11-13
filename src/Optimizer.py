@@ -388,9 +388,10 @@ def process_args(applications_config):
     if separator_pos < len(sys.argv) - 1:
       # O nome da aplicação e os parâmetros da aplicação estarão na
       # posição de separator_pos + 1 até o final da lista. A lista com
-      # o nome da plicação e os seus parâmetros será armazenada em 
-      # application_args. Note que a sintaxe do script de otimização exige
-      # que o primeiro elemento dessa lista seja o nome da aplicação. 
+      # o nome da aplicação e os seus parâmetros será armazenada em 
+      # application_args. Note que a sintaxe do script de otimização 
+      # exige que o primeiro elemento dessa lista seja o nome da
+      # aplicação. 
       application_args = sys.argv[separator_pos+1:]
 
       # Como temos um nome da aplicação e pelo menos um parâmetro da
@@ -400,10 +401,11 @@ def process_args(applications_config):
     else:
       # Neste caso, não temos o nome da aplicação, então definimos a
       # variável application_name como None, para indicar que não vamos
-      # mostrar os parâmetros de customização, e application_args também
-      # como None, porque nenhum parâmetro foi passado depois do 
-      # separador '--'
-      application_name = None   
+      # otimizar uma aplicação, assim como application_id, e
+      # application_args também como None, porque nenhum parâmetro foi
+      # passado depois do separador '--'
+      application_name = None
+      application_id = None   
       application_args = None
 
       # Como temos o separador '--', devemos removê-lo dos paràmetros do
@@ -415,9 +417,13 @@ def process_args(applications_config):
     script_args = sys.argv[1:]
 
     # Como não foi usado o separador, então não foi passado o nome da
-    # aplicação e nem a lisra de argumentos. 
-    application_args = None
+    # aplicação e nem a lista de argumentos, logo deveremos definir as
+    # variávels application_name com o nome do executável da aplicação,
+    # application_id com o nome interno da aplicação, e application_args
+    # com os parâmetros da aplicação como None. 
     application_name = None
+    application_id = None   
+    application_args = None
 
   # Inicializa o analisador dos parâmetros do script de otimização, com
   # uma descrição do que o script faz (parâmetro "description"), uma
@@ -1706,7 +1712,7 @@ def convert_user_params(required_applicaion_params, conversions,
       # conversion_type.
       conversion_args = conversion_info[1:]
 
-      # Dicionário auxiilar usado para executar as funções de conversão,
+      # Dicionário auxilar usado para executar as funções de conversão,
       # sendo que a função partial do Python é usada para executar a
       # função quando não desejamos invocar a função no momento da sua
       # definição, no caso, da associação da função à chave que
@@ -1715,7 +1721,8 @@ def convert_user_params(required_applicaion_params, conversions,
       # sem necessitar o uso de uma sequência if-elif-...-elif-else que
       # dependeria de quantas conversões existem, ou do uso da nova
       # estrutura match-case do Pythom que somente existe após a versão
-      # 3.10 da linguagem.
+      # 3.10 da linguagem. O dicionário é armazenado na variável
+      # conversion_types
       conversion_types = {
         'copy': partial(copy_func, *conversion_args),
         'filesize': partial(filesize_func, *conversion_args),
@@ -3949,12 +3956,13 @@ def optimize_application(configs_file_path, system_config, application_config,
 
   # Captura as exceções que podem ser geradas devido a erros de
   # implementação no código, para garantir que o usuário possa reportar
-  # uma mensagem legível se algum bug existir no código do script deo
+  # uma mensagem legível se algum bug existir no código do script de
   # otimização.
 
   # Em algum lugar do código, uma chave incorreta foi usada. Mostra um
   # erro, para o usuário poder reportar, com o nome dessa chave e, se
-  # já processando a otimização de aplicação, o nome da aplicação.
+  # já estiver processando a otimização da aplicação, o nome da
+  # aplicação.
   except KeyError as e:
     if application_name is None:
       print("❌ Erro ao processar uma das estruturas indexadas por chave, a "
@@ -3968,9 +3976,11 @@ def optimize_application(configs_file_path, system_config, application_config,
     # Como ocorreu uma exceção antes do teŕmino de todas as operações
     # feitas pelo script de otimização, retorna False.
     return False
+  
   # Em algum lugar do código, foi acessado um atributo que não existe
   # em um objeto. Mostra um erro, para o usuário poder reportar e, se
-  # já processando a otimização de aplicação, o nome da aplicação.
+  # já estiver processando a otimização da aplicação, o nome da
+  # aplicação.
   except AttributeError as e:
     if application_name is None:
       print("❌ Erro ao acessar um dos objetos internos do script, um dos "
@@ -3988,7 +3998,8 @@ def optimize_application(configs_file_path, system_config, application_config,
 
   # Em algum lugar do código, foi usado um valor inválido como parâmetro 
   # de alguma função. Mostra um erro, para o usuário  poder reportar e, 
-  # se já processando a otimização de aplicação, o nome da aplicação.
+  # se já estiver processando a otimização da aplicação, o nome da
+  # aplicação.
   except ValueError as e:
     if application_name is None:
       print("❌ Parâmetro inválido passado para uma função, ao inicializar as "
@@ -4002,10 +4013,11 @@ def optimize_application(configs_file_path, system_config, application_config,
     # Como ocorreu uma exceção antes do teŕmino de todas as operações
     # feitas pelo script de otimização, retorna False.
     return False
+
   # Em algum lugar do código, foi usado um tipo inválido em alguma
   # operação como, por exemplo, somar um interio com uma string. Mostra 
-  # um erro, para o usuário  poder reportar e, se já processando a
-  # otimização de aplicação, o nome da aplicação.
+  # um erro, para o usuário  poder reportar e, se já estiver 
+  # processando a otimização da aplicação, o nome da aplicação.
   except TypeError as e:
     if application_name is None:
       print("❌ Erro ao inicializar ou usar estruturas internas do script, ao "
@@ -4019,9 +4031,11 @@ def optimize_application(configs_file_path, system_config, application_config,
     # Como ocorreu uma exceção antes do teŕmino de todas as operações
     # feitas pelo script de otimização, retorna False.
     return False
+
   # Em algum lugar do código, oorreu uma exceção inesperada. Mostra um 
   # erro, para o usuário  poder reportar com as informações da exceção 
-  # e, se já processando a otimização de aplicação, o nome da aplicação.
+  # e, se já estiver processando a otimização da aplicação, o nome da
+  # aplicação.
   except Exception as e:
     if application_name is None:
       print("❌ Erro desconhecido ao começar a fazer as otimizações!")
@@ -4164,7 +4178,7 @@ ter as suas execuções otimizada, ou otimiza a execução de uma aplicação.
 # None para um dos retornos se ocorreu algum erro ao obter o que é
 # descrito para o retorno:
 #
-# configs_file_path: string com o caminho completo do diretóri base dos
+# configs_file_path: String com o caminho completo do diretóri base dos
 #                    script de otimização e de treinamento, em que
 #                    estarão todos os arquivos de configuração, arquivos
 #                    auxiliares, os arquivos binários no formato pickle
@@ -4244,7 +4258,7 @@ if user_args is None:
   exit(-2)
 
 # Chama a função process_script_options para, dependo do que o usuário
-# definiu na lina de comando, ou listar todas as aplicações que podem
+# definiu na linha de comando, ou listar todas as aplicações que podem
 # ter as suas execuções otimizadas, ou otimizar a execução da aplicação,
 # salvando o script em um arquivo e submentendo ele, dependendo das 
 # opções passadas ao script de submissão pelo usuário.
@@ -4257,9 +4271,9 @@ status = process_script_options(configs_file_path, system_config,
 # exeucução da aplicação, salvar o script, ou submeter o script.
 if not status:
   # Como a função process_script_options já imprime as mensagens de erro
-  # quando ocorre algum erro ao listar as aplicações ou aootimizar a
-  # exeucução da aplicação, salvar o script, ou submeter o script
+  # quando ocorre algum erro ao listar as aplicações ou ao otimizar a
+  # execução da aplicação, salvar o script, ou submeter o script
   # processar as opções do script, então abortamos o script com o código 
-  # de erro -3, ero ao listar as aplicações ou otimizar a execução da
+  # de erro -3, erro ao listar as aplicações ou otimizar a execução da
   # aplicação.
   exit(-3)

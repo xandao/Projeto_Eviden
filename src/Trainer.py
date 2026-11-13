@@ -207,14 +207,12 @@ def process_script_args():
     Não tem.
 
   Retorna:
-    tuple: Uma tupla com os elementos command, verbose e parser, sendo o
-           elemento command uma lista com o comando a ser executado e
+    tuple: Uma tupla com os elementos command, e verbose, sendo o 
+    elemento command uma lista com o comando a ser executado e
            seus parâmetros se forem necessários (no momento, somente o
            comando train tem parâmetros, as aplicações para as quais
-           treinaremos o preditor), o elemento verbose um booleano 
-           indicando se a verbosidade está ou não habilitada e o 
-           elemento parser uma referência para o objeto ArgumentParser 
-           que processou os argumentos da linha de comando.                                                 
+           treinaremos o preditor), e o elemento verbose um booleano 
+           indicando se a verbosidade está ou não habilitada.                                                 
   """
 
   # Inicializa o analisador dos parâmetros do script de treinamento, com
@@ -324,11 +322,9 @@ def process_script_args():
   command = args.command
 
   # Retorna uma tupla com três elementos, sendo o primeiro a lista com o
-  # comando a ser executado e seus parâmetros, o segundo um booleano
-  # indicando se a verbosidade está habilitada ou não e o terceiro uma
-  # referência para o objeto ArgumentParser que processou os argumentos
-  # da linha de comando.
-  return command, verbose, parser
+  # comando a ser executado e seus parâmetros, e o segundo um booleano
+  # indicando se a verbosidade está habilitada.
+  return command, verbose
 
 def applications_command(applications_config):
   """
@@ -1992,7 +1988,8 @@ def train_command(applications_name, applications_config, training_config,
           preditor foi criado, salvo com sucesso, em um arquivo no
           formato .pickle, e a entrada da aplicação no arquivo de
           configuração dos preditores foi alterado e o arquivo
-          atualizado salvo com sucesso.
+          atualizado salvo com sucesso. Se algum erro ocorreu ao gerar
+          o preditor de uma das aplicações, será retornado False.
   """
 
   try:
@@ -2407,7 +2404,25 @@ def train_command(applications_name, applications_config, training_config,
         # configurações gerais de treinamento.
         best_model_info = training_config["models"][best_model_name]
 
-        # Criação do preditor.
+        # Depois de escolher o melhor modelo, cujo nome interbo foi
+        # armazenado em best_model_name, vamos usar a função 
+        # generate_application_predictor para criar o preditor da 
+        # aplicação, que foi descrito no artigo do SSCAD, e que é 
+        # composto, como já observamos, pelo modelo auxiliar, treinado
+        # com todos os dados do conjunto de dados (os treinamentos
+        # anteriores, usados nos treinamentos das validações cruzadas
+        # com a validação LOGO feitos ao otimizar os hiperparâmetros dos
+        # modelos e escolher o melhor modelo, não usavam todo o conjunto
+        # de dados, devido a validação LOGO usar os testes do subconjunto
+        # de dados definido por um grupo para teste e os testes 
+        # restantes para o treinamento) e, se definida ao opção 'time'
+        # do dicionário acessado pela chave 'estimated_parameters' do
+        # dicionário com as configurações de treinamento da aplicação,
+        # o modelo usado para estimar o tempo de execução da aplicação
+        # executando com a melhor sugestão de configuração. O retorno
+        # da função, armazenado em predictor, é um objeto da classe
+        # SuggestionsPredictor, se nenhum erro ocorreu ao criar o
+        # preditor da aplicação, ou None em caso contrário.
         predictor = generate_application_predictor(clean_dataset, 
                                                    best_model_name, 
                                                    best_model_score, 
@@ -2419,27 +2434,82 @@ def train_command(applications_name, applications_config, training_config,
                                                    prediction_variables,
                                                    verbose)
 
+        # Verifica se o preditor da aplicação não foi gerado.
+        if predictor is None:
+          # Como o preditor não foi gerado com sucesso, informa o erro e
+          # passamos para o treinamento da próxima aplicação.
+          print("➖➡️ Erro ao gerar o preditor para a aplicação "
+                f"{application_name}!")
+
+          # Como um erro ocorreu, mudamos status para False.
+          status = False
+
+          # Como não podemos mais continuar o processo de construção do
+          # preditor para essa aplicação, passamos para a próxima 
+          # aplicação.
+          continue
+
+        # Para faciliar o acesso, definimos a variável 
+        # best_model_acronym_name com o nome do melhor modelo dado pela
+        # chave 'name' do arquivo de configuração deste melhor modelo. O
+        # nome é o mesmo usado no artigo do SSCAD, na extensão do
+        # artigo, e provavelmente em outros artigos futuros, por
+        # exemplo, ETR para o Extra Trees Regressor.         
         best_model_acronym_name = models[best_model_name]['name']
 
-        # Salvamento do preditor e atualiação do arquivo de configuração
-        # dos preditores.
-        status = save_application_predictor(best_model_name, 
-                                            best_model_acronym_name,
-                                            predictor, predictors_file_path, 
-                                            predictors_info_config, 
-                                            predictors_info_config_obj, 
-                                            suggestion_prediction_variable, 
-                                            application_name, verbose)
+        # Como geremos o preditor da aplicação com sucesso, vamos agora
+        # salvar o arquivo do preditor da aplicação no diretório com o
+        # arquivo de configuração dos preditores e todos os preditores.
+        # Se um preditor foi anteriormente criado para a aplicação, este
+        # preditor será removido. O retorno da função, salvo em statusp, 
+        # é True se o preditor foi salvo com sucesso e se o arquivo de
+        # configuração dos preditores foi atualizado com sucesso, ou
+        # False se algum erro ocorreu ao salvar o preditor ou atualizar
+        # o arquivo de configuração dos preditores.
+        statusp = save_application_predictor(best_model_name, 
+                                             best_model_acronym_name,
+                                             predictor, predictors_file_path, 
+                                             predictors_info_config, 
+                                             predictors_info_config_obj, 
+                                             suggestion_prediction_variable, 
+                                             application_name, verbose)
+ 
 
-        if not status:
+        # Verifica se não foi possível salval o preditor ou atualizar o
+        # arquivo de configuração dos preditores.
+        if not statusp:
+          # Como não foi possiǘel salvar o preditor ou atualizar o 
+          # arquivo de configuração dos preditores, mostra uma mensagem
+          # informando o erro.
           print("❌ Erro ao salvar o novo preditor para a aplicação "
                 f"{application_name}!")
 
+          # Como um erro ocorreu, mudamos status para False.
+          status = False
       else:  
+          # Como não existe uma chave no dicionário com as configurações
+          # da aplicação com o nome da aplicação application_name, 
+          # igonamos esta aplicação e informamos isso com uma mensagem.
           print(f"⚠️ Ignorando aplicação desconhecida {application_name}!")
 
+          # Como a aplicação não existe, mudamos status para False.
+          status = False
+
+    # Retorna status, que será True somente os preditores foram criados
+    # com sucesso para todas as aplicações. Caso algum erro tenha
+    # ocorrido durande a criação do preditor de uma aplicação, incluindo
+    # não ser possível gerar o preditor porque a aplicação não tem um
+    # arquivo de configuração da aplicação, mudará status para False.
     return status
   
+  # Captura as exceções que podem ser geradas devido a erros de
+  # implementação no código, para garantir que o usuário possa reportar
+  # uma mensagem legível se algum bug existir no código do script deo
+  # treinamento.
+
+  # Em algum lugar do código, uma chave incorreta foi usada. Mostra um
+  # erro, para o usuário poder reportar, com o nome dessa chave e, se
+  # já estiver criando o preditor da aplicação, o nome da aplicação.
   except KeyError as e:
     if application_name is None:
       print("❌ Erro ao processar uma das estruturas indexadas por chave, a "
@@ -2450,7 +2520,14 @@ def train_command(applications_name, applications_config, training_config,
             f"chave {e.args[0]} não existe, quando gerando o preditor para a "
             f"aplicação {application_name}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como ocorreu uma exceção ao inicializar o script de treinamento ou
+    # ao construir o preditor de uma aplicação, retorna False.
     return False
+
+  # Em algum lugar do código, foi acessado um atributo que não existe
+  # em um objeto. Mostra um erro, para o usuário poder reportar e, se
+  # já estiver criando o preditor da aplicação, o nome da aplicação.
   except AttributeError as e:
     if application_name is None:
       print("❌ Erro ao acessar um dos objetos internos do script, um dos "
@@ -2462,8 +2539,33 @@ def train_command(applications_name, applications_config, training_config,
             f"aplicação {application_name}!")
     print(f"❌ Erro gerado: '{e.args[0]}'")  
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como ocorreu uma exceção ao inicializar o script de treinamento ou
+    # ao construir o preditor de uma aplicação, retorna False.
     return False
+
+  # Em algum lugar do código, foi usado um valor inválido como parâmetro 
+  # de alguma função. Mostra um erro, para o usuário  poder reportar e, 
+  # se já estiver criando o preditor da aplicação, o nome da aplicação.
   except ValueError as e:
+    if application_name is None:
+      print("❌ Parâmetro inválido passado para uma função, quando "
+            "inicializando os treinamentos das aplicações!")
+    else:
+      print("❌ Parâmetro inválido passado para uma função, quando gerando o "
+            f"preditor para a aplicação {application_name}!")
+    print(f"❌ Erro gerado: '{e.args[0]}'")  
+    print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como ocorreu uma exceção ao inicializar o script de treinamento ou
+    # ao construir o preditor de uma aplicação, retorna False.
+    return False
+
+  # Em algum lugar do código, foi usado um tipo inválido em alguma
+  # operação como, por exemplo, somar um interio com uma string. Mostra 
+  # um erro, para o usuário  poder reportar e, se já estiver 
+  # processando a otimização da aplicação, o nome da aplicação.
+  except TypeError as e:
     if application_name is None:
       print("❌ Erro ao inicializar ou usar estruturas internas do script, "
             "quando inicializando os treinamentos das aplicações!")
@@ -2473,7 +2575,15 @@ def train_command(applications_name, applications_config, training_config,
             f"quando gerando o preditor para a aplicação {application_name}!")
     print(f"❌ Erro gerado: '{e.args[0]}'")  
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como ocorreu uma exceção ao inicializar o script de treinamento ou
+    # ao construir o preditor de uma aplicação, retorna False.
     return False
+
+  # Em algum lugar do código, oorreu uma exceção inesperada. Mostra um 
+  # erro, para o usuário  poder reportar com as informações da exceção 
+  # e, se já estiver criando o preditor da aplicação, o nome da 
+  # aplicação.
   except Exception as e:
     if application_name is None:
       print("❌ Erro desconhecido ao inicializar os treinamentos das "
@@ -2483,29 +2593,180 @@ def train_command(applications_name, applications_config, training_config,
             f"{application_name}")
     print(f"❌ Parâmetros do erro: {e.args}!")
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+    # Como ocorreu uma exceção ao inicializar o script de treinamento ou
+    # ao construir o preditor de uma aplicação, retorna False.
     return False
 
 def execute_commands(command, applications_configs, training_config,
                      system_config, verbose):
- commands_dict = {
-   'applications': partial(applications_command, applications_configs),
-   'models': partial(models_command, training_config),
-   'train': partial(train_command, command[1:], applications_configs, training_config, system_config, verbose=verbose)  
- } 
+  """
+  Função para executar os comandos do script de treinamento. Como vimos,
+  exsitem no momento três comandos:
 
- if len(command) > 0 and command[0] in commands_dict.keys():
-   Status = commands_dict[command[0]]()
-   if not Status:
-     print(f"Erro ao executar o comando {command[0]}!")
-   return Status
- else:  
+  appications: Lista as aplicações para as quais podemos criar um 
+               preditor, como descrito no artigo do SSCAD, que depois
+               será usado pelo script de otimização para gerar a melhor
+               sugesrtão de configuração para a aplicação. O primeiro
+               elemento da lista command deverá ser 'applications', os
+               outros elementos, se passados, serão ignorados.
+  models: Lista os modelos que serão considerados ao criar o preditor
+          para cada aplicação, que terão os valores dos seus
+          hiperparâmetros otimizados e depois avaliados para escolher o
+          melhor modelo, que será o usado ao treinar os modelos do
+          preditor. O primeiro elemento da lista command deverá ser 
+          'models', os outros elementos, se passados, serão ignorados.
+  train: Cria um preditor, como descrito no artigo do SSCAD, para cada
+         aplicação passada na lista command. O primeiro elemento da 
+         lista command deverá ser 'train', e os outro elementos serão
+         considerados como os nomes das aplicações para as quais
+         desejamos criar um novo preditor.
+
+  Parâmertros:
+    command (list[str]): Lista de string em que o primeiro elemento é o
+                         nome do comando e os outros, se necessários,
+                         parâmetros do comando. Como observamos antes,
+                         somente o comando train usa os parâmetros.
+    applications_config (dict): Dicionário com todas as configurações
+                                das aplicações que podem ser otimizadas
+                                pelo script de otimização, sendo que
+                                cada chave, associada e identificando
+                                uma aplicação, tem uma referência para o
+                                dicionário com as configurações dessa
+                                aplicação.
+    training_config (dict): Dicionário com todas as configurações
+                            de treinamento. Como os dicionários com as
+                            configurações de treinamento dos modelos são 
+                            armazenados no diiconário cuja referência é
+                            definida pela chave "models", então os nomes
+                            dos modelos que podem ser treinados são as
+                            chaves desse dicionário, sendo que cada
+                            chave referencia um diconário para o modelo
+                            com o nome interno da chave com todas as
+                            configurações necessárias para otimizar os
+                            hiperparâmetros do modelo, os 
+                            hiperparâmetros com valores fixos do modelo,
+                            o nome do modelo, e o nome usado para
+                            dinamicamente criar um objeto do modelo.
+    system_config (dict): Dicionário com as configurações gerais
+                          relacionadas aos scripts de otrimização e de
+                          treinamento. A função irá passar o dicionário
+                          para outras funções, que usarão os campos
+                          destritos no cabeçalho das funções,
+    verbose (bool): Indica se a verbosidade está habilitada, ou seja, se
+                    deverão ser impressas as mensagens de log.
+
+  Retorna:
+    bool: True se o comando é válido e foi executado com sucesso, ou 
+          seja, se a função que executa o comando retornar True porque 
+          executou o comando com sucesso, ou False, se o comando é 
+          inválido ou a função que executa o comando não executou o 
+          comando com sucesso. 
+  """
+ 
+  # Dicionário auxiilar usado para executar os comandos do script de
+  # treinamento, sendo que a função partial do Python é usada para 
+  # executar a função quando não desejamos invocar a função no momento
+  # da sua definição, no caso, da associação da função à chave que
+  # identifica o comando Isso foi feito para facilitar a adicição
+  # de novos comandos que sejam necessárias nu futuro, sem necessitar o
+  # uso de uma sequência if-elif-...-elif-else que dependeria de quantos
+  # comandos existem, ou do uso da nova estrutura match-case do Pythom
+  # que somente existe após a versão 3.10 da linguagem. O dicionário é
+  # armazenado na variável commands_dict.
+  commands_dict = {
+    'applications': partial(applications_command, applications_configs),
+    'models': partial(models_command, training_config),
+    'train': partial(train_command, command[1:], applications_configs, 
+                     training_config, system_config, verbose=verbose)  
+  } 
+
+  # Verifica se o comando é válido, ou seja, se foi passado algum,
+  # comando, ou seja, se a lista command não está vazia
+  # 
+  # Primeiramente verifica se algum comando foi passado, ou seja, se a
+  # lista de comandos não está vazia.
   if command:
-    print(f"Comando {command[0]} inválido!")
+    # Para facilitar o acesso, define a variável command_name como o 
+    # primeiro elemento da lista command.
+    command_name = command[0]
+
+    # Como a lista command tem pelo menos um elemento, vamos verificar
+    # se ele é um dos commandos válidos. Isso ocorrerá se ele for uma
+    # das chaves do dicionário commands_dict descrito anteriormente, com
+    # os possíveis comandos que podem ser executados. Como observamos, o
+    # comando sempre será o primeiro elemento da lista command.
+    if command_name in commands_dict.keys():
+      # Como o comando é válido, executamos a função que executa esse
+      # comando, defidida pela referência da chave command_name. Como
+      # vimos, cada função que executa um comando retorna True se o
+      # comando foi executado com sucesso ou False se algum erro ocorreu
+      # ao executar o comando. O retorno da função é armazenado em
+      # status.
+      status = commands_dict[command_name]()
+
+      # Verifica se ocorreu algum erro ao executar o comando.
+      if not status:
+        # Se ocorreu algum erro ao executar o comando, mostra uma
+        # mensagem informando que ocorreu um erro ao executar o comando.
+        print(f"Erro ao executar o comando {command_name}!")
+    else:  
+      # Como o comando, definido por command_name, não é uma das chaves
+      # do dicionário commands_dict, então mostra uma mensagem
+      # informando que o comando é inválido.
+      print(f"Comando {command_name} inválido!")
+
+      # Como o comando é inválido, então podemos considerar que ocorreu
+      # um erro ao executar o comando, logo definimos status como False.
+      status = False
   else:  
+    # Como a lista command está vazi, então não foi fornecido um comando
+    # pelo usuário quando ele executou o script. Logo, uma mensagem será
+    # mostrada, informando ao usuário para passar um comando.
     print(f"O comando necessário não foi fornecido!")
-  return False
-    
-# Lê as configuraçoes;
+
+    # Como o usuário não fornbeceu um comando, podemos também considerar
+    # que a execução de um comando falhou, logo definimos status como
+    # False.
+    status = False
+
+  # Retorna o resultado da execução do comando. Se o comando for válido,
+  # o retorno será True se o comando executou com sucesso e False em
+  # caso contrário e, se o comando é inválido ou nenhum comando foi 
+  # passado, o retorno será False.
+  return status
+
+"""
+Inicialização do script de treinamento, em que a função read_configs 
+para ler os arquivos de configuração é chamada e, caso nenhum erro
+ocorra, a função process_script_args é chamada para processar as opções 
+do script de treinamento e, finalemnte, também se nenhum erro ocorrer, a
+função execute_commands é chamada para executar os comandos models, para
+listar os modelos, applications, para listar as aplicações para as quais
+podemos construir um preditor e o comando train, para gerar um preditor
+para cada aplicação da lista de aplicações.
+"""
+
+# Lê todos os arquivos de configuração necessários à execução do script
+# de treinamento. A função retorna o seguinte, sendo que será retornado
+# None para um dos retornos se ocorreu algum erro ao obter o que é
+# descrito para o retorno:
+#
+# configs_file_path: String com o caminho completo do diretóri base dos
+#                    script de otimização e de treinamento, em que
+#                    estarão todos os arquivos de configuração, arquivos
+#                    auxiliares, os arquivos binários no formato pickle
+#                    dos preditores de todas as aplicações que podem ter
+#                    as suas execuções otimizadas, e todos os arquivos
+#                    em Python usados pelo script de otimização.
+# system_config: Dicionário com as configurações do sistema, usadas
+#                pelos scripts de otimização e de treinamento.
+# applications_configs: Dicionário com uma chave para cada aplicação,
+#                       que referencia o dicionário com as configurações
+#                       da aplicação associada à chave.
+# training_config: Dicionário com as configurações necessárias ao 
+#                  treinamento dos modelos nas diversas etapas de
+#                  construção do preditor para cada apicação;
 (
   configs_file_path, 
   system_config, 
@@ -2513,6 +2774,10 @@ def execute_commands(command, applications_configs, training_config,
   training_config
 )  = read_configs(DEBUG_CODE)
 
+# Verifica se ocorreu algum erro ao obter as informações descritas
+# anteriormente. Se ocorreu um erro ao obter uma das configurações, serã
+# retornado None para a confiuração que gerou o erro e, se for o caso,
+# as configurações que não puderam ser lidas devido ao erro.
 if any(
   v is None for v in [
     configs_file_path, 
@@ -2521,15 +2786,47 @@ if any(
     training_config
   ]
 ):
-  print("❌ Erro ao ler uma das configurações!")
+  # Como ocorre um erro ao processar pelo menos uma das configurações,
+  # imprime a mensagem informando o erro ao usuário.
+  print("❌ Erro ao processar um dos arquivos de configuração.")
+  print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
+
+  # Aborta execução do script com o código de erro -1, erro ao ler uma
+  # ou mais configurações do script de otimização.
   exit(-1)
 
-# Processa os parâmetros do script.
-command, verbose, parser = process_script_args()
+# Processa a linha de comando do script de treinamento, que é composta
+# por parâmetros opcionais e o argumento obrigatório com o comando a
+# ser executado, ou seja, applications, models ou train e, no caso do 
+# comando train, a lista de aplicações para as quais desejamos treinar
+# um preditor, separadaso por espaços após o comando train. A função
+# retorna o seguinte:
+#
+# command: Lista com o nome do comando e os parâmetros do comando. O 
+#          nome será sempre o primero elemento da lista (posição 0) e as
+#          outras posições os parâmetros do comando, sendo que no
+#          momento somente o comano train usa os parâmetros, ou outros
+#          comandos ignoram os parâmetros. A lista pode ser vazia se 
+#          nenhum comando for passado.  
+# verbose: True, se a verbosidade foi habilitada com a opção -v ou 
+#          --verbose, ou False se a opção não foi passada.
+command, verbose = process_script_args()
 
-# Executa os comandos do script.
-status = execute_commands(command, applications_configs, training_config, system_config, verbose)
+# Chama a função execute_commands para executar o comando passado pelo
+# usuário na linha de comando, sendo que os comandos, como vimos, podem
+# ser o applications, para listar as aplicações para as quais podemos
+# criar um preditor, models, que mostra os modelos considerados durtante
+# os treinamentos, sendo um deles escolhido como o melhor e usado na
+# criação do preditor da aplicação, e o comando train, que recebe como
+# parâmetros os nomes das aplicações e, para cada aplicação para a qual
+# podemos criar um preditor, cria o preditor desta aplicação.
+status = execute_commands(command, applications_configs, training_config, 
+                          system_config, verbose)
 
-# Verifica se ocorreu algum erro.
+# Verifica se ocorreu algum erro ao executar o comando passado pelo
+# usuário.
 if not status:
+  # Como a função execute_commands já imprime as mensagens de erro
+  # quando ocorre algum erro ao executar o comando, então abortamos o
+  # script com o código de erro -2, erro ao executar um comando.
   exit(-2)
