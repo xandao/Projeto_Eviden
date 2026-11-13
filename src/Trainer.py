@@ -901,8 +901,9 @@ def optimize_hyperparameters(clean_dataset, models,
       # hiperparâmetro.
       if verbose:
         print(f"➖➡️ Otimizando o modelo {model_info['name']} usando os "
-              f"hiperparâmetros {model_info['grid_search_parms']} e a busca em "
-              "grade:")
+              f"hiperparâmetros {model_info['grid_search_parms']} e a busca "
+              "em  grade, usando a variável alvo "
+              f"{suggestion_prediction_variable}:")
         
       # Descobre e importa o modelo com o nome interno preditor_key, 
       # de modo dinâmico, sendo que o  caminho para importar esse
@@ -1229,7 +1230,8 @@ def choose_best_model(clean_dataset, initialized_models, suggestion_variables,
     if verbose:	
       print("➖➡️ Determinando o melhor modelo dentre os modelos da lista  "
             f"{', '.join(initialized_models.keys())}, usando a validação "
-            "cruzada com o LOGO:")
+            "cruzada com o LOGOm e a variável alvo "
+            f"{suggestion_prediction_variable}:")
 
     # Cria um objeto da classe DiscoverBestModel, que será usada para
     # descobriri o melhor modelo dentre os que foram inicializados e
@@ -1445,9 +1447,26 @@ def generate_application_predictor(clean_dataset, best_model_name,
   # Se a verbosidade estiver habilitada, imprime as informações sobre
   # a construção do preditor, no caso, o estimador
   try:
+    # Imprime uma mensagem informando os dados do melhor modelo usado
+    # ao criar o preditor.
     print("➖➡️ Treinando agora o preditor com o melhor estimador "
           f"{best_model_name} (pontuação: {best_model_score}), usando "
           f"{best_model_params} como os hiperparâmetros customizados.")
+
+    # Mostra uma mensagem informando qual variável alvo será predita
+    # pelo modelo auxiliar cujas predições serão usads para escolher a
+    # melhor sugestão de configuração.
+    print("➖➡️ O modelo auxiliar usado ao escolher a melhor sugestão de "
+          "configurção usará a variável alvo "
+          f"{prediction_variables['suggestion']}.")
+
+    # Verifica se o modelo para predizer o tempo estimado de execução da
+    # aplicação quando executaar com as alocações definidas de acordo
+    # com a melhor sugestão de configuração.
+    if 'time' in prediction_variables.keys():
+      print("➖➡️ O modelo usado para estimar o tempo de execução da "
+            "aplicação quando executar com a melhor sugestão de configuração "
+            f"usará a variável alvo {prediction_variables['time']}.")
 
     # Descobre e importa o modelo com o nome interno best_model_name, 
     # de modo dinâmico, sendo que o  caminho para importar esse modelo é 
@@ -1636,7 +1655,7 @@ def generate_application_predictor(clean_dataset, best_model_name,
     # os dois elementos da tupla.
     return None
   
-def save_application_predictor(best_model_internal_name, best_model_name, 
+def save_application_predictor(best_model_acronym_name, best_model_name, 
                                predictor, predictors_file_path, 
                                predictors_info_config,
                                predictors_info_config_obj, 
@@ -1655,11 +1674,11 @@ def save_application_predictor(best_model_internal_name, best_model_name,
   a chave 'time', que é opcional, for definida.
 
   Parâmetros:
-    best_model_internal_name (str): Nome interno do melhor modelo, que 
-                                    teve a maior pontuação dentre todos
-                                    os modelos avaliados pela função 
-                                    choose_best_model, e que foi 
-                                    retornado por essa função.
+    best_model_acronym_name (str): Acronym do melhor modelo, que teve
+                                   a maior pontuação dentre todos os
+                                   modelos avaliados pela função 
+                                   choose_best_model, e que foi 
+                                   retornado por essa função.
     best_model_name (str): Nome do melhor modelo definido pela chave 
                            'name' no arquivo de configuração do melhor
                            modelo com o nome interno 
@@ -1751,12 +1770,12 @@ def save_application_predictor(best_model_internal_name, best_model_name,
   # aplicação será salvo no arquivo cujo caminho está definido pelo
   # objeto Path com a referência armazenada em preditor_file_name,
   # mostrando o nome da aplicação (dado em application_name), o nome 
-  # interno do melhor modelo (dado em best_model_internal_name), o nome
+  # interno do melhor modelo (dado em best_model_acronym_name), o nome
   # do modelo definido pela chave 'name' do dicionário referenciado pelo
   # nome interno do melhorvmodelo (dado em best_model_name), e o caminho
   # em que o preditor será armazenado, d
   print("➖➡️ Salvando o preditor treinado para a aplicação "
-        f"{application_name} como o modelo {best_model_internal_name} (nome "
+        f"{application_name} como o modelo {best_model_acronym_name} (nome "
         f"{best_model_name}) no arquivo do caminho {preditor_file_name}.")
 
   # Define uma variável old_preditor_file_name com o nome do preditor
@@ -1982,6 +2001,12 @@ def train_command(applications_name, applications_config, training_config,
     # código, ocorrer antes de começarmos a treinar as aplicações.
     application_name = None
 
+    # Inicializa a variável booleana status, que indica se algum erro
+    # ocorreu em um dos passos ao gerar o preditor para uma aplicação.
+    # Como inicialmente não temos erros, então o valor inidial dela é
+    # True
+    status = True
+
     # Primeiramente vamos ler o arquivo de configuração dos preditores,
     # pois saber se é possível ler o arquivo é importante pois
     # precisamos ler o arquivo para remover os preditores antigos e
@@ -2191,22 +2216,104 @@ def train_command(applications_name, applications_config, training_config,
         # aplicação.
         dataset_list = application_info['training']['dataset_files']
 
-        # Leitura do conjunto de dados.
+        # Chama a função read_training_data que lê todos os conjuntos
+        # de dados cujos nomes de arquivo são definidos pela lista 
+        # dataset_list, e retorna o conjunto de dados completo lido, 
+        # obtido pela concatenação de todos os conjunto de dados, em um
+        # DataFarame do Pandas, se nenhum erro de leitura ocorreu, ou
+        # None se algum erro ocorreu ao ler os conjutos de dados e 
+        # concatená-los. O retorno da função, ou seja o conjunto de
+        # dados no caso de sucesso ou None em caso contrário, é
+        # armazenado na variável dataset.
         dataset = read_training_data(dataset_list, system_config, 
                                      dataset_colunms, verbose=verbose)
 
 
-        # Filtragem.
+        # Verifica se o conjunto de dados com todos os dados da
+        # aplicação não foi gerado.
+        if dataset is None:
+          # Como o conjunto de dados não foi gerado com sucesso, informa
+          # o erro e passamos para o treinamento da próxima aplicação.
+          print("➖➡️ Erro ao gerar o preditor para a aplicação "
+                f"{application_name}! Não foi possível ler os conjuntos de "
+                "dados!")
+
+          # Como um erro ocorreu, mudamos status para False.
+          status = False
+
+          # Como não podemos mais continuar o processo de construção do
+          # preditor para essa aplicação, passamos para a próxima 
+          # aplicação.
+          continue
+      
+        # Como foi possível ler com sucesso o conjuento de dados da
+        # aplicação, vamos agora filtrar os outliers do conjunto de 
+        # dados, usando a função filter_training_data, que retornará um
+        # novo DataFrame com o conjunto de dados. O retorno da função
+        # será armazenado em clean_dataset, e será uma referência para
+        # o DataFrame do conjunto de dados filtrado se a filtragem for
+        # feita sem erros, ou None caso algum erro ocorra durante a
+        # flitragem.
         clean_dataset = filter_training_data(dataset, input_variables, 
                                              filter_variables, outlier_limit, 
                                              verbose=verbose)
 
-        if verbose:
-          print(f"➖➡️ Predições para a variável alvo {suggestion_prediction_variable}")
+        # Verifica se o conjunto de dados flitrado a partir do conjunto
+        # de dados referenciado por dataset não foi gerado.
+        if clean_dataset is None:
+          # Como o conjunto de dados filtrado não foi gerado com
+          # sucesso, informa o erro e passamos para o treinamento da
+          # próxima aplicação.
+          print("➖➡️ Erro ao gerar o preditor para a aplicação "
+                f"{application_name}! Não foi possível filtrar o conjunto de "
+                "dados concatenado!")
 
+          # Como um erro ocorreu, mudamos status para False.
+          status = False
 
+          # Como não podemos mais continuar o processo de construção do
+          # preditor para essa aplicação, passamos para a próxima 
+          # aplicação.
+          continue
 
-        # Otimizalçao dos hiperparâmetros.
+        # Agora vamos usar a função optimize_hyperparameters para
+        # otimizar os hiperparâmetros selecionados, ou seja, os 
+        # definidos no arquivo de configuração de cada modelo, sendo os
+        # modelos defindos pelo dicionário referenciado pela chave 
+        # 'models' do dicionário com o arquivo de configuração do
+        # teinamento, e sendo cada chave do dicionário referenciado pela
+        # chave 'models' o dicinário com as informações necessárias para
+        # treinar o modelo, como os hiperparâmetros a serem otimizados e
+        # os possíveis valores para cada hiperparâmetro. A função 
+        # retona os seguintes dicionários descitos a seguir e cujas 
+        # refrências são armazenadas nas variáveis indicadas, ou None
+        # para ambos os retornos se algum erro ocorrer durante a 
+        # otimização dos hiperparâmetros de um modelo:
+        #
+        # initialized_models: Dicionário em que cada chave é o nome 
+        #                     interno do modelo, ou seja a chave no
+        #                     dicionário referenciado pela chave 
+        #                     'models' do dicionário com as 
+        #                     configurações gerais de treinamento, e o 
+        #                     valor da chave uma referência a um objeto
+        #                     do modelo já inicialiado com os melhores
+        #                     valores dos hiperparâmetros e também com  
+        #                     os hiperparâmetros com valores fixos, se
+        #                     existirem. Este dicionário será usado pela
+        #                     fase de escolha do melhor nodelo.
+        # best_params_models: Dicionário em que novamente cada chave é
+        #                     o nome interno do modelo, e o valor é um
+        #                     dicionpario em que cada chave é um dos
+        #                     hiperparâmetros, os otimizados e os fixos
+        #                     se forem definidos, e o valor da chave de
+        #                     um hiperparâmetro é o valor desse 
+        #                     hiperparâmetro. Este dicionário será usado
+        #                     pela função que efetivamente cria o 
+        #                     preditor, ou seja, treina o modelo auxiliar
+        #                     usado para escolher a melhor sugestão de
+        #                     configuração e, se definido, o modelo para
+        #                     predizer o tempo da aplicação quando
+        #                     executa com esta sugestão.
         initialized_models, best_params_models = optimize_hyperparameters(
           clean_dataset,
           models,
@@ -2217,7 +2324,44 @@ def train_command(applications_name, applications_config, training_config,
           verbose
         )
 
-        # Escolha do melhor modelo.
+        # Verifica se ocorreu algum erro ao otimizar os hiperparâametros
+        # dos modelos. Como tanto initialized_models e 
+        # best_params_models serão None, basta veriicar se uma delas é
+        # None. Foi escolhida a initialized_models, mas poderia ser
+        # também a best_params_models.
+        if initialized_models is None:
+          # Como não foi possível orimizar os hiperparâmertros dos 
+          # modelos, informa o erro e passamos para o treinamento da
+          # próxima aplicação.
+          print("➖➡️ Erro ao gerar o preditor para a aplicação "
+                f"{application_name}! Não foi possível otimizar os "
+                "hiperparâmetros dos modelos!")
+
+          # Como um erro ocorreu, mudamos status para False.
+          status = False
+
+          # Como não podemos mais continuar o processo de construção do
+          # preditor para essa aplicação, passamos para a próxima 
+          # aplicação.
+          continue
+
+        # Depois de otimizar com sucesso os hiperparâmetros dos modelos
+        # a serem avaliados, vamos usar a função choose_best_model para
+        # escolher o melhor desses modelos, que será usado ap criar o
+        # preditor da aplicação. Nesta função, vamos usar o dicionário
+        # initialized_models, que como vamos tem uma chave para cada
+        # modelo a ser avaluado, que é nome interno desde modelo como
+        # definido anteriormente, e cujo valor da chave é a referência
+        # para o objeto do nodelo já inicializado com os melhores
+        # valores para os hiperparâmetros e os valores dos 
+        # hiperparâmetros fixos. A funçaõ retorna o seguinte, sendo que
+        # ambos os retornos serão None se algum erro ocorrer durante a
+        # avaliação e escolha do melhor modelo:
+        #
+        # best_model_name: Nome interno do melhor modelo, ou seja, o
+        #                  modelo com a maior pontuação.
+        # best_model_score: Pontuação do melhor modelo, usada somente 
+        #                   em mensagens de vornosidade.
         best_model_name, best_model_score = choose_best_model(
           clean_dataset, 
           initialized_models, 
@@ -2228,7 +2372,39 @@ def train_command(applications_name, applications_config, training_config,
           verbose
         ) 
 
+        # Verifica se ocorreu algum erro ao escolher o meljor modelo. 
+        # Como tanto best_model_name e best_model_score serão None, 
+        # basta veriicar se uma delas é None. Foi escolhida a 
+        # best_model_name, mas poderia ser também a best_model_score.
+        if best_model_name is None:
+          # Como não foi possível orimizar os hiperparâmertros dos 
+          # modelos, informa o erro e passamos para o treinamento da
+          # próxima aplicação.
+          print("➖➡️ Erro ao gerar o preditor para a aplicação "
+                f"{application_name}! Não foi possível escolher o melhor "
+                "modelo!")
+
+          # Como um erro ocorreu, mudamos status para False.
+          status = False
+
+          # Como não podemos mais continuar o processo de construção do
+          # preditor para essa aplicação, passamos para a próxima 
+          # aplicação.
+          continue
+
+        # Para faciliar o acesso, definimos a variável best_model_params
+        # com o dicionário com os hiperparâmetros, tanto otimizados como
+        # os fixos, para o modelo com o nome interno best_model_name. A
+        # referência para ess dicionário estára associada à chave 
+        # best_model_name do dicionário best_params_models.
         best_model_params = best_params_models[best_model_name]
+
+        # Para faciliar o acesso, definimos a variável best_model_info
+        # com a referência para o dicionário com as informações de
+        # treinamento do modlo com o nome interno best_model_name. Como
+        # vimos anteriormente, best_model_name é uma chave do dicionário
+        # refecenciado pela chave 'models' do dicionário com as 
+        # configurações gerais de treinamento.
         best_model_info = training_config["models"][best_model_name]
 
         # Criação do preditor.
@@ -2243,12 +2419,12 @@ def train_command(applications_name, applications_config, training_config,
                                                    prediction_variables,
                                                    verbose)
 
-        best_model_import_name = models[best_model_name]['name']
+        best_model_acronym_name = models[best_model_name]['name']
 
         # Salvamento do preditor e atualiação do arquivo de configuração
         # dos preditores.
         status = save_application_predictor(best_model_name, 
-                                            best_model_import_name,
+                                            best_model_acronym_name,
                                             predictor, predictors_file_path, 
                                             predictors_info_config, 
                                             predictors_info_config_obj, 
@@ -2262,7 +2438,8 @@ def train_command(applications_name, applications_config, training_config,
       else:  
           print(f"⚠️ Ignorando aplicação desconhecida {application_name}!")
 
-    return True
+    return status
+  
   except KeyError as e:
     if application_name is None:
       print("❌ Erro ao processar uma das estruturas indexadas por chave, a "
@@ -2308,7 +2485,7 @@ def train_command(applications_name, applications_config, training_config,
     print("❌ Por favor, reporte este erro ao adminstrador do sistema!")
     return False
 
-def execute_commands(command, applications_configs, training_config, 
+def execute_commands(command, applications_configs, training_config,
                      system_config, verbose):
  commands_dict = {
    'applications': partial(applications_command, applications_configs),
