@@ -1891,9 +1891,13 @@ def save_application_predictor(best_model_acronym_name, best_model_name,
 
       # Verifica se anteriormente foi treinado um preditor para
       # aplicação, o que ocorrerá somente se a variável
-      # old_preditor_file_name tiver um nome válido, armazenapd em uma
-      # string (objeto str) e não None.
-      if old_preditor_file_name is not None:
+      # old_preditor_file_name tiver um nome válido, armazenapo em uma
+      # string (objeto str) e não None. Como o nome pode ser o mesmo do
+      # preditor novo, somente removemos se o nome for diferente, pois
+      # se for igual o preditor novo sobreescreveu o antigo.
+      if (old_preditor_file_name is not None and 
+          old_preditor_file_name != preditor_file_name.name
+        ):
         # Como existe um preditor anteriormente criado para a aplicação,
         # vamos primeiramente descobrir o caminho. O caminho será
         # composto pelo caminho definifo pelo objeto da classe Path
