@@ -14,7 +14,6 @@ from Utils.ReadConfigs import (
 )
 import importlib
 import argparse
-import sys
 import textwrap
 from pathlib import Path
 from functools import partial
@@ -25,6 +24,8 @@ from Utils.Common import (
   DEBUG_CODE, 
   CustomFormatter
 )
+import time
+import sklearn, numpy as np, hashlib
 
 def read_configs(verbose=False):
   """
@@ -564,7 +565,7 @@ def read_training_data(dataset_files, system_config, used_columns,
       # Concatena o DataFrame temporário com o DataFrame principal, que
       # irá armazenar todos os conjuntos de dados das aplicações, lidos
       # e concatenados em um único conjunto de dados.
-      dataset = pd.concat([dataset, file_dataset])
+      dataset = pd.concat([dataset, file_dataset])  
 
     # Como os índices dos DataFrames lidos podem ser diferentes, e como
     # o concatenarmos os DataFrames, os índices podem ficar desordenados
@@ -589,6 +590,15 @@ def read_training_data(dataset_files, system_config, used_columns,
       print("\n", dataset.describe().to_markdown(tablefmt="grid", 
                                                  floatfmt=".2f"), "\n", sep="")
       
+      # Gera um hash exato dos do conjunto de dados, para veridicar se
+      # existem alterações quando o treinamento é feito em máquinas
+      # diferentes.
+      dataset_hash = hashlib.md5(
+        pd.util.hash_pandas_object(dataset,  index=True).values.tobytes()
+      ).hexdigest()
+      print(f"➖➖➡️ Dataset hash: {dataset_hash}")
+
+
     # Como conseguimos ler o(s) conjunto(s) de dados, então retornamos o
     # DataFrame com esse(s) conjunto(s).
     return dataset
@@ -900,7 +910,7 @@ def optimize_hyperparameters(clean_dataset, models,
               f"hiperparâmetros {model_info['grid_search_parms']} e a busca "
               "em  grade, usando a variável alvo "
               f"{suggestion_prediction_variable}:")
-        
+            
       # Descobre e importa o modelo com o nome interno preditor_key, 
       # de modo dinâmico, sendo que o  caminho para importar esse
       # modelo é definido na chave 'import_path' do dicionário 
@@ -947,6 +957,13 @@ def optimize_hyperparameters(clean_dataset, models,
         # hiperparâmetros de um  modelo, e armazenar a rederência a esse 
         # objeto em best_hyper.
         best_hyper = BestHiperparams(verbose=DEBUG_CODE)
+
+        # Se a verbosidade estiver habilitada, mede o tempo de
+        # otimização dos hiperparâmetros de cada modelo.
+        if verbose:
+          # Comeca a medida de tempo, para calcular o tempo total de 
+          # execução da função optimize do objeto best_hyper.
+          initial_time = time.perf_counter()        
 
         # Chamamos a função optimize do objeto best_hyper para otimizar
         # os hiperparâmetros do modelo que estamos avaliando. Para a
@@ -1000,14 +1017,25 @@ def optimize_hyperparameters(clean_dataset, models,
         )
 
         # Se a verbosidade estiver habilitada, imperime informações 
-        # referenteas a otimização dos hiperparâmetros do
+        # referenteas a otimização dos hiperparâmetros do modelo, e 
+        # também imprime o tempo total decorrido para fazer a
+        # otimização do hiperparâmetros.
         if verbose:
+          # Finaliza a medida de tempo, para calcular o tempo total de 
+          # execução da função optimize do objeto best_hyper.
+          final_time = time.perf_counter()
+
+          # Calcula o tempo decorrido durante a função
+          # optimize do objeto best_hyper..
+          elapsed_time = final_time - initial_time
+        
           # Imprime o nome do modelo, o dicionário com os melhores
           # valores para os hiperparâmetros avaliados e a pontuação 
           # associada aos melhores valores dos hiperparâmetros.         
           print(f"➖➖➡️  Modelo {model_info['name']}: Melhores "
                 f"hiperparâmetros -> {best_params}; Melhor score -> "
-                f"{best_score}")
+                f"{best_score}; Tempo total da otimização dos "
+                f"hiperparâmetros: {elapsed_time:.6f}s.")
 
           # Imprime o DataFrame com as informações referentes a 
           # otimização dos hiperparâmetros, com todas as informações
@@ -1993,6 +2021,15 @@ def train_command(applications_name, applications_config, training_config,
   """
 
   try:
+
+
+    # Se a verbosidade estiver habilitada, imprime as versões da
+    # scikit-learn, do Pandas e da numpy.
+    if verbose:
+      print(f"➡️ Sklearn version: {sklearn.__version__}")
+      print(f"➡️ Numpy version: {np.__version__}")
+      print(f"➡️ Pandas version : {pd.__version__}")
+
     # Define o nome da aplicação para None, para não mostrar um nome da
     # aplicação se uma exceção, devido a algun erro de programação no
     # código, ocorrer antes de começarmos a treinar as aplicações.
@@ -2075,7 +2112,7 @@ def train_command(applications_name, applications_config, training_config,
         # informando que vamos começar o processo de geração do 
         # preditor para a aplicação.
         if verbose:
-          print("\n➡️ Treinando todos os modelos para a aplicação "
+          print("➡️ Treinando todos os modelos para a aplicação "
                 f"{application_name}")	
 
         # Para faciliar o acesso, definimos a variável
@@ -2213,6 +2250,14 @@ def train_command(applications_name, applications_config, training_config,
         # aplicação.
         dataset_list = application_info['training']['dataset_files']
 
+        # Inicializa a variável que irá contar o tempo total de criação
+        # do preditor para a aplicação.
+        total_elapsed_time = 0
+
+        # Comeca a medida de tempo, para calcular o tempo total de 
+        # execução da função função read_training_data.
+        initial_time = time.perf_counter()
+
         # Chama a função read_training_data que lê todos os conjuntos
         # de dados cujos nomes de arquivo são definidos pela lista 
         # dataset_list, e retorna o conjunto de dados completo lido, 
@@ -2225,6 +2270,20 @@ def train_command(applications_name, applications_config, training_config,
         dataset = read_training_data(dataset_list, system_config, 
                                      dataset_colunms, verbose=verbose)
 
+        # Finaliza a medida de tempo, para calcular o tempo total de 
+        # execução da função função read_training_data.
+        final_time = time.perf_counter()
+
+        # Calcula o tempo decorrido durante a função read_training_data.
+        elapsed_time = final_time - initial_time
+
+        # Atualiza o tempo decorrido no total.
+        total_elapsed_time += elapsed_time
+
+        # Imprime o tempo de execução da leitura do conjunto de dados
+        print(f"➖➡️ Tempo total para ler os arquvos com os conjuntos de "
+              f"dados da lista {', '.join(dataset_list)} e depois juntá-los "
+              f"em um único conjunto de dados: {elapsed_time:.6f}s.")
 
         # Verifica se o conjunto de dados com todos os dados da
         # aplicação não foi gerado.
@@ -2243,6 +2302,10 @@ def train_command(applications_name, applications_config, training_config,
           # aplicação.
           continue
       
+        # Comeca a medida de tempo, para calcular o tempo total de 
+        # execução da função função filter_training_data.
+        initial_time = time.perf_counter()
+
         # Como foi possível ler com sucesso o conjuento de dados da
         # aplicação, vamos agora filtrar os outliers do conjunto de 
         # dados, usando a função filter_training_data, que retornará um
@@ -2254,6 +2317,21 @@ def train_command(applications_name, applications_config, training_config,
         clean_dataset = filter_training_data(dataset, input_variables, 
                                              filter_variables, outlier_limit, 
                                              verbose=verbose)
+
+        # Finaliza a medida de tempo, para calcular o tempo total de 
+        # execução da função função filter_training_data.
+        final_time = time.perf_counter()
+
+        # Calcula o tempo decorrido durante a função 
+        # filter_training_data.
+        elapsed_time = final_time - initial_time
+
+        # Atualiza o tempo decorrido no total.
+        total_elapsed_time += elapsed_time
+
+        # Imprime o tempo de execução da filtragem do conjunto de dados
+        print(f"➖➡️ Tempo total para filtrar o conjunto de dados: "
+              f"{elapsed_time:.6f}s.")
 
         # Verifica se o conjunto de dados flitrado a partir do conjunto
         # de dados referenciado por dataset não foi gerado.
@@ -2272,6 +2350,10 @@ def train_command(applications_name, applications_config, training_config,
           # preditor para essa aplicação, passamos para a próxima 
           # aplicação.
           continue
+
+        # Comeca a medida de tempo, para calcular o tempo total de 
+        # execução da função função optimize_hyperparameters.
+        initial_time = time.perf_counter()
 
         # Agora vamos usar a função optimize_hyperparameters para
         # otimizar os hiperparâmetros selecionados, ou seja, os 
@@ -2321,6 +2403,23 @@ def train_command(applications_name, applications_config, training_config,
           verbose
         )
 
+        # Finaliza a medida de tempo, para calcular o tempo total de 
+        # execução da função função optimize_hyperparameters.
+        final_time = time.perf_counter()
+
+        # Calcula o tempo decorrido durante a função 
+        # optimize_hyperparameters.
+        elapsed_time = final_time - initial_time
+
+        # Atualiza o tempo decorrido no total.
+        total_elapsed_time += elapsed_time
+
+        # Imprime o tempo de execução da otimização dos hiperparâmetros
+        # dos modelos.
+        print(f"➖➡️ Tempo total para otimizar os hiperparâmetros dos modelos "
+              f"da lista {', '.join(models.keys())} de modelos: "
+              f"{elapsed_time:.6f}s.")
+
         # Verifica se ocorreu algum erro ao otimizar os hiperparâametros
         # dos modelos. Como tanto initialized_models e 
         # best_params_models serão None, basta veriicar se uma delas é
@@ -2341,6 +2440,10 @@ def train_command(applications_name, applications_config, training_config,
           # preditor para essa aplicação, passamos para a próxima 
           # aplicação.
           continue
+
+        # Comeca a medida de tempo, para calcular o tempo total de 
+        # execução da função função choose_best_model.
+        initial_time = time.perf_counter()
 
         # Depois de otimizar com sucesso os hiperparâmetros dos modelos
         # a serem avaliados, vamos usar a função choose_best_model para
@@ -2368,6 +2471,20 @@ def train_command(applications_name, applications_config, training_config,
           suggestion_prediction_variable, 
           verbose
         ) 
+
+        # Finaliza a medida de tempo, para calcular o tempo total de 
+        # execução da função função choose_best_model.
+        final_time = time.perf_counter()
+
+        # Calcula o tempo decorrido durante a função choose_best_model.
+        elapsed_time = final_time - initial_time
+
+        # Atualiza o tempo decorrido no total.
+        total_elapsed_time += elapsed_time
+
+        # Imprime o tempo de execução da escolha do melhor modelo.
+        print(f"➖➡️ Tempo total para escolher o melhor modelo da lista "
+              f"{', '.join(models.keys())} de modelos: {elapsed_time:.6f}s.")
 
         # Verifica se ocorreu algum erro ao escolher o meljor modelo. 
         # Como tanto best_model_name e best_model_score serão None, 
@@ -2404,6 +2521,10 @@ def train_command(applications_name, applications_config, training_config,
         # configurações gerais de treinamento.
         best_model_info = training_config["models"][best_model_name]
 
+        # Comeca a medida de tempo, para calcular o tempo total de 
+        # execução da função função generate_application_predictor.
+        initial_time = time.perf_counter()
+
         # Depois de escolher o melhor modelo, cujo nome interbo foi
         # armazenado em best_model_name, vamos usar a função 
         # generate_application_predictor para criar o preditor da 
@@ -2434,6 +2555,22 @@ def train_command(applications_name, applications_config, training_config,
                                                    prediction_variables,
                                                    verbose)
 
+        # Finaliza a medida de tempo, para calcular o tempo total de 
+        # execução da função função generate_application_predictor.
+        final_time = time.perf_counter()
+
+        # Calcula o tempo decorrido durante a função 
+        # generate_application_predictor.
+        elapsed_time = final_time - initial_time
+
+        # Atualiza o tempo decorrido no total.
+        total_elapsed_time += elapsed_time
+
+        # Imprime o tempo dda criação do preditor para a aplicação.
+        print(f"➖➡️ Tempo total para criar o preditor para a aplicação "
+              f"{application_name} usando o modelo {best_model_name}: "
+              f"{elapsed_time:.6f}s.")
+
         # Verifica se o preditor da aplicação não foi gerado.
         if predictor is None:
           # Como o preditor não foi gerado com sucesso, informa o erro e
@@ -2457,6 +2594,10 @@ def train_command(applications_name, applications_config, training_config,
         # exemplo, ETR para o Extra Trees Regressor.         
         best_model_acronym_name = models[best_model_name]['name']
 
+        # Comeca a medida de tempo, para calcular o tempo total de 
+        # execução da função função save_application_predictor.
+        initial_time = time.perf_counter()
+
         # Como geremos o preditor da aplicação com sucesso, vamos agora
         # salvar o arquivo do preditor da aplicação no diretório com o
         # arquivo de configuração dos preditores e todos os preditores.
@@ -2475,6 +2616,23 @@ def train_command(applications_name, applications_config, training_config,
                                              application_name, verbose)
  
 
+        # Finaliza a medida de tempo, para calcular o tempo total de 
+        # execução da função função save_application_predictor.
+        final_time = time.perf_counter()
+
+        # Calcula o tempo decorrido durante a função 
+        # save_application_predictor.
+        elapsed_time = final_time - initial_time
+
+        # Atualiza o tempo decorrido no total.
+        total_elapsed_time += elapsed_time
+
+        # Imprime o tempo do salvamento do preditor e da atualização do
+        # arquivo de configuração dos preditores.
+        print(f"➖➡️ Tempo total para salvar o preditor para a aplicação "
+              f"{application_name} usando o modelo {best_model_name} (nome do "
+              f"acrônimo: {best_model_acronym_name}): {elapsed_time:.6f}s.")
+
         # Verifica se não foi possível salval o preditor ou atualizar o
         # arquivo de configuração dos preditores.
         if not statusp:
@@ -2486,6 +2644,11 @@ def train_command(applications_name, applications_config, training_config,
 
           # Como um erro ocorreu, mudamos status para False.
           status = False
+
+        # Imprime o tempo total decorrido para construir o preditor da
+        # aplicação, considerando todas as fases de construção.
+        print("➖➡️ Tempo total de criação e salvamento do preditor para a "
+              f"aplicaão {application_name}: {total_elapsed_time:.6f}s.")  
       else:  
           # Como não existe uma chave no dicionário com as configurações
           # da aplicação com o nome da aplicação application_name, 

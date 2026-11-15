@@ -682,7 +682,9 @@ class BestHiperparams:
 
 		Parâmetros:
 			n_jobs (int): Número de trabalhos paralelos criados quando a busca
-										em grade for feita.
+										em grade for feita. Se não for passado nenhum valor,
+										o default é -1, usar todos os cores para executar os
+										trabalhio.
 			verbose (bool): Habilita/desabilita as informações de verbosidade.
 		"""
 
@@ -1025,7 +1027,9 @@ class DiscoverBestModel:
 
 		Parâmetros:
 			n_jobs (int): Número de trabalhos paralelos criados quando a busca
-										em grade for feita.
+										em grade for feita. Se não for passado nenhum valor,
+										o default é -1, usar todos os cores para executar os
+										trabalhio.
 			verbose (bool): Habilita/desabilita as informações de verbosidade.
 		"""
 
