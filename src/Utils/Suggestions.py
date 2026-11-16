@@ -2842,7 +2842,64 @@ class SuggestionsPredictor:
 			return False
 
 	def get_object_info(self):
-		pass
+		"""
+		Função para imprimir todos os campos de umn objeto da classe. Usada
+		para verificar os campos de um preditor salvo em um aquivo .pickle
+		pela função save_predictor.
+
+		Parâmetros:
+			Não tem.
+
+		Retorno:
+			Não tem.	
+		"""
+
+		print(f"➡️ Conjunto de dados usado ao treinar o(s) modelo(s):")
+		print("\n", self.dataset.to_markdown(tablefmt="grid", floatfmt=".2f"), 
+					"\n", sep="")
+		if self.model_time is None:
+			print(f"➡️ X Usado ao treinar o modelo auxliar para escolher a melhor "
+			      "sugestão de configuração:")
+		else:	
+			print(f"➡️ X Usado ao treinar o modelo auxliar para escolher a melhor "
+			      "sugestão de configuração e o usado para predizer os tempos de "
+			      "execução:")
+		print("\n", self.X.to_markdown(tablefmt="grid", floatfmt=".2f"), 
+					"\n", sep="")
+		print(f"➡️ y usado ao treinar o modelo auxiliar para escolher a melhor "
+			    "sugestão de configuração:")
+		print("\n", self.y.to_markdown(tablefmt="grid", floatfmt=".2f"), 
+					"\n", sep="")
+		print(f"➡️ Modelo auxiliar: {self.model}")
+		if self.model_time is not None:
+			print(f"➡️ y usado ao treinar o modelo para predizer os tempos de "
+			      "execução:")
+			print("\n", self.y_time.to_markdown(tablefmt="grid", floatfmt=".2f"), 
+						"\n", sep="")
+		print("➡️ Modelo auxiliar para escolher a melhor sugestão de configuração: "
+		      f"{self.model}")
+		if self.model_time is not None:
+			print("➡️ Modelo usado para predizer os tempos de execução: "
+			      f"{self.model_time}")
+		print("➡️ Nomes das variáveis que compõe uma configuração, usadas ao "
+		      f"treinar o(s) modelo(s) : {self.suggestion_names}")
+		print("➡️ Nomes das variáveis da aplicação usadas ao treinar o(s) "
+		      "modelo(s) (podem ser as variáveis passadas pelo usuário e as "
+		      f"convertidas): {self.application_names}")
+		print("➡️ Nomes das variáveis da aplicação usadas para definir os "
+		      f"grupos da validação LOGO: {self.user_names}")
+		print("➡️ Nome da variável alvo usada para treinar o modelo auxiliar para "
+		      f"escolher a melhor sugestão de configuração: {self.predicted_name}")
+		if self.model_time is not None:
+			print("➡️ Nome da variável alvo usada para treinar o modelo o modelo "
+			      f"para predizer os tempos de execução: {self.predicted_time_name}")
+		print("➡️ Valores diferentes para as variáveis de configuração usadas ao "
+		      f"treinar o(s) modelo(s): {self.suggestion_params}")
+		print("➡️ Valores diferentes para as variáveis da aplicação usadas ao "
+		      "treinar o(s) modelo(s) (podem ser as variáveis passadas pelo "
+					f"usuário e as convertidas): {self.application_params}")
+		print("➡️ Valores diferentes para as variáveis da aplicação usadas para "
+		      f"definir os grupos da validação LOGO: {self.user_params}")
 	
 	@classmethod
 	def print_suggestion(cls, info_suggestion, show_score=False, show_X=False, 
