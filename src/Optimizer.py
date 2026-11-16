@@ -3677,6 +3677,16 @@ def optimize_application(configs_file_path, system_config, application_config,
     # Suggestions.py, na variável predictor.
     predictor = SuggestionsPredictor.load_predictor(predictor_path)
 
+    # Define as restrições definidas para a aplicação quando
+    # configurações customizadas são usadas, condições essas que poderão
+    # excluir configurações, geradas pelas opções de configuração 
+    # customizadas que são passadas pelos usuários, que serão inválidas
+    # segundo as restrições da aplicação. A avaliação somente é feita
+    # quando as configurações customizadas são usadas, pois as 
+    # configurações definidas ao treinar o preditor da aplicação
+    # naturalmente são todas válidas.
+    predictor.set_restrictions(script_config['custom_restrictions'])
+
     # Agora que o preditor foi lido e refrência ao seu objeto armazenada
     # na variável predictor, vamos usar a função get_suggestion para
     # onter a melhor sugestão de configuração. Como vimos, os parâmeros

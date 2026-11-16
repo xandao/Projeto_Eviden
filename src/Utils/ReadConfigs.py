@@ -410,7 +410,23 @@ class ReadApplicationsConfigs:
                     "minContains": 1,
                     "maxContains": 1
                 },
-                "log_file": {"type": "string"}
+                "log_file": {"type": "string"},
+                "custom_restrictions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object", 
+                        "required": ["name", "check", "operation",
+                                     "result"],
+                        "properties": {
+                            "type": {"type": "string"},
+                            "check": {"type": "string"},    
+                            "operation": {"type": "array", 
+                                          "items": {"type": "string"}
+                                         },
+                            "result": {"type": ["string", "integer"]},
+                        },
+                    },
+                },
             }
         }
     }

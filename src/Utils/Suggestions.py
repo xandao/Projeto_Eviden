@@ -1570,6 +1570,11 @@ class SuggestionsPredictor:
 											 user_names sendo o objeto associado a cada chave
 											 uma lista com os possíveis valores para a
 											 variável do usuário que tem como nome essa chave.
+		restrictions(list[dict]): Lista com as restrições a serem aplicadas
+		                          as possíveis configurações geradas quando
+															as opções de configuração customizadas são
+															usadas pelos usuários do script de
+															otimização.									 
 	"""
 	def __init__(self):
 		"""
@@ -1592,6 +1597,7 @@ class SuggestionsPredictor:
 		self.suggestion_params = None
 		self.application_params = None
 		self.user_params = None
+		self.restrictions = None
 	    	
 	def fit(self, data, suggestion_names, application_names, user_names, 
 				  estimated_parameters, model, model_params, verbose=False):
@@ -1730,7 +1736,9 @@ class SuggestionsPredictor:
 
     # Inicializa o campo do objeto com uma referência para a lista com
 		# os nomes das variáveis de aplicação definidas diretamente pelos
-		# usuários ou por conversão do que foi definido pelo usuário.
+		# usuários ou por conversão do que foi definido pelo usuário (são as
+		# variáveis usadas ao criar os grupos do LOGO e, consequentemente,
+		# as definidas para criar o DataFrame com o oráculo).
 		self.user_names = user_names
 
 		# Inicializa o campo do objeto para o nome da variável alvo usada
@@ -1847,27 +1855,27 @@ class SuggestionsPredictor:
 		# user_names que serão usadas para criar o DataFrame do oráculo.
 		self.dataset = data[columns_names].copy()
 
-		# Cria uma lista no campo suggestion_params do objeto com todos os
-		# possíveis valores para cada variável de configuração definida em
-		# suggestion_names. 
+		# Cria uma lista ordenada no campo suggestion_params do objeto com 
+		# todos os possíveis valores para cada variável de configuração 
+		# definida em suggestion_names. 
 		self.suggestion_params = {
-			col: list(data[col].unique())
+			col: sorted(list(data[col].unique()))
 			for col in suggestion_names
 		}
 
-		# Cria uma lista no campo application_params do objeto com todos os
-		# possíveis valores para cada variável da aplicação definida em
-		# application_names. 
+		# Cria uma lista ordenada no campo application_params do objeto com 
+		# todos os possíveis valores para cada variável da aplicação
+		# definida em application_names. 
 		self.application_params = {
-			col: list(data[col].unique())
+			col: sorted(list(data[col].unique()))
 			for col in application_names
 		}
 
-		# Cria uma lista no campo user_params do objeto com todos os 
-		# possíveis valores para cada variável da aplicação definida em
+		# Cria uma ordenada lista no campo user_params do objeto com todos
+		# os possíveis valores para cada variável da aplicação definida em
 		# user_names. 
 		self.user_params = {
-			col: list(data[col].unique())
+			col: sorted(list(data[col].unique()))
 			for col in user_names
 		}
 
@@ -2084,6 +2092,12 @@ class SuggestionsPredictor:
 		# Retorna o DataFrame criado com as características e suas
 		# importâncias.
 		return importances_df
+
+	def set_restrictions(self, restrictions):
+		self.restrictions = restrictions
+
+	def check_configurations(self, X):
+		return X, None
 		    	
 	def _predict_suggestions_data(self, user_applicaion_params, 
 															  custom_suggestions_params=None, verbose=False):
@@ -2154,9 +2168,12 @@ class SuggestionsPredictor:
 		Retorna:
 			tuple: Se não ocorrerem erros, retorna uma tupla em que o primeiro
 						 componente é o y predito pelo modelo auxiliar para cada
-						 configuração e o segundo componente e o DataFrame com
+						 configuração, o segundo componente e o DataFrame com
 						 todas as configurações consideradas. Se algum erro ocorrer,
-						 gera uma exceção do Python.
+						 gera uma exceção do Python, e o terceiro componente ou é
+						 um DataFrame com todas as configurações não consideradas
+						 porque violam as condições definidas para a aplicação ou
+						 None se todas aso configurações puderam ser usadas.
 		"""
 
 	  # Verifica se o fit foi feito, ou seja, se a função fit foi chamada,
@@ -2170,10 +2187,10 @@ class SuggestionsPredictor:
 		# convertidos para uma lista.
 		user_applicaion_params_keys = sorted(user_applicaion_params.keys())
 
-		# Cria uma variável auxiliar self_params com os parâmetros da
+		# Cria uma variável auxiliar self_params_keys com os parâmetros da
 		# aplicação usados ao treinar o modelo, ordenados e convertidos
 		# para uma lista.
-		self_params_keys = sorted(self.application_params.keys())
+		self_params_keys = sorted(self.application_names)
 
 		# Verifica se os parâmetros dd aplicação definodos pelo usuário e 
 		# passados como chaves no dicionário user_applicaion_params são
@@ -2220,6 +2237,10 @@ class SuggestionsPredictor:
 					.copy()
 					.drop(columns=[self.predicted_name])
 			)
+
+			# Como usamos o DataFrame com todas as configurações originais do
+			# treinamento, não existem configurações inválidas.
+			X_excluded = None
 		else:
 		  # Cria um X usando as opções de configuração passadas como
 			# parâmetro em custom_suggestions_params, que é um dicionário em
@@ -2259,6 +2280,14 @@ class SuggestionsPredictor:
 			X = pd.DataFrame(suggestions_combinations, 
 										   columns=custom_suggestions_params.keys())
 
+			# Depois de construído o DataFrame, ainda precisamos verificar se
+			# todas as configurações são válidas (por exemplo, o número de
+			# processos por nó multiplicado pelo número de therads não pode
+			# ser maior do que o número máximo de threads fornecido pelo
+			# usuário. Além disso, podem ter outras restrições para as
+			# configurações).
+			X, X_excluded = self.check_configurations(X)
+
 		# Uma vez criado o X com todas as possíveis configurações, é
 		# necessário adicionar as colunas com os parâmetros da aplicação
 		# definidos pelo usuário. O loop for a seguir examina cada chave do
@@ -2277,11 +2306,22 @@ class SuggestionsPredictor:
 		# Se a verbosidade estiver habilitada, imprime o DataFrame X criado
 		# com todas as possíveis configurações para a aplicação do usuário,
 		# que serão usadas para fazer a predição da variável alvo do modelo
-		# auxiliar.
+		# auxiliar e, se aplicável, as configurações do usuário que foram
+		# excluídas porque violam as condições definidas para a aplicação
+		# para as configurações.
 		if verbose:
 			print("🐛 X usado quando foi predito todos os valores da variável "
-				    f"alvo {self.predicted_name} para todas as possíveis sugestões:")	
+				    f"alvo {self.predicted_name} para todas as possíveis configuraões,"
+						" excluindo as não válidas, se existirem:")	
 			print("\n", X.to_markdown(tablefmt="grid", floatfmt=".2f"), "\n", sep="")
+			
+			# Verifica se existem configurações que foram excluídas e, caso
+			# existam, imprime o DataFrame delas.
+			if X_excluded is not None:
+				print("🐛 X_excluded com as configurações excluídas porque violam as "
+				      "restrições de configuração para a aplicação:")	
+				print("\n", X_excluded.to_markdown(tablefmt="grid", floatfmt=".2f"), 
+				      "\n", sep="")
 
 		# Faz a predição para todas as possíveis configurações, que estão no
 		# DataFrame X criado anteriormente.
@@ -2302,9 +2342,11 @@ class SuggestionsPredictor:
 
 		# Retorna uma tupla com o vetor y_pred com os valores preditos da
 		# variável alvo do modelo auxiliar para todas as possíveis
-		# configurações, e o DataFrame X com todas as possíveis
-		# configurações usadas ao fazer as predições em y_pred.
-		return (y_pred, X)
+		# configurações, o DataFrame X com todas as possíveis configurações
+		# usadas ao fazer as predições em y_pred e, se alguma configuração
+		# foi excluída, o DataFrame X_excluded com essas configurações ou
+		# None se nenhuma configuração foi excluída.
+		return (y_pred, X, X_excluded)
 	
 	def get_suggestion(self, user_applicaion_params, 
 										 custom_suggestions_params=None, verbose=False):
@@ -2371,30 +2413,41 @@ class SuggestionsPredictor:
 						deste compomente; "Score" com a pontuação dada a melhor 
 						sugestão de configuração, que no momento é o menor valor 
 						predito da variável alvo do modelo auxiliar; "X" com o 
-						DataFrame com todas as configurações consideradas; "y_pred"
-						com o vetor com os valores preditos da variável alvo do
-						modelo auxiliar para todas as configurações consideradas em
-						X; "y_pred_minimum" com o menor valor predito da variável 
-						alvo do modelo auxiliar; "y_pred_minimum_position" com a 
-						posição do menor valor predito da variável alvo do modelo 
-						auxiliar; e, se o modelo para estimar o tempo de execução da 
-						melhor sugestão de configuração foi treinado, ou seja, a 
-						variável alvo do tempo de execução foi definida, "Time" com
-						o tempo predito para a melhor sugestão de configuração, que
-						dependerá desta sugestão e dos parâmetros da aplicação
-						definidos pelo usuário. Se algum erro ocorrer, gera uma
-						exceção do Python.
+						DataFrame com todas as configurações consideradas; 
+						"X_excluded" com o DataFrame com as configurações excluídas,
+						quando as configurações customizadas são usadas, porque não 
+						satisfazem as condições de configuração para a aplicação ou 
+						None se todas as combinações de configuração para as 
+						configurações customizadas foram usadas ou se não foram 
+						usadas configurações customizadas; y_pred" com o vetor com
+						os valores preditos da variável alvo do modelo auxiliar para
+						todas as configurações consideradas em X; "y_pred_minimum"
+						com o menor valor predito da variável alvo do modelo
+						auxiliar; "y_pred_minimum_position" com a posição do menor
+						valor predito da variável alvo do modelo auxiliar; e, se o
+						modelo para estimar o tempo de execução da melhor sugestão
+						de configuração foi treinado, ou seja, a variável alvo do
+						tempo de execução foi definida, "Time" com o tempo predito
+						para a melhor sugestão de configuração, que dependerá desta
+						sugestão e dos parâmetros da aplicação definidos pelo
+						usuário. Se algum erro ocorrer, gera uma exceção do Python.
 		"""
 
 		# Faz a predição dos valores para todas as configurações da base
 		# usada para o treinamento e os parâmetros da aplicação passados,
 		# usando a função auxiliar _predict_suggestions_data, que retorna
 		# uma tupla com o vetor y_pred com os valores preditos da variável
-		# alvo do modelo auxiliar para todas as configurações e o
-		# DataFrame X com todas as configurações consideradas.
-		y_pred, X = self._predict_suggestions_data(user_applicaion_params, 
-																						   custom_suggestions_params, 
-																							 verbose)
+		# alvo do modelo auxiliar para todas as configurações, 
+		# DataFrame X com todas as configurações consideradas e, se 
+		# X_exluded não for None, o DataFrame com as configurações excluídas 
+		# as que violam as exigẽncias de configuração para a aplicação, 
+		# sendo que poderão existir configurações excluídas somente quando
+		# as configurações customizadas são usadas.
+		y_pred, X, X_excluded = self._predict_suggestions_data(
+			user_applicaion_params,
+			custom_suggestions_params,
+			verbose
+		)
         
     # Descobre a posição do menor valor predito que indicará a posição 
 		# da configuração predita, ou seja, a melhor sugestão de
@@ -2463,6 +2516,12 @@ class SuggestionsPredictor:
 		# representa uma possível configuração, os valores de cada
 		# componente desta configuração.
 		#
+    # "X_excluded": Se as configurações customizadas forem usadas, o
+		# dataframe com as configurações exluídas porque violam as 
+		# exigẽncias de configuração para a aplicação, ou None se nenhuma
+		# configuração violou uma das exigências ou se as configurações
+		# customizadas nãpo foram usadas.
+		#
 		# "y_pred": Series com os valores preditos pelo modelo auxiliar para
 		# a variável alvo para cada configuração em X, sendo que o valor de
 		# uma das linhas em y_pred é o valor predito para configuração
@@ -2477,7 +2536,8 @@ class SuggestionsPredictor:
 		# posição da linha da melhor configuração, que será a sugerida, em 
 		# X, como vimos antes quando criamos o dicionário y_suggestion. 
 		info_suggestion = {"Suggestion": y_suggestion, 
-										   "Score": y_pred_min, "X": X, "y_pred": y_pred_s, 
+										   "Score": y_pred_min, "X": X, 
+											 "X_excluded": X_excluded, "y_pred": y_pred_s, 
 											 "y_pred_minimum": y_pred_min, 
 											 "y_pred_minimum_position": y_pred_posmin}
 
@@ -2926,7 +2986,9 @@ class SuggestionsPredictor:
 			show_score (bool): Se True, imprime a pontuação da sugestão de
 												 configuração.
 			show_X (bool): Se True, imprime o DataFrame com todas as 
-										 configurações em X.	
+										 configurações válidas em X e, se existir, ou seja 
+										 se X_excluded não for None, o DataFrame com as
+										 configurações excluídas porque não eram válidas.
 			show_y_pred (bool): Se True, imprime o vetor com os valores
 												  preditos da variável alvo do modelo auxiliar
 												  para todas as configurações em X.
@@ -2976,13 +3038,24 @@ class SuggestionsPredictor:
 			print(f"➡️ Pontuação da sugestão: {info_suggestion['Score']:.2f}")
 
 		# Se show_X for True, imprime o DataFrame com todas as configurações
-		# consideradas, que estão no campo X do dicionário info_suggestion.
+		# consideradas, que estão no campo X do dicionário info_suggestion 
+		# e, se exisitr, o DataFrame com as configurações que não foram 
+		# consideradas porque violam as condições de configurações para a
+		# aplicação.
 		if show_X:
-			print("➡️ X, com todas as configurações, usado nas predições feitas "
-			      "quando estavamos escolhendo a malhor sugestão:")
+			print("➡️ X, com todas as configurações válidas, usado nas predições "
+			      "feitas quando estavamos escolhendo a melhor sugestão:")
 			print("\n", info_suggestion['X'].to_markdown(tablefmt="grid", 
 																								   floatfmt=".2f"), "\n", 
 						sep="")
+
+			if info_suggestion['X_excluded'] is not None:
+				print("➡️ X_excluded, com todas as configurações obtidas por algumnas "
+				      "combinações das configurações customizadas porque violavam as "
+							"condições de configurações da aplicação:")
+				print("\n", info_suggestion['X_excluded'].to_markdown(tablefmt="grid", 
+																								 							floatfmt=".2f"), 
+							"\n", sep="")
 
 		# Se show_y_pred for True, imprime o vetor com os valores preditos da
 		# variável alvo do modelo auxiliar para todas as configurações em X,

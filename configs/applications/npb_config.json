@@ -76,6 +76,14 @@
         "threads": 48
       }
     ],
-    "log_file": "submissions_npb.csv"
+    "log_file": "submissions_npb.csv",
+    "custom_restrictions": [
+      {
+        "name": "threads_per_node",
+        "check": "max",
+        "operation": ["mul", "Processo p/ no", "Thread p/ proc."],
+        "result": "Thread p/ proc."
+      }
+    ]
   }
 }

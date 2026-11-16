@@ -56,6 +56,20 @@
         "threads": 48
       }
     ],
-    "log_file": "submissions_raxml-sscad.csv"
+    "log_file": "submissions_raxml-sscad.csv",
+    "custom_restrictions": [
+      {
+        "name": "threads_per_node",
+        "check": "max",
+        "operation": ["mul", "Processo p/ no", "Thread p/ proc."],
+        "result": "Thread p/ proc."
+      },
+      {
+        "name": "min_threads",
+        "check": "min",
+        "operation": ["copy", "Thread p/ proc."],
+        "result": 2
+      }
+    ]
   }
 }
