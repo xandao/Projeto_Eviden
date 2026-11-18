@@ -2960,7 +2960,15 @@ class SuggestionsPredictor:
 					f"usuário e as convertidas): {self.application_params}")
 		print("➡️ Valores diferentes para as variáveis da aplicação usadas para "
 		      f"definir os grupos da validação LOGO: {self.user_params}")
-	
+		print("➡️ Restrições às configurações customizadas definidas na "
+		      "configuração da aplicação:")
+		if self.restrictions is not None:
+			for restriction in self.restrictions.keys():
+				print(f"➖➡️ Restrição: {restriction.name}")
+				print(f"➖➖➡️ Checagem: {restriction.check}")
+				print(f"➖➖➡️ Operação: {restriction.operation}")
+				print(f"➖➖➡️ Resultado: {restriction.result}")
+							
 	@classmethod
 	def print_suggestion(cls, info_suggestion, show_score=False, show_X=False, 
 											 show_y_pred=False, show_time=False, 
