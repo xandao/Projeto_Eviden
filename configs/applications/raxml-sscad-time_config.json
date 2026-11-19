@@ -65,8 +65,8 @@
       },
       {
         "name": "min_threads",
-        "operation": ["value", "1"],
-        "result": ["min", "Thread p/ proc."]
+        "operation": ["copy", "Thread p/ proc."],
+        "result": ["min", "2"]
       }
     ]
   }

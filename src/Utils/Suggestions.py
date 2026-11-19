@@ -2110,45 +2110,143 @@ class SuggestionsPredictor:
 		"operation": Define a operação a ser executada. A chave aponta para
 		             uma tupla em que o primeiro elemento é uma string 
 								 identificando a operação e as os outros elementos os
-								 operandos dessaoperação. No momento temos duas 
-								 operações:
+								 operandos dessa operação. Como a operaç]ao é aplicada
+								 sobre colunas do DataFrame gerando uma coluna, o
+								 mapeamento de cada célula com a sua configuração 
+								 correspondente continua igual ao mapeamento dessa 
+								 configuração e as colunas de configuração do DataFrame.
+								 No momento temos duas operações:
 
-								"valor": Retorna o valor definido pelo segundo elemento.
+								"copy": Retorna a coluna do DataFrame descrito 
+								        anteriormemte cujo nome é dado no segundo 
+												elemento da tupla.
 				        "mul" : A operação retorna uma coluna com o resultado, 
 								        para cada célula, das multiplicações das células
-												correspodentes das colunas cujos nomes são 
-												definidos pelo segundo e terceiro  elementos da
-												tupla do DataFrame.
+												correspodentes das colunas do DataFrame descrito
+												anterioemente, cujos nomes são definidos pelo
+												segundo e terceiro elementos da tupla.
 		"result": Tupla com dois valores, o primeiro a checagem a ser feita
 		          ao filtrar as configurações inválidas e o segundo o nome 
-							da coluna do DataFrame com todas as configurações descrito
-							anteriormente. que será usada na filtragem. Temos duas 
-							possibilidades para a checagem.
+							da coluna do DataFrame descrito anteriormente que será
+							usada para calcular o valor da checagem, ou o valor usado
+							na checagem. Como a coluna resultante da operação respeita
+							as relações das células de cada coluna do DataFrame com as
+							confirações, podemos usar essa coluna para filtrar o 
+							DataFrame com as configurações do mesmo modo que iríamos
+							filtrar o Dataframe usando os valores de uma das suas
+							colunas. Temos duas possibilidades.
 
-				       "max": Todas as configurações que tiverem, para esta 
-							        coluna, o valor maior do que o valor máximo da 
-											operação definida anteriormente, serão 
-											consideradas como inválidas. Se a operação
-											retornar uma coluna, o valor usado será o maior
-											valor dessa coluna, e se retornar um valor, o 
-											valor usado será o retornado.
-				      "min": Similar ao máximo, mas usa os minomos, ou seja, 
-				             as configurações inválidas serão as que tiverem, 
-										 para essa coluna, o valor menor do que que 
-										 retornada pela operação, podendo ser o menor valor
-										 da coluna resultante ou o valor passado.
+				       "max": Se o segundo elemento for o nome de uma coluna,
+							        usa o valor máximo desta coluna e, se for um 
+											valor, este valor. A filtragem irá descartar, 
+											usando a coluna resultante da operação descrita
+											na chave anterior, todas as configurações cujas
+											posições estejam relacionadas à celulas com o 
+											valor maior do que o valor máximo descrito antes.
+				       "max": Similar ao "max", mas agora baseado no mínimo, ou
+							 				seja, se o segundo elemento for o nome de uma
+											coluna, usa o valor mínimo desta coluna e, se for
+											um valor, este valor. A filtragem irá descartar, 
+											usando a coluna resultante da operação descrita
+											na chave anterior, todas as configurações cujas
+											posições estejam relacionadas à celulas com o 
+											valor menor do que o valor mínimo descrito antes.
 
 		Parâmetros:
 			restrictions (list[dict]): Lista de dicionários definindo as
-																 restrições.
+																 restrições, como descritas
+																 anteriormente.
 
 		Retorna:
 			Não tem retorno (retorna None).
 		"""
+
+		# Define o campo self.restrictions, com a referẽnicia da lista com 
+		# as restrições, para a referência da lista de restrições passada
+		# pelo parâmetro restrictions
 		self.restrictions = restrictions
 
 	def check_configurations(self, X):
-		return X, None
+		"""
+		Função para verificar se o DataFrame X, com todas as configurações
+		obtidas a partir de todas os possívels valores para as configurações 
+		customizadas passadas pelo usuário do script de otimização, tem 
+		configuraçõe inválidas segundo às regras definidas pelas restrições
+		de configurações definidas pelo arquivo de configuração da
+		aplicação, se a lista de restrições foi definida pela função
+		set_restrictions.
+
+		Parãmetros
+			X (DataFrame): DataFrame do Pandas com todas as configurações que
+										 podem der geradas considerando todas as possíveis
+										 combinações das configurações ustomizadas pelo 
+										 usuário, como o número de nós, processos por nó e
+										 threads por process. Cada coluna do DataFrame
+										 representa um componente de uma configuração e cada
+										 linha uma possível configuração.
+
+		Retorna:
+			tuple: Uma tupla com dois elementos, o primeiro o DataFrame X
+						 sem todas as configurações que violam as restrições de
+						 configurações definidas para a aplicação, se as restrições
+						 foram definidas para a aplicação ou o próprio X em caso
+						 contrário, e o segundo elemento o DataFrame com as
+						 configurações descartadas, se alguma configuração foi
+						 considerada inválida e restrições foram definidas para a
+						 aplicação, ou None se todas as configurações eram válidas 
+						 ou não foram definidas restrições para a aplicação.							 
+		"""
+
+		# Define as funções internas auxiliares, para executar as operações
+		# "copy", "mul" e a função usada para uma operação inválida.
+		def mul(column_names):
+			pass
+
+		def copy(column_names):
+			pass
+
+		def invalid_operation(operation):
+			raise ValueError(f"Foi encontrada uma operação {operation} inválida ao "
+			                 "filtrar as configurações customizadas do usuário do "
+											 "script de otimização!")
+
+		# Verifica se foi definida uma lista com as restrições para as
+		# configurações customizadas da aplicação.
+		if self.restrictions is not None:
+			# Como o campo self.set_restrictions não é None, então temos que
+			# avaliar as configurações customizadas e verificar quais violam
+			# as exigências definidas pelo arquivo de configuração da 
+			# aplicação. Primeiramente vamos inicializar um objeto Series do
+			# Pandas, que será usado para filtrar o DataFrame, todo com
+			# valores True, inicialmente indicando que todas as configurações
+			# são válidas. Como cada linha desta Series será associada a uma
+			# das configurações, com o boleano True indicando que a
+			# configuração é valida e False em caso contrário, e como temos
+			# len(X) configurações, sendo que a função len retorna o número de
+			# linhas, ou seja, de configurações diferentes em X, o objeto da
+			# classe Series terá len(X) linhas que serão todas inicializadas
+			# com True.
+			valid_configurations = pd.Series(True, index=range(0,len(X)))
+
+			# Agora vamos avaliar as configurações customizadas considerando
+			# cada uma das restrições definidas pela lista self.restrictions,
+			# que, como vimos, é uma lista de dicionários, sendo que cada 
+			# dicionário define como uma restrição deve ser verificada.
+			for restriction in self.restrictions:
+				# Vamos avaliar a restrição definida pelo dicioário restriction.
+				# Priemriamente precisamos calcular o resultado da operação
+				# definidq pela chave "operation". Temos no momento duas
+				# operações, mul e copy, que  
+				pass
+		else:
+			# Como não existem restrições de configurações para aplicação,
+			# então retornamos o próprio DataFrame X com todas as
+			# configurações como o primeiro elemento da tupla e None no 
+			# segundo elemento, que apontaria para o DataFrame com as
+			# configurações que foram descartas por violar as restrições
+			# defidas para as configurações da aplicação porque não existem
+			# redtrições.
+			return X, None
 		    	
 	def _predict_suggestions_data(self, user_applicaion_params, 
 															  custom_suggestions_params=None, verbose=False):
