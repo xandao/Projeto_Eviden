@@ -66,15 +66,13 @@
     "custom_restrictions": [
       {
         "name": "threads_per_node",
-        "check": "max",
         "operation": ["mul", "Processo p/ no", "Thread p/ proc."],
-        "result": "Thread p/ proc."
+        "result": ["max", "Thread p/ proc."]
       },
       {
         "name": "min_threads",
-        "check": "min",
-        "operation": ["copy", "Thread p/ proc."],
-        "result": 2
+        "operation": ["value", "1"],
+        "result": ["min", "Thread p/ proc."]
       }
     ]
   }

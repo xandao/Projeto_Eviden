@@ -415,15 +415,15 @@ class ReadApplicationsConfigs:
                     "type": "array",
                     "items": {
                         "type": "object", 
-                        "required": ["name", "check", "operation",
-                                     "result"],
+                        "required": ["name", "operation", "result"],
                         "properties": {
                             "type": {"type": "string"},
-                            "check": {"type": "string"},    
                             "operation": {"type": "array", 
                                           "items": {"type": "string"}
                                          },
-                            "result": {"type": ["string", "integer"]},
+                            "result": {"type": "array", 
+                                       "items": {"type": "string"}
+                                      },
                         },
                     },
                 },

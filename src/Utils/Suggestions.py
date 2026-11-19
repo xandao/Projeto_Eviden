@@ -2094,6 +2094,57 @@ class SuggestionsPredictor:
 		return importances_df
 
 	def set_restrictions(self, restrictions):
+		"""
+		Função para definir as restrições definidas pela aplicação para as
+		possíveis configurações que são obtidas pelos valores customizados
+		definidos pelos usuários no script de otimização. Cada restrição
+		irá faszer uma filtragem no DataFrame com todas as posíveis 
+		configurações definidas por todas as combinações das variáveis de
+		configuração custimizadas passadas pelo usuário pelas opções de
+		customização do script de otimização. A função recebe uma lista de
+		dicionários, com cada dicionário definindo uma restrição difernte, 
+		sendo que cada dicionário tem as seguintes chaves:
+
+		"name": Nome dado à restrição, usado somente no momento como um 
+		        identificador ao imprimir as informações da restrição.
+		"operation": Define a operação a ser executada. A chave aponta para
+		             uma tupla em que o primeiro elemento é uma string 
+								 identificando a operação e as os outros elementos os
+								 operandos dessaoperação. No momento temos duas 
+								 operações:
+
+								"valor": Retorna o valor definido pelo segundo elemento.
+				        "mul" : A operação retorna uma coluna com o resultado, 
+								        para cada célula, das multiplicações das células
+												correspodentes das colunas cujos nomes são 
+												definidos pelo segundo e terceiro  elementos da
+												tupla do DataFrame.
+		"result": Tupla com dois valores, o primeiro a checagem a ser feita
+		          ao filtrar as configurações inválidas e o segundo o nome 
+							da coluna do DataFrame com todas as configurações descrito
+							anteriormente. que será usada na filtragem. Temos duas 
+							possibilidades para a checagem.
+
+				       "max": Todas as configurações que tiverem, para esta 
+							        coluna, o valor maior do que o valor máximo da 
+											operação definida anteriormente, serão 
+											consideradas como inválidas. Se a operação
+											retornar uma coluna, o valor usado será o maior
+											valor dessa coluna, e se retornar um valor, o 
+											valor usado será o retornado.
+				      "min": Similar ao máximo, mas usa os minomos, ou seja, 
+				             as configurações inválidas serão as que tiverem, 
+										 para essa coluna, o valor menor do que que 
+										 retornada pela operação, podendo ser o menor valor
+										 da coluna resultante ou o valor passado.
+
+		Parâmetros:
+			restrictions (list[dict]): Lista de dicionários definindo as
+																 restrições.
+
+		Retorna:
+			Não tem retorno (retorna None).
+		"""
 		self.restrictions = restrictions
 
 	def check_configurations(self, X):
@@ -2910,13 +2961,21 @@ class SuggestionsPredictor:
 		Parâmetros:
 			Não tem.
 
-		Retorno:
-			Não tem.	
+		Retorna:
+			Não tem retorno (retorna None).
 		"""
 
+		# Imprime todas os campos de um objeto da classe 
+		# SuggestionsPredictor.
+
+		# O conjunto de dados (self.dataset)
 		print(f"➡️ Conjunto de dados usado ao treinar o(s) modelo(s):")
 		print("\n", self.dataset.to_markdown(tablefmt="grid", floatfmt=".2f"), 
 					"\n", sep="")
+
+		# O X usado ao treinar o modelo auxiliar usado  ao escolher a melhor
+		# guestão de configuração e, se definido, o modelo usado para
+		# estimar o tempo de execução da aplicação com a melhor sugestão.
 		if self.model_time is None:
 			print(f"➡️ X Usado ao treinar o modelo auxliar para escolher a melhor "
 			      "sugestão de configuração:")
@@ -2926,46 +2985,117 @@ class SuggestionsPredictor:
 			      "execução:")
 		print("\n", self.X.to_markdown(tablefmt="grid", floatfmt=".2f"), 
 					"\n", sep="")
+		
+		# y usado ao treinar o modelo auxiliar.
 		print(f"➡️ y usado ao treinar o modelo auxiliar para escolher a melhor "
 			    "sugestão de configuração:")
 		print("\n", self.y.to_markdown(tablefmt="grid", floatfmt=".2f"), 
 					"\n", sep="")
-		print(f"➡️ Modelo auxiliar: {self.model}")
+
+		# Imprime as informações sobre o objeto do modelo auxiliar.
+		print("➡️ Modelo auxiliar para escolher a melhor sugestão de "
+          f"configuração: {self.model}")
+
+		# Verifica se o modelo para predizeros tempos de execução foi 
+		# treinado.
 		if self.model_time is not None:
+			# Se o modelo foi treinado, imprime o y usado ao treinar o modelo.
 			print(f"➡️ y usado ao treinar o modelo para predizer os tempos de "
 			      "execução:")
 			print("\n", self.y_time.to_markdown(tablefmt="grid", floatfmt=".2f"), 
 						"\n", sep="")
-		print("➡️ Modelo auxiliar para escolher a melhor sugestão de configuração: "
-		      f"{self.model}")
-		if self.model_time is not None:
+
+			# Imprime as informações sobre o objeto do modelo que estima os
+			# tempos
 			print("➡️ Modelo usado para predizer os tempos de execução: "
 			      f"{self.model_time}")
+
+		# Imprime as variáveis que compõe uma configuração, usadas ao 
+		# treinar o(s) modelo(s).
 		print("➡️ Nomes das variáveis que compõe uma configuração, usadas ao "
 		      f"treinar o(s) modelo(s) : {self.suggestion_names}")
+
+		# Imprime os nomes das variáveis da aplicação originais ou
+		# convertidas, quando necessário, usadas ao treinar o(s) modelo(s).
 		print("➡️ Nomes das variáveis da aplicação usadas ao treinar o(s) "
 		      "modelo(s) (podem ser as variáveis passadas pelo usuário e as "
 		      f"convertidas): {self.application_names}")
+
+		# Imprime os nomes das variáveis usadas, ao otimizar os 
+		# hiperparâtros e escolher o melhor modelo a partir de objetos das
+		# outras classes, usadas para definir os grupos da validação LOGO. 
+		# Como essas variáveis também definem os oráculos, pois existe um
+		# oráculo para cada grupo, nesta classe são usadas para retornar o
+		# Dataframe com os oráculos.
 		print("➡️ Nomes das variáveis da aplicação usadas para definir os "
 		      f"grupos da validação LOGO: {self.user_names}")
+
+		# Imprime o nome da varíavel alvo do modelo auxliar, ou seja, o
+		# valor predito por ele (nos nossos testes, é sempre a EDP, mas pode
+		# ser mudada no arquivo de configuração da aplicação).
 		print("➡️ Nome da variável alvo usada para treinar o modelo auxiliar para "
 		      f"escolher a melhor sugestão de configuração: {self.predicted_name}")
+
+		# Verifica se o modelo para predizeros tempos de execução foi 
+		# treinado (nos nossos testes, é sempre a ElapsedRaw, mas também
+		# pode ser mudada no arquivo de configuração da aplicação).
 		if self.model_time is not None:
+			# Se o modelo fou definido, mostra a variável alvo, ou seja, o
+			# valor predito por ele (nos noso)
 			print("➡️ Nome da variável alvo usada para treinar o modelo o modelo "
 			      f"para predizer os tempos de execução: {self.predicted_time_name}")
+
+		# Mostra, em ordem crescente, todos os valores diferentes, no 
+		# conjunto de dados self.dataset, de cada uma das variáveis de
+		# configuração. É um dicionário em que cada chave é uma das
+		# variáveis de configuração e o valor é uma referência para uma
+		# lista com os valores diferentes.		
 		print("➡️ Valores diferentes para as variáveis de configuração usadas ao "
 		      f"treinar o(s) modelo(s): {self.suggestion_params}")
+
+		# Mostra, em ordem crescente, todos os valores diferentes, no 
+		# conjunto de dados self.dataset, de cada uma das variáveis da
+		# aplicação. É um dicionário em que cada chave é uma das
+		# variáveis da aplicação e o valor é uma referência para uma lista
+		# com os valores diferentes.		
 		print("➡️ Valores diferentes para as variáveis da aplicação usadas ao "
 		      "treinar o(s) modelo(s) (podem ser as variáveis passadas pelo "
 					f"usuário e as convertidas): {self.application_params}")
+
+		# Mostra, em ordem crescente, todos os valores diferentes, no 
+		# conjunto de dados self.dataset, de cada uma das variáveis que
+		# definem os grupos. É um dicionário em que cada chave é uma das
+		# variáveis que definem os grupos e o valor é uma referência para
+		# uma lista com os valores diferentes.		
 		print("➡️ Valores diferentes para as variáveis da aplicação usadas para "
 		      f"definir os grupos da validação LOGO: {self.user_params}")
+
+		# Mostra as restrições que devem ser respeitadas pelas 
+		# configurações, quando elas são geradas a partir de uma lista de
+		# valores para cada variável de configuração definida pelo usuário.
 		print("➡️ Restrições às configurações customizadas definidas na "
 		      "configuração da aplicação:")
+
+		# O campo self.restrictions é uma lista de dicionários definindo
+		# as restrições, se foi inicializado pela função set_restrictions.
+		# Por default, é None. Então, pçrecisamos verificar antes de gerar
+		# as impressões, se self.restrictions é diferente de None.
 		if self.restrictions is not None:
-			for restriction in self.restrictions.keys():
+			# COmo self.restrictions não é None, então ele será ua lista de
+			# dicionários, sendo em que cada elemento define um dicionário com
+			# as configurações de uma restrição. Para imprimir as informações
+			# das restrições, vamos então imprimir as informações de cada 
+			# dicionário da lista self.restrictions.
+			for restriction in self.restrictions:
+				# Vamos imprimiir as informações do dicionário restriction
+				# representando uma restrição. Como vimos na descrição da
+				# função set_restrictions, são três chaves:
+				# 
+				# "name": nome dado à restrição.
+				# "operation": Define a operação a ser executada para fazrr a
+				#              filtragem.
+				# "result" : Define como a filtragem deve ser feita.
 				print(f"➖➡️ Restrição: {restriction.name}")
-				print(f"➖➖➡️ Checagem: {restriction.check}")
 				print(f"➖➖➡️ Operação: {restriction.operation}")
 				print(f"➖➖➡️ Resultado: {restriction.result}")
 							
