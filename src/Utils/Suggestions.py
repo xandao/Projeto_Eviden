@@ -10,6 +10,7 @@ import sklearn.preprocessing as skpp
 import pickle
 import itertools
 from sklearn.base import BaseEstimator
+from functools import partial
 
 def min_edp_config_diff(y_true, y_pred):
 	"""
@@ -2108,7 +2109,7 @@ class SuggestionsPredictor:
 		"name": Nome dado à restrição, usado somente no momento como um 
 		        identificador ao imprimir as informações da restrição.
 		"operation": Define a operação a ser executada. A chave aponta para
-		             uma tupla em que o primeiro elemento é uma string 
+		             uma lista em que o primeiro elemento é uma string 
 								 identificando a operação e as os outros elementos os
 								 operandos dessa operação. Como a operaç]ao é aplicada
 								 sobre colunas do DataFrame gerando uma coluna, o
@@ -2125,7 +2126,7 @@ class SuggestionsPredictor:
 												correspodentes das colunas do DataFrame descrito
 												anterioemente, cujos nomes são definidos pelo
 												segundo e terceiro elementos da tupla.
-		"result": Tupla com dois valores, o primeiro a checagem a ser feita
+		"result": Lista com dois valores, o primeiro a checagem a ser feita
 		          ao filtrar as configurações inválidas e o segundo o nome 
 							da coluna do DataFrame descrito anteriormente que será
 							usada para calcular o valor da checagem, ou o valor usado
@@ -2199,16 +2200,118 @@ class SuggestionsPredictor:
 
 		# Define as funções internas auxiliares, para executar as operações
 		# "copy", "mul" e a função usada para uma operação inválida.
-		def mul(column_names):
-			pass
+		def mul_func(column_names):
+			# Verifica se foram passados pelo menos três elementos, o nome da
+			# operação e os dois operandos. Como a tupla colunm_names não tem
+			# primeiro elemento da tupla original, precisamos ter pelo menos
+			# dois elementos na tupla column_names. Se não existirem dois
+			# elementos, gera uma exceção ValueError.
+			if len(column_names) < 2:
+				# Como não temos dois elementos, ou nomes de colunas, em 
+				# column_names , gera uma exceção ValueError.
+				raise ValueError("A operação de mutiplicação das colunas cuja cluna "
+				                 "resultante é usada para filtrar as configurações "
+												 "custimizadas inválidas não tem os dois operandos "
+												 "necessários!")
 
-		def copy(column_names):
-			pass
+			# Define os nomes das colunas da operação em variáveis para
+			# facilitar o acesso, O nome da coluna com o primeiro operando (a
+			# posição 0 da tupla column_names), será armazenado em operando1 e
+			# o nome da coluna com o segundo operando (a posição 1 da tupla
+			# column_names) em operando2.
+			operando1 = column_names[0]
+			operando2 = column_names[1]
 
-		def invalid_operation(operation):
-			raise ValueError(f"Foi encontrada uma operação {operation} inválida ao "
-			                 "filtrar as configurações customizadas do usuário do "
-											 "script de otimização!")
+			# Agora precisamos verificar se os nomes dos operandos são colunas
+			# do DataFrame X passado para a função principal. Vamos primeiro
+			# verificar se operando1 é uma coluna de X. Se não for uma coluna 
+			# de X, gera uma exceção de KeyError.
+			if operando1 not in X.columns:
+				# Como o nome da coluna dado em operando1 é inválida, geramos
+				# uma exceção KeyError.
+				raise KeyError(f"A coluna {operando1} não existe no DataFrame com as "
+				               "configurações custmizadas, ou seja, não é um nome "
+											 "válido de uma das componentes de uma configuração!")
+
+			# Agora vamos verificar se operando2 é uma coluna de X. Se não for 
+			# uma coluna de X, gera uma exceção de KeyError.
+			if operando2 not in X.columns:
+				# Como o nome da coluna dado em operando2 é inválida, geramos
+				# uma exceção KeyError.
+				raise KeyError(f"A coluna {operando2} não existe no DataFrame com as "
+				               "configurações customizadas, ou seja, não é um nome "
+											 "válido de uma das componentes de uma configuração!")
+
+			# Calcula o produto das colunas, cujos nomes são passados em 
+			# operando1 e operando2, e armazena o resultado em result, que 
+			# será um objeto da classe Series do Pandas com a mesma indexação
+			# do DataFrame X.
+			result = X[operando1] * X[operando2]
+
+			# Retorna o resultado da operação "mul", ou seja, o produto das
+			# colunas operando1 e operando2 de X, que foi arnazenado em
+			# result.
+			return result
+
+		def copy_func(column_names):
+			# Verifica se foram passados pelo menos três elementos, o nome da
+			# operação e os dois operandos. Como a tupla colunm_names não tem
+			# primeiro elemento da tupla original, precisamos ter pelo menos
+			# dois elementos na tupla column_names. Se não existirem dois
+			# elementos, gera uma exceção ValueError.
+			if len(column_names) < 1:
+				# Como não temos pelo menos um elemento, ou um nome de coluna, 
+				# em column_names , gera uma exceção ValueError.
+				raise ValueError("A operação de cópia de uma coluna rtornando essa "
+				                 "coluna que será usada para filtrar as configurações "
+												 "customizadas inválidas não tem o operando "
+												 "necessário!")
+
+			# Define o nome da colunas da operação em uma variável para
+			# facilitar o acesso, O nome da coluna com o primeiro e único 
+			# operando (a posição 0 da tupla column_names), será armazenado 
+			# em operando
+			operando = column_names[0]
+
+			# Agora precisamos verificar se o nome do operando é uma coluna
+			# do DataFrame X passado para a função principal. Se não for uma 
+			# coluna de X, gera uma exceção de KeyError.
+			if operando not in X.columns:
+				# Como o nome da coluna dado em operando1 é inválida, geramos
+				# uma exceção KeyError.
+				raise KeyError(f"A coluna {operando} não existe no DataFrame com as "
+				               "configurações customizadas, ou seja, não é um nome "
+											 "válido de uma das componentes de uma configuração!")
+
+			# Retorna o resultado da operação "copy", ou seja, a própria 
+			# coluna com o nome operando de X.
+			return X[operando].copy()
+
+		def invalid_operation_func(operation):
+			# Como esta função foi criada para gerar a exceção de operação
+			# inválida, então geramos uma exceção KeyError.
+			raise KeyError(f"Foi encontrada uma operação {operation} inválida ao "
+			                "filtrar as configurações customizadas do usuário do "
+											"script de otimização!")
+
+		#	Dicionário, armazenado em conversion_function_types, cujas chaves
+		# são as possíveis operações e, para cada chave, a referência para
+		# a função que executa a operação. O partial é usado porque as
+		# #funções possuem parâmetros diferentes. 							 
+		conversion_function_types = {
+			'mul': partial(mul_func, *operation_args),
+			'copy': partial(copy_func, *operation_args),
+			'invalid': partial(invalid_operation_func, operation_type)
+    }
+
+		# Dicionário, armazenado em checking_function_types, que define as
+		# checagens. Como as checagebs tem os mesmos argumentos, de fato são
+		# as funções min (para a checagem "min") e max (para a checagem 
+		# "max") do Python, então aqui não foi necessário usar o partial.
+		checking_function_types = {
+			'min': min,
+			'max': max
+		}
 
 		# Verifica se foi definida uma lista com as restrições para as
 		# configurações customizadas da aplicação.
@@ -2235,9 +2338,176 @@ class SuggestionsPredictor:
 			for restriction in self.restrictions:
 				# Vamos avaliar a restrição definida pelo dicioário restriction.
 				# Priemriamente precisamos calcular o resultado da operação
-				# definidq pela chave "operation". Temos no momento duas
-				# operações, mul e copy, que  
-				pass
+				# definida pela chave "operation". Primeiramente, para
+				# facilitar o acesso, vamos armazenar a lista da chave 
+				# 'operation' do dicionário restriction na variável operation.
+				operation = self.restrictions['operation']
+
+				# Verifica se operation é uma lista ou tupla e, se não for, gera
+				# uma exceção TypeError informando sobre o erro.
+				if not isinstance(operation, (tuple, list)):
+					# Como o tipo de operation não é uma tupla ou lista, gera uma
+					# exceção TypeError.
+					raise TypeError(f"O tipo do objeto com a operação a ser feita, "
+					                f"{type(operation)} é inválido. Deveria ser list ou "
+													"tuple!")
+
+				# Verifica se a lista operationtem pelo menos um elemento, a 
+				# operação e, se não tiver, ou seja, se for vazia, gera uma
+				# exceção ValueError informando a falta da operação.
+				if len(operation) == 0:
+					raise ValueError("A lista ou tupla operation está vazia ("
+					                 f"({operation}). Logo, não temos uma operação "
+													 "definida!")
+
+				# Temos no momento duas operações, mul e copy, a primeira que 
+				# multiplica duas colunas do DataFrame X e a segunda, copy, que
+				# copia uma das colunas do DataFrame X. A operação é o primeiro
+				# elemento da tupla definida pela chave 'operation' do
+				# dicionário restriction, que iremos armazenar em operation_type.
+				operation_type = operation[0]
+
+				# Os outros elementos da lista definida pela chave 'operation'
+				# do dicionário restriction são os parâmerros da operação.
+				operation_args = operation[1:]
+
+				# Agora, usando operation_type como chave para o dicionário com
+				# as funções que executam as operações, vamos executar a 
+				# operação chamando a função definida por essa chave no 
+				# dicionário conversion_function_types, se a operação for válida 
+				# (no momento, "mul" ou "copy"), ou a função definida pela chave 
+				# 'invalid' desse dicionário, que gera uma exceçao KeyError com
+				# o nome da operação inválido.
+				result_column = conversion_function_types.get(
+					operation_type, conversion_function_types['invalid']
+				)()
+
+				# Agora que obtivemos a coluna resultante da operação e a 
+				# armazenamos em result_column, vamos agora usar o campo 
+				# 'result' do dicionário restriction pra ver se desejamos 
+				# excluir todas as configurações com valores corresppondentes
+				# em result_column maiores do que o valor definido pela tupla
+				# da chave 'result'. Para facilitar o acesso, vamos armazenar
+				# a lista ou tupla da chave 'result' em check_result.
+				check_result = restriction['result']
+
+				# Verifica se check_result é uma lista ou tupla e, se não for, 
+				# gera uma exceção TypeError informando sobre o erro.
+				if not isinstance(check_result, (tuple, list)):
+					# Como o tipo de check_result não é uma tupla ou lista, gera
+					# uma exceção TypeError.
+					raise TypeError(f"O tipo do objeto com a checagem a ser feita, "
+					                f"{type(check_result)} é inválido. Deveria ser list "
+													"ou tuple!")
+
+				# Verifica se a lista check_result tem pelo menos um elemento, a 
+				# checagem e, se não tiver, ou seja, se for vazia, gera uma
+				# exceção ValueError informando a falta da operação.
+				if len(check_result) == 0:
+					raise ValueError("A lista ou tupla check_result está vazia ("
+					                 f"({check_result}). Logo, não temos uma checagem "
+													 "definida!")
+
+				# Temos no momento duas checagens, min e max, a primeira, min, 
+				# filtra todas configurações para as quais o valor corrspondente
+				# em result_column é menor do que o valor do operando da 
+				# checagem, ou max, que filtra todas configurações para as quais 
+				# o valor corrspondente em result_column é maior do que o valor 
+				# do operando da checagem. A checagem a ser feita é armazenada
+				# em checking_type.
+				checking_type = check_result[0]
+
+				# Os outros elementos da lista definida pela chave 'result'
+				# do dicionário restriction são os parâmerros da checagem.
+				checking_args = check_result[1:]
+
+				# Como temos a checagem a ser feita, verifica agora se ela é
+				# válida. Como temos somente duas possibilitdos, "min" e "max",
+				# verificamos se checking_type é a string "min" ou a string
+				# "max".
+				if checking_type not in ["min", "max"]:
+					raise ValueError(f"A checagem tem um valor inválido {checking_type} "
+					                 "para a checagem!")
+
+				# Verifica se foi passados pelo menos um elementos em , o nome da
+				# operação e os dois operandos. Como a tupla colunm_names não tem
+				# primeiro elemento da tupla original, precisamos ter pelo menos
+				# dois elementos na tupla column_names. Se não existirem dois
+				# elementos, gera uma exceção ValueError.
+				if len(checking_args) < 1:
+					# Como não temos pelo menos um elemento, ou um nome de coluna, 
+					# ou um valor, gera uma exceção ValueError.
+					raise ValueError("A operação de checagem precisa de um nome de uma "
+					                 "componente de uma configuração ou um valor "
+													 "armazenado em uma string!")
+
+				# Como existe um operando para a checagem, armazenamos ele ma
+				# veriável cheking_operand.
+				checking_operand = checking_args[0]
+
+				# Verifica se a string do cheking_operand é um número inteiro
+				# positivo ou uma string, que vamos supor ser um nome de uma
+				# coluna de X.
+				if checking_operand.isdigit():
+					# O operando é um número inteiro positivo. Logo, convertemos
+					# ele para o valor a ser verificado e armazena o inteiro em
+					# check_value.
+					check_value = int(checking_operand)
+				else:
+					# Como cheking_operand não é um npumero inteiro positivo 
+					# representado em uma string, valos supor que ele é uma coluna
+					# de X > Primeiramente, precisamos verificar se pe uma coluna
+					# que existe em X.
+					if checking_operand not in X.columns:
+						# Como o nome da coluna dado em checking_operand é inválida, 
+						# geramos uma exceção KeyError.
+						raise KeyError(f"A coluna {checking_operand} não existe no "
+						               "DataFrame com as configurações customizadas, ou "
+													 "seja, não é um nome válido de uma das componentes "
+													 "de uma configuração!")
+
+					# Como checking_operand é uma coluna que existe em X, então o
+					# valor será o valor mínino da coluna, se cheking_operand for 
+					# "min", ou o valor máximo desta coluna,	se cheking_operand 
+					# for "max". O valor será armazenado em check_value e, para
+					# fazer a operação correta, usamos o dicionário 
+					# checking_function_types com as funções de checagem.
+					check_value = checking_function_types[checking_type](
+						X[checking_operand]
+					)
+
+					# Agora que obtivemos o valor, basta desconbir quais linhas
+					# de result_column são menores (se a checagem for "min") ou
+					# maiores (se a checagem for "max") do que o valor 
+					# check_value, e marcar as configurações associadas a essas
+					# linhas como inválidas.
+					if checking_type == "min":
+						# Como checking_type é "min", então filtramos todas as 
+						# colunas com valores menores do que check_value.
+						filter_restriction = result_column < check_value
+					else: 	
+						# Como checking_type é "max", então filtramos todas as 
+						# colunas com valores maiores do que check_value.
+						filter_restriction = result_column > check_value
+
+					# Atualiza o filtro geral armazenado em valid_configurations
+					# com o filtro gerado pela restrição definida pelo dicionário
+					# restriction.
+					valid_configurations = valid_configurations & filter_restriction
+
+			# Depois de avaliar todas a lista de restrições das configurações
+			# customizadas da aplicação, basta aplicar o filtro 
+			# valid_configurations à X, gerando o novo X.
+			new_X = X[valid_configurations].copy()
+
+			# O novo DataFrame X_excluded será as colunas que foram filtradas
+			# logo, para obter este DataFrame, basta negar o filtro.
+			X_excluded = X[~valid_configurations].copy()
+
+			# Retorma o novo DataFrame new_X, com as configurações que
+			# satisfazem as restrições de configuração da aplicação, e o 
+			# DataFrame X_excluded com as configurações excluídas.
+			return new_X, X_excluded
 		else:
 			# Como não existem restrições de configurações para aplicação,
 			# então retornamos o próprio DataFrame X com todas as

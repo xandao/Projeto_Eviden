@@ -1652,6 +1652,25 @@ def convert_user_params(required_applicaion_params, conversions,
       # retornamos None.
       return None
 
+  def invalid_func(operatiun_type):
+    """
+    Função para gerar um erro se o nome que identifica a conversão for 
+    inválido. A função gera uam exceçao KeyError para informar que
+    existe um erro no arquivo de configuração da aplicação, pois a 
+    operação de conversão não existe.
+
+    Parêmetros:
+      operation_type (str): Nome incorreto da operação de conversão.
+
+    Retorna:
+      Não tem retorno, acredito que não seja None devido à exceção ter
+      sido gerada.
+    """
+
+    # Gera uma exceção para indicar que a opeação de conversão é
+    # inválida.
+    raise KeyError(f"A operação de conversão {operatiun_type} é inválida!")
+
   # Agora vamos começar o código da função principal, que usará as
   # outras funções auxiliares definidas anteriormente
 
@@ -1688,6 +1707,24 @@ def convert_user_params(required_applicaion_params, conversions,
     # usuário na lista com as converões.
     converted_user_params = {}
 
+    # Dicionário auxilar usado para executar as funções de conversão,
+    # sendo que a função partial do Python é usada para executar a
+    # função quando não desejamos invocar a função no momento da sua
+    # definição, no caso, da associação da função à chave que
+    # identifica a conversão. Isso foi feito para facilitar a adicição
+    # de novas funções de conversão que sejam necessárias nu futuro,
+    # sem necessitar o uso de uma sequência if-elif-...-elif-else que
+    # dependeria de quantas conversões existem, ou do uso da nova
+    # estrutura match-case do Pythom que somente existe após a versão
+    # 3.10 da linguagem. O dicionário é armazenado na variável
+    # conversion_function_types.
+    conversion_function_types = {
+      'copy': partial(copy_func, *conversion_args),
+      'filesize': partial(filesize_func, *conversion_args),
+      'map':  partial(map_func, variable, *conversion_args),
+      'invalid': partial(invalid_func, conversion_type)
+    }
+
     # Agora vamos tratar de cada uma das conversões dadas no dicionário 
     # conversions. Para isso, como conversions é um dicionário em que
     # cada chave é o nome da variável de aplicação a ser convertida a
@@ -1712,38 +1749,23 @@ def convert_user_params(required_applicaion_params, conversions,
       # conversion_type.
       conversion_args = conversion_info[1:]
 
-      # Dicionário auxilar usado para executar as funções de conversão,
-      # sendo que a função partial do Python é usada para executar a
-      # função quando não desejamos invocar a função no momento da sua
-      # definição, no caso, da associação da função à chave que
-      # identifica a conversão. Isso foi feito para facilitar a adicição
-      # de novas funções de conversão que sejam necessárias nu futuro,
-      # sem necessitar o uso de uma sequência if-elif-...-elif-else que
-      # dependeria de quantas conversões existem, ou do uso da nova
-      # estrutura match-case do Pythom que somente existe após a versão
-      # 3.10 da linguagem. O dicionário é armazenado na variável
-      # conversion_types
-      conversion_types = {
-        'copy': partial(copy_func, *conversion_args),
-        'filesize': partial(filesize_func, *conversion_args),
-        'map':  partial(map_func, variable, *conversion_args),
-      }
-
-      # Como cada chave do dicionário conversion_types associa o nome da
-      # conversão a uma função a ser executada, então usamos a chave 
-      # conversion_type, com o nome da conversão, para executar a função
-      # correta de conversão. Note que após acessar o diretório, usamos
-      # os parênteses de chamada de uma função sem parâmetros. Este é o
-      # modo de chamar uma função definida pelp partial quando não são
-      # necessaŕios parâmetros adicionais além dos definidos quando o
-      # partial foi usado. O valor retornado pela conversão correta é
-      # armazenado em converted_value. Note que uma conversão
+      # Como cada chave do dicionário conversion_function_types associa 
+      # o nome da conversão a uma função a ser executada, então usamos a
+      # chave conversion_type, com o nome da conversão, para executar a
+      # função correta de conversão. Note que após acessar o diretório,
+      # usamos os parênteses de chamada de uma função sem parâmetros.
+      # Este é o modo de chamar uma função definida pelp partial quando
+      # não são necessaŕios parâmetros adicionais além dos definidos
+      # quando o partial foi usado. O valor retornado pela conversão
+      # correta é armazenado em converted_value. Note que uma conversão
       # inexistente, que seria um erro no arquivo de configuração da
       # aplicação para a qual o usuário deseja otimizar, irá gerar uma
       # exceção KeyErro que será capturada e o erro reportado ao
       # usuário, recomendando que ele entre em contato com o suporte
-      # responsável pelo script.
-      converted_value = conversion_types[conversion_type]()
+      # responsável pelo script. Se a conversão não existir, usa a
+      # função invalid_func que gera uma exceção.
+      converted_value = conversion_function_types.get(
+        conversion_type, converted_value['invalid'])()
 
       # Se a função de conversão retornar none para uma das variáveis de
       # aplicação a serem convertidas, paramos o processo de conversão e 
