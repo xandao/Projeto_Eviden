@@ -2200,7 +2200,7 @@ class SuggestionsPredictor:
 
 		# Define as funções internas auxiliares, para executar as operações
 		# "copy", "mul" e a função usada para uma operação inválida.
-		def mul_func(column_names):
+		def mul_func(*column_names):
 			# Verifica se foram passados pelo menos três elementos, o nome da
 			# operação e os dois operandos. Como a tupla colunm_names não tem
 			# primeiro elemento da tupla original, precisamos ter pelo menos
@@ -2253,7 +2253,7 @@ class SuggestionsPredictor:
 			# result.
 			return result
 
-		def copy_func(column_names):
+		def copy_func(*column_names):
 			# Verifica se foram passados pelo menos três elementos, o nome da
 			# operação e os dois operandos. Como a tupla colunm_names não tem
 			# primeiro elemento da tupla original, precisamos ter pelo menos
@@ -2294,16 +2294,6 @@ class SuggestionsPredictor:
 			                "filtrar as configurações customizadas do usuário do "
 											"script de otimização!")
 
-		#	Dicionário, armazenado em conversion_function_types, cujas chaves
-		# são as possíveis operações e, para cada chave, a referência para
-		# a função que executa a operação. O partial é usado porque as
-		# #funções possuem parâmetros diferentes. 							 
-		conversion_function_types = {
-			'mul': partial(mul_func, *operation_args),
-			'copy': partial(copy_func, *operation_args),
-			'invalid': partial(invalid_operation_func, operation_type)
-    }
-
 		# Dicionário, armazenado em checking_function_types, que define as
 		# checagens. Como as checagebs tem os mesmos argumentos, de fato são
 		# as funções min (para a checagem "min") e max (para a checagem 
@@ -2341,7 +2331,7 @@ class SuggestionsPredictor:
 				# definida pela chave "operation". Primeiramente, para
 				# facilitar o acesso, vamos armazenar a lista da chave 
 				# 'operation' do dicionário restriction na variável operation.
-				operation = self.restrictions['operation']
+				operation = restriction['operation']
 
 				# Verifica se operation é uma lista ou tupla e, se não for, gera
 				# uma exceção TypeError informando sobre o erro.
@@ -2370,6 +2360,16 @@ class SuggestionsPredictor:
 				# Os outros elementos da lista definida pela chave 'operation'
 				# do dicionário restriction são os parâmerros da operação.
 				operation_args = operation[1:]
+
+				#	Dicionário, armazenado em conversion_function_types, cujas chaves
+				# são as possíveis operações e, para cada chave, a referência para
+				# a função que executa a operação. O partial é usado porque as
+				# #funções possuem parâmetros diferentes. 							 
+				conversion_function_types = {
+					'mul': partial(mul_func, *operation_args),
+					'copy': partial(copy_func, *operation_args),
+					'invalid': partial(invalid_operation_func, operation_type)
+				}
 
 				# Agora, usando operation_type como chave para o dicionário com
 				# as funções que executam as operações, vamos executar a 
@@ -2476,33 +2476,33 @@ class SuggestionsPredictor:
 						X[checking_operand]
 					)
 
-					# Agora que obtivemos o valor, basta desconbir quais linhas
-					# de result_column são menores (se a checagem for "min") ou
-					# maiores (se a checagem for "max") do que o valor 
-					# check_value, e marcar as configurações associadas a essas
-					# linhas como inválidas.
-					if checking_type == "min":
-						# Como checking_type é "min", então filtramos todas as 
-						# colunas com valores menores do que check_value.
-						filter_restriction = result_column < check_value
-					else: 	
-						# Como checking_type é "max", então filtramos todas as 
-						# colunas com valores maiores do que check_value.
-						filter_restriction = result_column > check_value
+				# Agora que obtivemos o valor, basta desconbir quais linhas
+				# de result_column são menores (se a checagem for "min") ou
+				# maiores (se a checagem for "max") do que o valor 
+				# check_value, e marcar as configurações associadas a essas
+				# linhas como inválidas.
+				if checking_type == "min":
+					# Como checking_type é "min", então filtramos todas as 
+					# colunas com valores menores do que check_value.
+					filter_restriction = result_column >= check_value
+				else: 	
+					# Como checking_type é "max", então filtramos todas as 
+					# colunas com valores maiores do que check_value.
+					filter_restriction = result_column <= check_value
 
-					# Atualiza o filtro geral armazenado em valid_configurations
-					# com o filtro gerado pela restrição definida pelo dicionário
-					# restriction.
-					valid_configurations = valid_configurations & filter_restriction
+				# Atualiza o filtro geral armazenado em valid_configurations
+				# com o filtro gerado pela restrição definida pelo dicionário
+				# restriction.
+				valid_configurations = valid_configurations & filter_restriction
 
 			# Depois de avaliar todas a lista de restrições das configurações
 			# customizadas da aplicação, basta aplicar o filtro 
 			# valid_configurations à X, gerando o novo X.
-			new_X = X[valid_configurations].copy()
+			new_X = X[valid_configurations].copy().reset_index(drop=True)
 
 			# O novo DataFrame X_excluded será as colunas que foram filtradas
 			# logo, para obter este DataFrame, basta negar o filtro.
-			X_excluded = X[~valid_configurations].copy()
+			X_excluded = X[~valid_configurations].copy().reset_index(drop=True)
 
 			# Retorma o novo DataFrame new_X, com as configurações que
 			# satisfazem as restrições de configuração da aplicação, e o 
@@ -3463,10 +3463,35 @@ class SuggestionsPredictor:
 				# "operation": Define a operação a ser executada para fazrr a
 				#              filtragem.
 				# "result" : Define como a filtragem deve ser feita.
-				print(f"➖➡️ Restrição: {restriction.name}")
-				print(f"➖➖➡️ Operação: {restriction.operation}")
-				print(f"➖➖➡️ Resultado: {restriction.result}")
+				print(f"➖➡️ Restrição: {restriction['name']}")
+				print(f"➖➖➡️ Operação: {restriction['operation']}")
+				print(f"➖➖➡️ Resultado: {restriction['result']}")
 							
+	@classmethod
+	def print_excluded_configurations(cls, info_suggestion, suggestion_map=None):
+		"""
+		"""
+		X_excluded = info_suggestion['X_excluded']
+		if X_excluded is not None:
+			print("⚠️ Configurações inválidas segundo a configuração da aplicação "
+			      f"que foram descartadas ({len(X_excluded)} configurações):")
+			for invalid_configuration in range(0, len(X_excluded)):
+				invalid_configuration_dict = X_excluded.loc[
+					invalid_configuration
+				].to_dict()
+				if suggestion_map is None:
+					formatted_configruation = ", ".join(
+							f"{k}={v}" for k, v in invalid_configuration_dict.items()
+					)
+				else:
+					formatted_configruation = ", ".join(
+							f"{suggestion_map[k]}={v}"
+							for k, v in invalid_configuration_dict.items()
+					)
+				print(f"➖⚠️ {formatted_configruation}")
+
+			
+
 	@classmethod
 	def print_suggestion(cls, info_suggestion, show_score=False, show_X=False, 
 											 show_y_pred=False, show_time=False, 

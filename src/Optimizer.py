@@ -1707,24 +1707,6 @@ def convert_user_params(required_applicaion_params, conversions,
     # usuário na lista com as converões.
     converted_user_params = {}
 
-    # Dicionário auxilar usado para executar as funções de conversão,
-    # sendo que a função partial do Python é usada para executar a
-    # função quando não desejamos invocar a função no momento da sua
-    # definição, no caso, da associação da função à chave que
-    # identifica a conversão. Isso foi feito para facilitar a adicição
-    # de novas funções de conversão que sejam necessárias nu futuro,
-    # sem necessitar o uso de uma sequência if-elif-...-elif-else que
-    # dependeria de quantas conversões existem, ou do uso da nova
-    # estrutura match-case do Pythom que somente existe após a versão
-    # 3.10 da linguagem. O dicionário é armazenado na variável
-    # conversion_function_types.
-    conversion_function_types = {
-      'copy': partial(copy_func, *conversion_args),
-      'filesize': partial(filesize_func, *conversion_args),
-      'map':  partial(map_func, variable, *conversion_args),
-      'invalid': partial(invalid_func, conversion_type)
-    }
-
     # Agora vamos tratar de cada uma das conversões dadas no dicionário 
     # conversions. Para isso, como conversions é um dicionário em que
     # cada chave é o nome da variável de aplicação a ser convertida a
@@ -1749,6 +1731,24 @@ def convert_user_params(required_applicaion_params, conversions,
       # conversion_type.
       conversion_args = conversion_info[1:]
 
+      # Dicionário auxilar usado para executar as funções de conversão,
+      # sendo que a função partial do Python é usada para executar a
+      # função quando não desejamos invocar a função no momento da sua
+      # definição, no caso, da associação da função à chave que
+      # identifica a conversão. Isso foi feito para facilitar a adicição
+      # de novas funções de conversão que sejam necessárias nu futuro,
+      # sem necessitar o uso de uma sequência if-elif-...-elif-else que
+      # dependeria de quantas conversões existem, ou do uso da nova
+      # estrutura match-case do Pythom que somente existe após a versão
+      # 3.10 da linguagem. O dicionário é armazenado na variável
+      # conversion_function_types.
+      conversion_function_types = {
+        'copy': partial(copy_func, *conversion_args),
+        'filesize': partial(filesize_func, *conversion_args),
+        'map':  partial(map_func, variable, *conversion_args),
+        'invalid': partial(invalid_func, conversion_type)
+      }
+
       # Como cada chave do dicionário conversion_function_types associa 
       # o nome da conversão a uma função a ser executada, então usamos a
       # chave conversion_type, com o nome da conversão, para executar a
@@ -1765,7 +1765,7 @@ def convert_user_params(required_applicaion_params, conversions,
       # responsável pelo script. Se a conversão não existir, usa a
       # função invalid_func que gera uma exceção.
       converted_value = conversion_function_types.get(
-        conversion_type, converted_value['invalid'])()
+        conversion_type, conversion_function_types['invalid'])()
 
       # Se a função de conversão retornar none para uma das variáveis de
       # aplicação a serem convertidas, paramos o processo de conversão e 
@@ -3727,7 +3727,6 @@ def optimize_application(configs_file_path, system_config, application_config,
                                           custom_suggestions, 
                                           verbose=DEBUG_CODE)
 
-
     # Cria um dicionário reversed_suggestions_map com o mapeamento
     # reverso para a impressão das informaçoes da melhor sugestão de 
     # configuração a partir do dicionário suggestions_map, ou seja, para
@@ -3743,6 +3742,20 @@ def optimize_application(configs_file_path, system_config, application_config,
     reversed_suggestions_map = {
       v:k for k, v in suggestions_map.items()
     }
+
+    # Imprime as possíveis, se existirem, configurações customizadas que
+    # foram excluídas porque violavam as condições de configruação da
+    # aplicação. Isso somente ocorre se o usuário definiu as 
+    # configurações customizadas (não deveria ocorrer com as 
+    # configurações não customizadas, pois a função de filtragem 
+    # check_configurations somente é chamada, durante os processaementos
+    # feitos pela função get_suggestion, somente quando as componentes
+    # de uma configuração são customizados pelo usuário).
+    if custom_suggestions is not None:
+      SuggestionsPredictor.print_excluded_configurations(
+        suggestion, 
+        suggestion_map=reversed_suggestions_map 
+    )
 
     # Agora vamor processar as opções do script de otimização que
     # definem o que deve ser feito com a melhor sugestão de configuração
@@ -3952,9 +3965,6 @@ def optimize_application(configs_file_path, system_config, application_config,
       # então não devemos salvar o script.
       script_file_name = None
 
-
-#    if user_args.run:
-
     if user_args.run:
       job_id = submit_submission_script(script_file_name, 
                                         template_content, 
@@ -3976,6 +3986,8 @@ def optimize_application(configs_file_path, system_config, application_config,
                         required_applicaion_params, 
                         user_application_params,
                         application_args[1:], job_id)
+
+    predictor.get_object_info()    
 
     # Como conseguimos fazer todo o processamento, ou sejam obter a 
     # melhor sugestão de configuração, gerar o script de submissão,
