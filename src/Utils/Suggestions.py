@@ -3470,24 +3470,123 @@ class SuggestionsPredictor:
 	@classmethod
 	def print_excluded_configurations(cls, info_suggestion, suggestion_map=None):
 		"""
+		Método da classe para imprimir as configurações de execução que
+		foram excluídas devido a violarem as condições de configuração para
+		a aplicação definidas pela lista de dicionários referenciada pela
+    chave "custom_restrictions" do dicionário com as configurações da
+		aplicação a ter a sua execução otimizada. Existirão configurações
+		excluídas somente se o usuário customizou as configurações de
+		execução, e se existe pelo menos uma configuração que violou uma das
+		condições de configuração definidas no arquivo de configuração da
+		aplicação. Se existirem essas configurações, a função irá mostrar,
+		de moodo intuitivo e usando o mapeamento dado pelo dicionário
+		suggestion_map, se for passado (ou seja, se não for None), a lista
+		de configurações que foram descartadas devido a violarem uma ou mais
+		das condições de configuração da aplicação. As configurações
+		descartadas são definidas pela chave 'X_exclueded', que é um
+		DataFrame do Pandas em que as linhas são as componentes da
+		configruação (por exemplo, número de nós, processos por nó e threads
+		por processo), e cada linha representa uma configuração
+		desconsiderada por violar uma ou mais condições de configuração da
+		aplicação.
+
+		Parâmetros
+			info_suggestion (dict): Dicionário com as informações sobre a
+															melhor sugestão de configuração, retornado
+															pela função get_suggestion.	
+			suggestion_map (dict): Dicionário que mapeia os nomes das
+														 variáveis de configuração para nomes mais 
+														 amigáveis, que serão usados na impressão da
+														 sugestão de configuração.
+
+		Retorna:
+			Não tem retorno (retorna None).
 		"""
+
+		# Para faciliar o acesso, armazena a referência ao objeto com o 
+		# DataFrame do Pandas com as configurações excluídas na variãvel
+		# X_excluded se existem configurações excluídas ou None caso não
+		# existam configurações excluídas, sendo que o DataFrame ou o 
+		# valor None são refernciados pela chave 'X_excluded' de 
+		# info_suggestion. Não existirão configuraçõe excluídas se o usuário
+		# não customiou as componentes da configuração, ou se nenhuma
+		# configuração customizada violou as condições de configuração da
+		# aplicação. 
 		X_excluded = info_suggestion['X_excluded']
+
+		# Inicialmente precisamos verificar se realmente existem
+		# conigurações excluídas, ou seja, se e_excluded não é None. 
 		if X_excluded is not None:
+			# Armazena, para facilitar o acesso, o número total de 
+			# configurações que forem excluídas, que será o número de linhas
+			# do DataFrame, obtido pela chamada len(X_excluded) já que cada
+			# linha representa uma configuração excluída diferente e a função
+			# len aplicada sobre um DataFrame retorna o número de linhas do
+			# DataFrame.
+			total_excluded = len(X_excluded)
+
+			# Armazena, para facilitar o acesso, o número total de 
+			# configurações customizadas, Como a chave 'X_excluded' de
+			# info_suggestion referencia o DataFrame com as configurações
+			# excluídas, sendo as linhas as configurações e a chave 'X' 
+			# referencia o DataFrame do X usado como entrada para a predição
+			# do modelo auxiliar quando a melhor sugestão de configuraç]ao é
+			# escolhida, o número de linhas deste DataFrame será o número de
+			# configurações válidas. Logo, para obter o número total de
+			# configurações customizadas, basta somar o número de configuções
+			# excluídas, já definido na variável total_excluded, com o número
+			# de linhas do DataFrame referenciado pela chave 'X', usando a
+			# função len.
+			total_configurations = total_excluded + len(info_suggestion['X'])
+
+			# Como X_excluded não é None, então ele referencia um diciomário
+			# que terá pelo menos uma configuração excluída. Vamos
+			# inicialmente mostrar uma mensagem informando este fato e a
+			# quantidade de configurações customizadas que foram exluídas,
+			# que armazenados em total_excluded, a quantidade total de 
+			# configurações, que foi armazaneda em total_configurations, e a
+			# porcentagem de configurações ecluiídas.
 			print("⚠️ Configurações inválidas segundo a configuração da aplicação "
-			      f"que foram descartadas ({len(X_excluded)} configurações):")
-			for invalid_configuration in range(0, len(X_excluded)):
+			      f"que foram descartadas ({total_excluded}/{total_configurations} "
+						f"configurações ou {(total_excluded/total_configurations):.2%}):")
+
+			# Como X_excluded é um DataFrame em que as linhas são as
+			# configurações excluṕidas então, para mostra cada uma delas, 
+			# basta varrer o DataFrame por linhas, basta varrer o DataFrame
+			# por linhas e, para cada linha, imprimir as informações das 
+			# colunas, que são as componentes da configuração representada 
+			# pela linha.
+			for invalid_configuration in range(0, total_excluded):
+				# Converte o conteúdo da linha indexada por
+				# invalid_configuration, associada à configuração excluída que
+				# está sendo impressa arazenada nesta linha, em um dicionário
+				# em que cada chave será uma das componentes da configuração,
+				# e o valor será o valor desta componente na configuração, 
+				# usando os mesmos nomes das componentes do conjunto de dados
+				# usado ao gerar o preditor da aplicação.
 				invalid_configuration_dict = X_excluded.loc[
 					invalid_configuration
 				].to_dict()
+
+				# Verifica se o parâmetro opcional suggestion_map foi passado, 
+				# pois a impressão da configuração excluída dependerá deste
+				# parâmetro estar ou não definido.
 				if suggestion_map is None:
 					formatted_configruation = ", ".join(
 							f"{k}={v}" for k, v in invalid_configuration_dict.items()
 					)
 				else:
+					# Caso contrário, a melhor configuração excluída será impressa
+					# com os nomes amigáveis das variáveis de configuração
+					# mapeados pelo dicionário suggestion_map, os mesmos usados
+					# quando os usuários do script de otiização definem as opções
+					# que customizam as componentes de uma configuração,
 					formatted_configruation = ", ".join(
 							f"{suggestion_map[k]}={v}"
 							for k, v in invalid_configuration_dict.items()
 					)
+
+				# Imprime a configuração exclupida formatada.			
 				print(f"➖⚠️ {formatted_configruation}")
 
 			
@@ -3533,27 +3632,30 @@ class SuggestionsPredictor:
 		Retorna:
 			Não tem retorno (retorna None).
 		"""	
-    # Se o parâmetro opcional suggestion_map não for passado, ou seja, 
-		# for None, a sugestão de configuração será impressa com os nomes das
-		# variáveis de configuração. Caso contrário, a sugestão de 
-		# configuração será impressa com os nomes amigáveis das variáveis de 
-		# configuração mapeados pelo dicionário suggestion_map.
+
+		# Verifica se o parâmetro opcional suggestion_map foi passado, pois
+		# a impressão da melhor sugestão de configuração dependerá deste
+		# parâmetro estar ou não definido.
 		if suggestion_map is None:
+    # Como o parâmetro opcional suggestion_map não foi passado, a 
+		# melhor sugestão de configuração será impressa com os nomes das
+		# variáveis de configuração como estão nas colunas do conjunto de
+		# dados usado ao gerar o preditor paa a aplicação.
 			formatted_suggestion = ", ".join(
 					f"{k}={v}" for k, v in info_suggestion["Suggestion"].items()
 			)
 		else:
+			# Caso contrário, a melhor sugestão de configuração será impressa
+			# com os nomes amigáveis das variáveis de configuração mapeados
+			# pelo dicionário suggestion_map, os mesmos usados quando os
+			# usuários do script de otiização definem as opções que customizam
+			# as componentes de uma configuração,
 			formatted_suggestion = ", ".join(
 					f"{suggestion_map[k]}={v}"
 					for k, v in info_suggestion["Suggestion"].items()
 			)
 
-		# Imprime a sugestão de configuração formatada, a pontuação da 
-		# sugestão, o DataFrame com todas as configurações em X, o vetor 
-		# com os valores preditos da variável alvo do modelo auxiliar para 
-		# todas as configurações em X, e o tempo predito para a melhor 
-		# sugestão de configuração, dependendo dos parâmetros show_score, 
-		# show_X, show_y_pred e show_time.			
+		# Imprime a melhor sugestão de configuração formatada.			
 		print(f"➡️ Sugestão: {formatted_suggestion}")
 
 		# Se show_time for True, imprime o tempo predito para a melhor
