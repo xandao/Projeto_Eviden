@@ -619,7 +619,6 @@ class ReadUserConfig:
     "$schema": "https://json-schema.org",
     "type": "object",
     "required": [
-        "collect_consumed_energy", 
         "default_script_name", 
         "enable_submission_log", 
         "slurm" 
@@ -640,6 +639,22 @@ class ReadUserConfig:
                 "submission_message": {"type": "string"}
             }
         }
+    },
+    "custom_restrictions": {
+        "type": "array",
+        "items": {
+            "type": "object", 
+            "required": ["name", "operation", "result"],
+            "properties": {
+                "type": {"type": "string"},
+                "operation": {"type": "array", 
+                              "items": {"type": "string"}
+                              },
+                "result": {"type": "array", 
+                            "items": {"type": "string"}
+                          },
+            },
+        },
     }
   }  
   

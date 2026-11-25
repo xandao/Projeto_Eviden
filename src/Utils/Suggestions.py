@@ -2096,15 +2096,15 @@ class SuggestionsPredictor:
 
 	def set_restrictions(self, restrictions):
 		"""
-		Função para definir as restrições definidas pela aplicação para as
-		possíveis configurações que são obtidas pelos valores customizados
-		definidos pelos usuários no script de otimização. Cada restrição
-		irá faszer uma filtragem no DataFrame com todas as posíveis 
-		configurações definidas por todas as combinações das variáveis de
-		configuração custimizadas passadas pelo usuário pelas opções de
-		customização do script de otimização. A função recebe uma lista de
-		dicionários, com cada dicionário definindo uma restrição difernte, 
-		sendo que cada dicionário tem as seguintes chaves:
+		Função para definir as restrições definidas para as possíveis 
+		configurações que são obtidas pelos valores customizados definidos
+		pelos usuários no script de otimização. Cada restrição irá fazer uma
+		filtragem no DataFrame com todas as posíveis configurações definidas
+		por todas as combinações das variáveis de configuração custimizadas 
+		passadas pelo usuário pelas opções de customização do script de
+		otimização. A função recebe uma lista de dicionários, com cada
+		dicionário definindo uma restrição diferente, sendo que cada
+		dicionário tem as seguintes chaves:
 
 		"name": Nome dado à restrição, usado somente no momento como um 
 		        identificador ao imprimir as informações da restrição.
@@ -2174,8 +2174,8 @@ class SuggestionsPredictor:
 		customizadas passadas pelo usuário do script de otimização, tem 
 		configuraçõe inválidas segundo às regras definidas pelas restrições
 		de configurações definidas pelo arquivo de configuração da
-		aplicação, se a lista de restrições foi definida pela função
-		set_restrictions.
+		aplicação e do script de otimização, se a lista de restrições foi 
+		definida pela função set_restrictions.
 
 		Parãmetros
 			X (DataFrame): DataFrame do Pandas com todas as configurações que
@@ -2504,18 +2504,26 @@ class SuggestionsPredictor:
 			# logo, para obter este DataFrame, basta negar o filtro.
 			X_excluded = X[~valid_configurations].copy().reset_index(drop=True)
 
+			# Verifica se o DataFrame X_excluded está vazio. Neste caso, 
+			# precisamos mudar X_excluded para None, pois somente retornamos
+			# um DataFrame se existirem configurações que foram excluídas.
+			if X_excluded.empty:
+				# Como não exsitem configuações excluídas, mudamos o X_excluded
+				# para None.
+				X_excluded = None	
+
 			# Retorma o novo DataFrame new_X, com as configurações que
-			# satisfazem as restrições de configuração da aplicação, e o 
-			# DataFrame X_excluded com as configurações excluídas.
+			# satisfazem as restrições de configuração, e o DataFrame 
+			# X_excluded com as configurações excluídas, se existem, ou None
+			# em caso contrário.
 			return new_X, X_excluded
 		else:
-			# Como não existem restrições de configurações para aplicação,
-			# então retornamos o próprio DataFrame X com todas as
-			# configurações como o primeiro elemento da tupla e None no 
-			# segundo elemento, que apontaria para o DataFrame com as
-			# configurações que foram descartas por violar as restrições
-			# defidas para as configurações da aplicação porque não existem
-			# redtrições.
+			# Como não existem restrições de configurações então retornamos o 
+			# próprio DataFrame X com todas as configurações como o primeiro
+			# elemento da tupla e None no segundo elemento, que apontaria para
+			# o DataFrame com as configurações que foram descartas por violar
+			# as restrições defidas para as configurações porque não existem
+			# restrições.
 			return X, None
 		    	
 	def _predict_suggestions_data(self, user_applicaion_params, 
@@ -2703,8 +2711,8 @@ class SuggestionsPredictor:
 			# todas as configurações são válidas (por exemplo, o número de
 			# processos por nó multiplicado pelo número de therads não pode
 			# ser maior do que o número máximo de threads fornecido pelo
-			# usuário. Além disso, podem ter outras restrições para as
-			# configurações).
+			# usuário). Além disso, podem ter outras restrições para as
+			# configurações.
 			X, X_excluded = self.check_configurations(X)
 
 		# Uma vez criado o X com todas as possíveis configurações, é
@@ -2939,7 +2947,7 @@ class SuggestionsPredictor:
 		# dataframe com as configurações exluídas porque violam as 
 		# exigẽncias de configuração para a aplicação, ou None se nenhuma
 		# configuração violou uma das exigências ou se as configurações
-		# customizadas nãpo foram usadas.
+		# customizadas não foram usadas.
 		#
 		# "y_pred": Series com os valores preditos pelo modelo auxiliar para
 		# a variável alvo para cada configuração em X, sendo que o valor de
@@ -3320,7 +3328,7 @@ class SuggestionsPredictor:
 			# Como ocorreu um erro ao salvar o preditor, retornamos False.
 			return False
 
-	def get_object_info(self):
+	def show_object_info(self):
 		"""
 		Função para imprimir todos os campos de umn objeto da classe. Usada
 		para verificar os campos de um preditor salvo em um aquivo .pickle
@@ -3438,24 +3446,25 @@ class SuggestionsPredictor:
 		print("➡️ Valores diferentes para as variáveis da aplicação usadas para "
 		      f"definir os grupos da validação LOGO: {self.user_params}")
 
-		# Mostra as restrições que devem ser respeitadas pelas 
-		# configurações, quando elas são geradas a partir de uma lista de
-		# valores para cada variável de configuração definida pelo usuário.
-		print("➡️ Restrições às configurações customizadas definidas na "
-		      "configuração da aplicação:")
-
 		# O campo self.restrictions é uma lista de dicionários definindo
 		# as restrições, se foi inicializado pela função set_restrictions.
-		# Por default, é None. Então, pçrecisamos verificar antes de gerar
+		# Por default, é None. Então, precisamos verificar antes de gerar
 		# as impressões, se self.restrictions é diferente de None.
 		if self.restrictions is not None:
-			# COmo self.restrictions não é None, então ele será ua lista de
+			# Mostra as restrições que devem ser respeitadas pelas 
+			# configurações, quando elas são geradas a partir de uma lista de
+			# valores para cada variável de configuração definida pelo 
+			# usuário.
+			print("➡️ Restrições às configurações customizadas definidas pelos "
+			      "usuários:")
+
+			# Como self.restrictions não é None, então ele será ua lista de
 			# dicionários, sendo em que cada elemento define um dicionário com
 			# as configurações de uma restrição. Para imprimir as informações
 			# das restrições, vamos então imprimir as informações de cada 
 			# dicionário da lista self.restrictions.
 			for restriction in self.restrictions:
-				# Vamos imprimiir as informações do dicionário restriction
+				# Vamos imprimir as informações do dicionário restriction
 				# representando uma restrição. Como vimos na descrição da
 				# função set_restrictions, são três chaves:
 				# 

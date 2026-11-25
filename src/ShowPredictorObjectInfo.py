@@ -5,7 +5,7 @@ from Utils.Suggestions import SuggestionsPredictor
 def show_predictor_info(preditor_file_name):
   predictor = SuggestionsPredictor.load_predictor(preditor_file_name)
   if predictor is not None:
-    predictor.get_object_info()
+    predictor.show_object_info()
     return True
   else:
     print(f"❌ Erro ao ler o preditor do caminho {preditor_file_name}!")  

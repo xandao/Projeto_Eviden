@@ -3534,12 +3534,6 @@ def optimize_application(configs_file_path, system_config, application_config,
       # de a opção -S ou --suggestion ter sido usada pelo usuário.
       only_show_suggestion  = user_args.suggestion
 
-
-    # Para facilitar o acesso, define uma variável com uma referência
-    # para o dicionário con as configurações da apliação definida pela
-    # chave application_id.
-    #application_config = applications_config[application_id]
-
     # Para facilitar o acesso, define uma variável com uma referência
     # para as configurações da aplicação usadas pelo script de
     # otimização.
@@ -3625,7 +3619,7 @@ def optimize_application(configs_file_path, system_config, application_config,
       return False
 
     # Imprime as informações de processamento da aplicação se as
-    # mensagens de depuraçã estiverem habilitadas.
+    # mensagens de depuração estiverem habilitadas.
     if DEBUG_CODE:
       print("Parâmetros obrigatórios processados da aplicação: "
             f"{required_applicaion_params}")
@@ -3699,15 +3693,49 @@ def optimize_application(configs_file_path, system_config, application_config,
     # Suggestions.py, na variável predictor.
     predictor = SuggestionsPredictor.load_predictor(predictor_path)
 
-    # Define as restrições definidas para a aplicação quando
-    # configurações customizadas são usadas, condições essas que poderão
-    # excluir configurações, geradas pelas opções de configuração 
-    # customizadas que são passadas pelos usuários, que serão inválidas
-    # segundo as restrições da aplicação. A avaliação somente é feita
-    # quando as configurações customizadas são usadas, pois as 
-    # configurações definidas ao treinar o preditor da aplicação
-    # naturalmente são todas válidas.
-    predictor.set_restrictions(script_config['custom_restrictions'])
+    # Verifica se existem regras de exclusão definidas para as
+    # configurações de execução da aplicação. Isso ocorrerá se a chave  
+    # 'custom_restrictions' estiver definida no dicionário com as 
+    # configurações da aplicação lidas do arquivo de configuração da 
+    # aplicação. Se existirem, armazena a lista com as regras definidas 
+    # ara a aplicação na variável application_restricions e, em caso, 
+    # contrário, define a variável para uma lista vazia. Para fazer 
+    # isso, usamos a função get do dicionário que permite definir
+    # valores default se a chave não existir no dicionário.
+    application_restricions = script_config.get('custom_restrictions', [])
+
+    # Verifica se existem regras de exclusão definidas para as 
+    # configurações de execução gerais, válidas para qualquer aplicação. 
+    # Isso ocorrerá se a chave 'custom_restrictions' estiver definida no
+    # dicionário com as configurações do script de otimização lidas do
+    # arquivo de configuração do script. Se existirem, armazena a lista 
+    # com as regras gerais na variável script_restricions e, em caso, 
+    # contrário, define a variável para uma lista vazia. Para fazer 
+    # isso, usamos a função get do dicionário que permite definir 
+    # valores default se a chave não existir no dicionário.
+    script_restricions = user_config.get('custom_restrictions', [])
+
+    # Define a lista com todas as regras de exclusões das configurações,
+    # ou seja, a concatenação das listas application_restricions e 
+    # script_restricions, na variável all_restrictions.
+    all_restrictions = application_restricions + script_restricions
+
+    # Como não existe necessidade de avaliar restrições se os usuários
+    # não customizaram cada uma das componetes de uma configuração,
+    # porque as configurações usadas serão as obtidas de execuções reais
+    # da aplicação, deveremos definir as restrições somente se o usuário
+    # fez customizações. Além disso, também precisamos ter exclusões 
+    # definidas, ou seja, a lista all_restrictions não pode estar vazia.
+    # Logo, definiremos as regras para a exclusão se a lista 
+    # referenciada por all_restrections não for vazia e se a variável
+    if custom_suggestions is not None and all_restrictions:
+      predictor.set_restrictions(all_restrictions)
+
+    # Imprime as informações do preditor, incluindo as regras de 
+    # exclusão das configurações se as mensagens de depuração estiverem
+    # habilitadas.
+    if DEBUG_CODE:
+      predictor.show_object_info()
 
     # Agora que o preditor foi lido e refrência ao seu objeto armazenada
     # na variável predictor, vamos usar a função get_suggestion para
@@ -3986,8 +4014,6 @@ def optimize_application(configs_file_path, system_config, application_config,
                         required_applicaion_params, 
                         user_application_params,
                         application_args[1:], job_id)
-
-    predictor.get_object_info()    
 
     # Como conseguimos fazer todo o processamento, ou sejam obter a 
     # melhor sugestão de configuração, gerar o script de submissão,
